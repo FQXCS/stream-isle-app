@@ -1,0 +1,54 @@
+# ===== 依赖 =====
+node_modules/
+
+# ===== Expo / React Native =====
+.expo/
+.expo-shared/
+*.tsbuildinfo
+.metro-health-check*
+
+# ===== Android（android/ 为 prebuild 产物，入库；仅忽略本地与构建产物）=====
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+android/.cxx/
+android/*.hprof
+
+# ===== Android Studio / IntelliJ（android/ 单独打开时生成）=====
+android/.idea/
+*.iml
+
+# 密钥文件严禁入库（debug.keystore 缺失时 gradle 会自动生成）
+*.keystore
+!debug.keystore
+*.jks
+
+# ===== iOS（当前仅 Android，后置阶段使用）=====
+ios/Pods/
+ios/build/
+ios/.xcode.env.local
+
+# ===== 环境变量 / 密钥 =====
+.env
+.env.*
+!.env.example
+
+# ===== 日志 =====
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===== IDE / 工具 =====
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.zcode/
+
+# ===== 系统文件 =====
+.DS_Store
+Thumbs.db
+Desktop.ini
+/docs/
