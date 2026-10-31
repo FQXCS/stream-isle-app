@@ -1,0 +1,85 @@
+# Stream Isle Mobile Release（M6 文档 §4.9.2；设计文档 §12/§14）
+# 触发：推送 v* tag → 复跑 lint/test 门禁 → 解码 keystore（仓库 Secrets 四件套）
+# → assembleRelease 签名 APK → 重命名 StreamIsle-{versionName}({versionCode}).apk
+# → 上传 artifact + softprops/action-gh-release 附加 APK（release notes 以 tag message 为底稿）。
+name: mobile-release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # JDK 21：compileSdk 37（RN 0.88 版本目录）构建需要（同 mobile-ci.yml 决策）
+          java-version: 21
+
+      - name: 安装依赖
+        run: npm ci
+
+      # —— 与 CI 同序的质量门禁（release 前置复跑，06 §4.9.2「node 环境与 ci 同序的 lint/test 门禁」）——
+      - name: 质量门禁 1/3 lint
+        run: npm run lint
+
+      - name: 质量门禁 2/3 tsc
+        run: npx tsc --noEmit
+
+      - name: 质量门禁 3/3 jest
+        run: npx jest
+
+      - name: 还原 keystore（仓库 Secrets 四件套，06 §4.9.1）
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > /tmp/release.keystore
+          echo "ANDROID_KEYSTORE_FILE=/tmp/release.keystore" >> "$GITHUB_ENV"
+
+      - name: Android 签名构建（assembleRelease）
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: cd android && ./gradlew assembleRelease
+
+      - name: 重命名 APK（StreamIsle-{versionName}({versionCode}).apk）
+        run: |
+          VERSION_NAME=$(node -e "console.log(require('./app.config.json')?.expo?.version ?? '')" 2>/dev/null || node -e "const c=require('fs').readFileSync('app.config.ts','utf8');const m=c.match(/version:\s*\"([^\"]+)\"/);console.log(m?m[1]:'unknown')")
+          VERSION_CODE=$(grep -o 'versionCode [0-9]*' android/app/build.gradle | grep -o '[0-9]*')
+          APK=$(ls android/app/build/outputs/apk/release/app-release.apk)
+          TARGET="StreamIsle-${VERSION_NAME}(${VERSION_CODE}).apk"
+          cp "$APK" "$TARGET"
+          echo "APK_TARGET=$TARGET" >> "$GITHUB_ENV"
+
+      - name: 上传 artifact（保留 30 天）
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: ${{ env.APK_TARGET }}
+          retention-days: 30
+
+      - name: 产出 Release notes（tag message 为底稿，中文；返工勘误：不得传空 body_path）
+        run: |
+          git tag -l --format='%(contents)' "${GITHUB_REF_NAME}" > release-notes.md
+          # 轻量 tag（message 为空/仅有注释对象缺失）兜底：避免空 body 文件
+          if ! [ -s release-notes.md ]; then
+            echo "本版更新说明见提交记录。" > release-notes.md
+          fi
+          echo "NOTES_PATH=release-notes.md" >> "$GITHUB_ENV"
+
+      - name: 附加 APK 到 GitHub Release（notes 以 tag message 为底稿，中文）
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.APK_TARGET }}
+          body_path: ${{ env.NOTES_PATH }}

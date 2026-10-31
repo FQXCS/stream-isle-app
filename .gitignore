@@ -6,6 +6,9 @@ node_modules/
 .expo-shared/
 *.tsbuildinfo
 .metro-health-check*
+dist/
+web-build/
+expo-env.d.ts
 
 # ===== Android（android/ 为 prebuild 产物，入库；仅忽略本地与构建产物）=====
 android/.gradle/
@@ -15,6 +18,10 @@ android/local.properties
 android/captures/
 android/.cxx/
 android/*.hprof
+.kotlin/
+
+# ===== 本地模块（modules/）构建产物 =====
+modules/*/android/build/
 
 # ===== Android Studio / IntelliJ（android/ 单独打开时生成）=====
 android/.idea/
@@ -24,11 +31,14 @@ android/.idea/
 *.keystore
 !debug.keystore
 *.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
 
-# ===== iOS（当前仅 Android，后置阶段使用）=====
-ios/Pods/
-ios/build/
-ios/.xcode.env.local
+# ===== iOS（当前仅 Android，后置阶段使用；prebuild ios 后按需放开）=====
+/ios
 
 # ===== 环境变量 / 密钥 =====
 .env
@@ -52,3 +62,8 @@ yarn-error.log*
 Thumbs.db
 Desktop.ini
 /docs/
+
+# ===== M6 发布签名（06 文档 §4.9.1：keystore 即身份，文件与口令严禁入库）=====
+android/keystore.properties
+android/keystores/
+release.keystore
