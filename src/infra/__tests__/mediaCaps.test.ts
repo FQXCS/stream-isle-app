@@ -14,6 +14,7 @@ jest.mock('../../../modules/expo-media-caps', () => ({
 /** 动态加载被测模块（缓存态随 resetModules 归零；jest CJS 环境用 require） */
 function loadModule(): typeof import('@/infra/mediaCaps') {
   jest.resetModules();
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- resetModules 后只能同步 require 取新实例
   return require('@/infra/mediaCaps') as typeof import('@/infra/mediaCaps');
 }
 

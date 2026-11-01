@@ -3,8 +3,7 @@
  * pending_progress 有序读取与按 id 删除。以内存假 DbClient（Map 表）驱动 createDownloadDao
  * ——生产 SQLiteDatabase 方法签名同构（openDatabaseAsync 在 jest 由 __mocks__/expo-sqlite 提供）。
  */
-import { createDownloadDao, DDL_SQL, type DbClient } from '@/infra/db';
-import type { DownloadRow, PendingProgressRow } from '@/infra/db';
+import { createDownloadDao, DDL_SQL, type DbClient, type DownloadRow, type PendingProgressRow } from '@/infra/db';
 
 /** 内存假库：支持 DAO 用到的 SQL 子集（run/getAll/事务） */
 function makeFakeDb(): DbClient & {

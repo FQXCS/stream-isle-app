@@ -26,12 +26,12 @@ export function QueuePanel() {
     setEntryList(await audioService.getQueueSnapshot());
   }, []);
 
-  // 面板挂载/聚焦与当前曲变化（skip/切歌）时重拉全量队列（真源在 track-player 原生侧）
+  // 面板挂载/聚焦时重拉全量队列（真源在 track-player 原生侧）；
+  // 切歌高亮由 currentTrackId 订阅直接驱动渲染，队列成分未变无需重拉
   useFocusEffect(
     useCallback(() => {
       void reload();
-      // currentTrackId 参与 useCallback 依赖：切歌后队列高亮与序号需要重拉刷新
-    }, [reload, currentTrackId])
+    }, [reload])
   );
 
   const handleDragEnd = useCallback((params: DragEndParams<QueueEntry>) => {

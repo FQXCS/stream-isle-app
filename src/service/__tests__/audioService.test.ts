@@ -5,7 +5,8 @@
  * PlaybackStateChanged(Ended)/stop/PlaybackError → Stopped）。
  */
 import type { AudioItem, PlaybackSession } from '@/adapter/model';
-import { Event, PlaybackState, RepeatMode } from '@rntp/player';
+import TrackPlayer, { Event, PlaybackState, RepeatMode } from '@rntp/player';
+import { getActiveAdapter } from '@/service/adapterProvider';
 import { AudioService } from '@/service/AudioService';
 import { usePlayerStore } from '@/store/playerStore';
 
@@ -87,10 +88,6 @@ jest.mock('@/infra/mediaCaps', () => ({
 jest.mock('@/service/adapterProvider', () => ({
   getActiveAdapter: jest.fn(),
 }));
-
-import { getActiveAdapter } from '@/service/adapterProvider';
-
-import TrackPlayer from '@rntp/player';
 
 /** fake adapter（断言上报调用序列；模块级共享——内部 ProgressService 经 getActiveAdapter 取同一实例） */
 const sharedAdapter = {

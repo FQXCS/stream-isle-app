@@ -27,6 +27,7 @@ npx expo run:android            # 真机构建安装（Android 8+ / minSdk 26）
 
 - CI：lint + test + Android debug 构建；三件套全绿是每个里程碑验收第 1 条。Android 构建需 **JDK 21**（compileSdk 37 的 core-for-system-modules.jar 需 JDK 21 的 jlink，JDK 17 实测 JdkImageTransform 失败）。
 - 分支习惯：每个里程碑一个 `feature/m<N>-xxx` 分支（如 M1 用 `feature/m1-skeleton`）。
+- **警告处理**：lint / tsc / jest 输出中的警告要一并处理，保持零警告；成本低（调整 import、消除多余 hook 依赖、补 eslint 注释等）的直接修掉，成本高（升级依赖版本、改库内部行为等）的可不处理，并在提交说明中注明原因。
 
 ## 本地联调测试环境（Emby 模拟器实测）
 

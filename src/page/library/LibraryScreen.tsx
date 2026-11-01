@@ -299,8 +299,7 @@ function LibraryBody({ library, accountKey }: LibraryBodyProps) {
         if (previous !== null) {
           useBrowseStore.getState().actions.patchItemFavorite(wallKey, item.id, previous);
         }
-        const code = err instanceof AppError ? err.code : 'UNKNOWN';
-        showToast(errorMessageOf(code), 'error');
+        toastError(err);
       });
     },
     [wallKey]

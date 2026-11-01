@@ -6,8 +6,7 @@
  * 错误态复用 ErrorView 不适用（本地数据），加载态即 rehydrate 瞬时（06 文档 §4.4.5）。
  */
 import { useCallback } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';

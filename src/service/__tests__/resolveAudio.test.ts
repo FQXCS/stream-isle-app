@@ -4,6 +4,7 @@
  */
 import { EmbyAdapter } from '@/adapter/EmbyAdapter';
 import type { ApiClient } from '@/infra/api/ApiClient';
+import { getActiveAdapter } from '@/service/adapterProvider';
 import { playbackService } from '@/service/PlaybackService';
 
 jest.mock('@/store/accountStore', () => ({
@@ -27,8 +28,6 @@ jest.mock('@/infra/mediaCaps', () => ({
     supportsAv1: false,
   }),
 }));
-
-import { getActiveAdapter } from '@/service/adapterProvider';
 
 /** 构造真实 BaseAdapter（URL 构造为纯函数，api 不被触达） */
 function makeAdapter(): EmbyAdapter {

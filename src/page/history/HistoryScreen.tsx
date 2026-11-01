@@ -4,9 +4,8 @@
  * 入口：首页头部右侧图标 + 设置页「观看历史」行。分页沿用海报墙 StartIndex/Limit（PAGE_SIZE）。
  */
 import { useCallback, useRef, useState } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useFocusEffect } from '@react-navigation/native';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 
