@@ -107,6 +107,9 @@ export interface ServerAdapter {
   /** M4：DELETE /Users/{uid}/FavoriteItems/{itemId} */
   unmarkFavorite(userId: string, itemId: string): Promise<void>;
 
+  /** 删除服务器条目（库页长按菜单；DELETE /Items/{itemId}，需该用户具备删除权限） */
+  deleteItem(itemId: string): Promise<void>;
+
   /** M3（设计文档 §8.3） */
   stopTranscodingSession(playSessionId: string): Promise<void>;
 

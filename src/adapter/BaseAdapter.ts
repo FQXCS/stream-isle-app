@@ -13,7 +13,6 @@ import {
   PERSON_HEAD_MAX_WIDTH,
 } from '@/constant/image';
 import {
-  ALBUM_GRID_COVER_MAX_WIDTH,
   AUDIO_ARTWORK_MAX_WIDTH,
   AUDIO_TRANSCODING_AUDIO_CODEC,
   AUDIO_TRANSCODING_CONTAINER,
@@ -38,6 +37,7 @@ import { getDeviceId } from '@/infra/deviceId';
 import * as Device from 'expo-device';
 import type {
   AudioItem,
+  AudioStreamInfo,
   AudioTrack,
   AuthResult,
   EpisodeItem,
@@ -67,8 +67,10 @@ import type {
   ServerFlavor,
   ServerInfo,
   SortByEnum,
+  SubtitleStreamInfo,
   SubtitleTrack,
   UserItemData,
+  VideoStreamInfo,
 } from '@/adapter/model';
 import type { ServerAdapter } from '@/adapter/ServerAdapter';
 import { buildDeviceProfile } from '@/adapter/DeviceProfileBuilder';
@@ -199,6 +201,8 @@ interface DetailItemResponse extends ServerItemResponse {
   Taglines?: string[];
   People?: PersonResponse[];
   MediaSources?: MediaSourceInfoResponse[];
+  /** Fields=Path（详情页文件信息卡） */
+  Path?: string;
   ImageTags?: { Primary?: string; Logo?: string };
   /** Backdrop 标签数组（与 ImageTags 分离；取首个作 Hero） */
   BackdropImageTags?: string[];
@@ -231,6 +235,23 @@ interface MediaStreamResponse {
   DeliveryMethod?: string;
   /** 外挂轨相对 URL（可能已含 api_key） */
   DeliveryUrl?: string;
+  // —— 详情页「音视频字幕信息」技术字段（服务器返回即可用，缺失即不展示）——
+  Profile?: string;
+  Level?: number;
+  Width?: number;
+  Height?: number;
+  AspectRatio?: string;
+  IsInterlaced?: boolean;
+  AverageFrameRate?: number;
+  RealFrameRate?: number;
+  BitRate?: number;
+  VideoRange?: string;
+  ColorSpace?: string;
+  BitDepth?: number;
+  PixelFormat?: string;
+  RefFrames?: number;
+  ChannelLayout?: string;
+  SampleRate?: number;
 }
 
 /** MediaSourceInfo 原始形态（详情与 PlaybackInfo 响应同构，M2 消费字段） */
@@ -382,6 +403,77 @@ function translateAudioTracks(source: MediaSourceInfoResponse): AudioTrack[] {
   });
 }
 
+/** 视频轨技术信息翻译（详情页音视频字幕信息；Index 缺失的轨道跳过） */
+function translateVideoStreams(source: MediaSourceInfoResponse): VideoStreamInfo[] {
+  return (source.MediaStreams ?? []).flatMap((stream) => {
+    if (stream.Type !== 'Video' || stream.Index === undefined) {
+      return [];
+    }
+    return [
+      {
+        index: stream.Index,
+        title: stream.DisplayTitle ?? stream.Title,
+        codec: stream.Codec,
+        profile: stream.Profile,
+        level: stream.Level,
+        width: stream.Width,
+        height: stream.Height,
+        aspectRatio: stream.AspectRatio,
+        isInterlaced: stream.IsInterlaced,
+        frameRate: stream.RealFrameRate ?? stream.AverageFrameRate,
+        bitrateBps: stream.BitRate,
+        videoRange: stream.VideoRange,
+        colorSpace: stream.ColorSpace,
+        bitDepth: stream.BitDepth,
+        pixelFormat: stream.PixelFormat,
+        refFrames: stream.RefFrames,
+      },
+    ];
+  });
+}
+
+/** 音频轨技术信息翻译（详情页音视频字幕信息；Index 缺失的轨道跳过） */
+function translateAudioStreamInfoList(source: MediaSourceInfoResponse): AudioStreamInfo[] {
+  return (source.MediaStreams ?? []).flatMap((stream) => {
+    if (stream.Type !== 'Audio' || stream.Index === undefined) {
+      return [];
+    }
+    return [
+      {
+        index: stream.Index,
+        title: stream.DisplayTitle ?? stream.Title ?? stream.Language,
+        codec: stream.Codec,
+        profile: stream.Profile,
+        channelLayout: stream.ChannelLayout,
+        channels: stream.Channels,
+        sampleRate: stream.SampleRate,
+        bitrateBps: stream.BitRate,
+        isDefault: stream.IsDefault,
+      },
+    ];
+  });
+}
+
+/** 字幕轨技术信息翻译（详情页音视频字幕信息；Index 缺失的轨道跳过） */
+function translateSubtitleStreamInfoList(source: MediaSourceInfoResponse): SubtitleStreamInfo[] {
+  return (source.MediaStreams ?? []).flatMap((stream) => {
+    if (stream.Type !== 'Subtitle' || stream.Index === undefined) {
+      return [];
+    }
+    return [
+      {
+        index: stream.Index,
+        title: stream.DisplayTitle ?? stream.Title ?? stream.Language,
+        language: stream.Language,
+        format: stream.Codec,
+        isExternal: stream.DeliveryMethod === 'External',
+        isForced: stream.IsForced,
+        isDefault: stream.IsDefault,
+      },
+    ];
+  });
+}
+
 /**
  * MediaSourceInfo → 统一模型（详情 mediaSourceList 与 resolvePlayback 共用）。
  * TranscodingUrl 仅透传保存（M2 不拼不播，M3 直接 {base}{TranscodingUrl}，设计文档 §6.1）。
@@ -393,6 +485,9 @@ function translateMediaSource(raw: MediaSourceInfoResponse): MediaSource {
     container: raw.Container ?? '',
     supportsDirectPlay: raw.SupportsDirectPlay ?? false,
     supportsTranscoding: raw.SupportsTranscoding ?? false,
+    videoStreamList: translateVideoStreams(raw),
+    audioStreamList: translateAudioStreamInfoList(raw),
+    subtitleStreamList: translateSubtitleStreamInfoList(raw),
   };
   if (raw.RunTimeTicks !== undefined) {
     source.runtimeMs = ticksToMs(raw.RunTimeTicks);
@@ -758,7 +853,7 @@ export abstract class BaseAdapter implements ServerAdapter {
       url: this.urlOf(
         `/Users/${userId}/Items/${itemId}?${this.buildQuery({
           Fields:
-            'Overview,Genres,People,MediaSources,Taglines,OriginalTitle,OfficialRating,CommunityRating',
+            'Overview,Genres,People,MediaSources,Taglines,OriginalTitle,OfficialRating,CommunityRating,Path',
         })}`
       ),
       headers: this.buildHeaders(this.token),
@@ -832,6 +927,7 @@ export abstract class BaseAdapter implements ServerAdapter {
       logoImageUrl: logoTag
         ? this.buildImageUrl(id, 'Logo', DETAIL_POSTER_MAX_WIDTH, logoTag)
         : undefined,
+      path: data.Path,
       userData: translateUserData(data),
       mediaSourceList: (data.MediaSources ?? []).map(translateMediaSource),
       seriesId: data.SeriesId,
@@ -1114,6 +1210,18 @@ export abstract class BaseAdapter implements ServerAdapter {
     await this.api.request({
       method: 'DELETE',
       url: this.urlOf(`/Users/${userId}/FavoriteItems/${itemId}`),
+      headers: this.buildHeaders(this.token),
+    });
+  }
+
+  /**
+   * 删除条目：DELETE /Items/{itemId}（Emby/Jellyfin 同构）。
+   * 服务器按用户权限判定（需 Delete 权限），无权限返回 403 由错误归一化为 FORBIDDEN。
+   */
+  async deleteItem(itemId: string): Promise<void> {
+    await this.api.request({
+      method: 'DELETE',
+      url: this.urlOf(`/Items/${itemId}`),
       headers: this.buildHeaders(this.token),
     });
   }

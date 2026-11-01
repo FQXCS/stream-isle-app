@@ -1,18 +1,26 @@
 /**
- * 详情页（M2 文档 §4.11 + 04 §4.4 收口 + M6 文档 §4.4.5 下载状态机）：Hero、元数据、
- * 按钮行（播放/标记已看/收藏/下载）、简介折叠、演员横滑行、剧集季集导航（仅 Series）、
- * 相似推荐行。数据经 DetailService；聚焦即刷新（useFocusEffect，覆盖播放返回/标记已看后的变化）。
+ * 详情页（M2 文档 §4.11 + 04 §4.4 收口 + M6 §4.4.5 下载状态机 + M8 参考稿重排）：
+ * Hero（返回/更多浮层 + 居中标题与元数据）、大播放按钮 + 收藏/已看图标、
+ * 音视频字幕信息卡、简介折叠、剧集季集导航（仅 Series）、演员横滑行、相似推荐行、
+ * 底部文件信息卡；「更多」菜单承载下载与已看标记（参考稿）。
+ * 数据经 DetailService；聚焦即刷新（useFocusEffect，覆盖播放返回/标记已看后的变化）。
  * 点播放流程：getResumePositionMs 判定 → 弹 ResumeDialog → resolve → navigate Player
  * （会话携带 itemType/seriesId 供自动连播判定，04 §4.4）；PLAYBACK_UNSUPPORTED 就地 toast。
- * M6 增量：电影按钮行第三按钮 DownloadBadge（五态下载状态机）；剧集每集行右侧图标态徽标
- * （剧集本身无单文件，下载入口必须落到集级）；完成态 tap → buildLocalSession → Player 本地播放。
  */
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import type { EpisodeItem, MediaDetail, MediaLibraryItem, SeasonItem } from '@/adapter/model';
+import type {
+  EpisodeItem,
+  MediaDetail,
+  MediaItemTypeEnum,
+  MediaLibraryItem,
+  SeasonItem,
+} from '@/adapter/model';
+import { AnchorMenu, type AnchorMenuItem, type AnchorRect } from '@/component/AnchorMenu';
+import { AppIcon } from '@/component/AppIcon';
 import { DownloadBadge } from '@/component/DownloadBadge';
 import { ErrorView } from '@/component/ErrorView';
 import { LoadingView } from '@/component/LoadingView';
@@ -24,15 +32,20 @@ import { FONT_SIZE, POSTER_RADIUS, SPACING } from '@/constant/theme';
 import { CastRow } from '@/page/item/components/CastRow';
 import { EpisodeList } from '@/page/item/components/EpisodeList';
 import { HeroHeader } from '@/page/item/components/HeroHeader';
+import { MediaFileCard, MediaInfoSection } from '@/page/item/components/MediaInfoSection';
 import { ResumeDialog } from '@/page/item/components/ResumeDialog';
 import { SimilarRow } from '@/page/item/components/SimilarRow';
 import type { RootStackParamList } from '@/page/navigation/types';
+import { bookSizeService } from '@/service/BookSizeService';
 import { detailService } from '@/service/DetailService';
 import { downloadService, type DownloadableItem } from '@/service/DownloadService';
+import { itemActionService } from '@/service/ItemActionService';
 import { markService } from '@/service/MarkService';
 import { playbackService } from '@/service/PlaybackService';
+import { useDownloadStore } from '@/store/downloadStore';
 import { getResumePositionMs, toResumeSource, type ResumeSource } from '@/util/resume';
-import { formatClock } from '@/util/format';
+import { formatClock, formatRuntime } from '@/util/format';
+import { formatBytes } from '@/util/formatBytes';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -52,6 +65,61 @@ interface ResumeTarget {
 function toastError(err: unknown): void {
   const code = err instanceof AppError ? err.code : 'UNKNOWN';
   showToast(errorMessageOf(code), 'error');
+}
+
+/** 单文件可播类型（电影/集/家庭视频）；剧集与图书走各自的元数据口径 */
+function isMediaFlowType(type: MediaItemTypeEnum): boolean {
+  return type === 'Movie' || type === 'Episode' || type === 'Video';
+}
+
+/**
+ * 详情页元数据行：单文件条目取参考稿技术口径「时长 · 大小 · 720p HEVC」；
+ * 技术字段缺失或剧集/图书时回退「年份 · 分级 · 评分 · 时长 · 类型」。
+ */
+function metaTextOf(detail: MediaDetail): string {
+  if (isMediaFlowType(detail.type)) {
+    const source = detail.mediaSourceList[0];
+    const video = source?.videoStreamList?.[0];
+    const parts: string[] = [];
+    if (detail.runtimeMs !== undefined && detail.runtimeMs > 0) {
+      parts.push(formatRuntime(detail.runtimeMs));
+    }
+    if (source?.sizeBytes !== undefined) {
+      parts.push(formatBytes(source.sizeBytes));
+    }
+    if (video?.height !== undefined) {
+      // 分辨率档位取短边（竖屏 1080x1440 展示 1080p，与 Emby DisplayTitle 口径一致）
+      const shortSide =
+        video.width !== undefined ? Math.min(video.width, video.height) : video.height;
+      const resolution = `${shortSide}p`;
+      parts.push(video.codec !== undefined ? `${resolution} ${video.codec.toUpperCase()}` : resolution);
+    }
+    if (parts.length > 0) {
+      return parts.join(' · ');
+    }
+  }
+  const legacyParts: string[] = [];
+  if (detail.productionYear !== undefined) {
+    legacyParts.push(String(detail.productionYear));
+  }
+  if (detail.officialRating !== undefined) {
+    legacyParts.push(detail.officialRating);
+  }
+  if (detail.communityRating !== undefined) {
+    legacyParts.push(`★ ${detail.communityRating.toFixed(1)}`);
+  }
+  if (detail.runtimeMs !== undefined) {
+    legacyParts.push(formatClock(detail.runtimeMs));
+  }
+  // 图书等无播放轨道的条目：详情接口带回 MediaSources.Size 时展示文件大小
+  const legacySize = detail.mediaSourceList[0]?.sizeBytes;
+  if (legacySize !== undefined) {
+    legacyParts.push(formatBytes(legacySize));
+  }
+  if (detail.genreList.length > 0) {
+    legacyParts.push(detail.genreList.slice(0, 3).join(' '));
+  }
+  return legacyParts.join(' · ');
 }
 
 export function ItemDetailScreen() {
@@ -77,6 +145,34 @@ export function ItemDetailScreen() {
   const [marking, setMarking] = useState(false);
   /** 收藏乐观更新在途（防连点，04 §4.4） */
   const [markingFavorite, setMarkingFavorite] = useState(false);
+  /** 「更多」菜单（null=关闭；参考稿顶部右侧入口；菜单项在打开时按当前状态构建） */
+  const [moreMenu, setMoreMenu] = useState<{
+    anchor: AnchorRect;
+    itemList: AnchorMenuItem[];
+  } | null>(null);
+
+  // 主条目的下载任务（「更多」菜单下载入口按五态显示文案）
+  const downloadTask = useDownloadStore((state) =>
+    detail === null ? undefined : state.taskMap[detail.id]
+  );
+
+  // 图书文件大小：Book DTO 不带 Size，详情打开后经下载端点惰性探测（与库卡片共用缓存）
+  const bookItemId = detail !== null && detail.type === 'Book' ? detail.id : null;
+  const [bookSizeText, setBookSizeText] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    if (bookItemId === null) {
+      return;
+    }
+    let cancelled = false;
+    void bookSizeService.loadSize(bookItemId).then((bytes) => {
+      if (!cancelled && bytes !== null) {
+        setBookSizeText(formatBytes(bytes));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [bookItemId]);
 
   // —— 单季集列表（显式参数触发：首季回填/季切换/标记已看后刷新；不用 effect 驱动 setState）——
   const seriesId = detail?.type === 'Series' ? detail.id : undefined;
@@ -221,26 +317,143 @@ export function ItemDetailScreen() {
     [navigation]
   );
 
-  // —— 标记已看 toggle（手动按钮，A9；M4 回归）——
-  const togglePlayed = useCallback(async () => {
-    if (detail === null || marking) {
+  // —— 标记已看（手动图标/菜单，A9；M4 回归）：显式目标态，成功后刷新 UserData ——
+  const updatePlayedState = useCallback(
+    async (played: boolean) => {
+      if (detail === null || marking) {
+        return;
+      }
+      setMarking(true);
+      try {
+        await markService.setPlayed(detail.id, played);
+        // 标记成功后刷新 UserData（图标态/集列表勾随之变化）
+        const refreshed = await detailService.loadDetail(detail.id);
+        setDetail(refreshed);
+        if (refreshed.type === 'Series' && seriesId !== undefined) {
+          await loadEpisodes(seriesId, selectedSeasonIdRef.current);
+        }
+      } catch (err) {
+        toastError(err);
+      } finally {
+        setMarking(false);
+      }
+    },
+    [detail, marking, loadEpisodes, seriesId]
+  );
+
+  const togglePlayed = useCallback(() => {
+    if (detail !== null) {
+      void updatePlayedState(!detail.userData.played);
+    }
+  }, [detail, updatePlayedState]);
+
+  /** 「更多」菜单下载入口：无任务→发起；在途→下载页；暂停/失败→续传/重试；完成→本地播放 */
+  const handleMoreDownload = useCallback(() => {
+    if (detail === null) {
       return;
     }
-    setMarking(true);
-    try {
-      await markService.setPlayed(detail.id, !detail.userData.played);
-      // 标记成功后刷新 UserData（按钮文案/集列表勾随之变化）
-      const refreshed = await detailService.loadDetail(detail.id);
-      setDetail(refreshed);
-      if (refreshed.type === 'Series' && seriesId !== undefined) {
-        await loadEpisodes(seriesId, selectedSeasonIdRef.current);
-      }
-    } catch (err) {
-      toastError(err);
-    } finally {
-      setMarking(false);
+    if (downloadTask === undefined) {
+      startDownloadFor(detail);
+      return;
     }
-  }, [detail, marking, loadEpisodes, seriesId]);
+    switch (downloadTask.status) {
+      case 'queued':
+      case 'downloading':
+        navigation.navigate(ROUTES.DOWNLOADS);
+        break;
+      case 'paused':
+        void downloadService.resumeDownload(detail.id).catch(() => {
+          showToast(errorMessageOf('UNKNOWN'), 'error');
+        });
+        break;
+      case 'completed':
+        playLocal(detail.id);
+        break;
+      case 'failed':
+        void downloadService.retryDownload(detail.id).catch(() => {
+          showToast(errorMessageOf('UNKNOWN'), 'error');
+        });
+        break;
+      default:
+        startDownloadFor(detail);
+    }
+  }, [detail, downloadTask, navigation, playLocal, startDownloadFor]);
+
+  /** 删除当前条目（详情「更多」菜单；服务器删除权限，成功后返回列表） */
+  const handleDeleteItem = useCallback(() => {
+    if (detail === null) {
+      return;
+    }
+    Alert.alert('删除媒体', `确定从服务器删除「${detail.name}」吗？此操作不可撤销。`, [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '删除',
+        style: 'destructive',
+        onPress: () => {
+          void itemActionService
+            .deleteItem(detail.id)
+            .then(() => {
+              showToast('已删除');
+              navigation.goBack();
+            })
+            .catch(toastError);
+        },
+      },
+    ]);
+  }, [detail, navigation]);
+
+  /** 打开「更多」菜单：按当前条目/下载/已看状态构建菜单项（事件期构建，避免渲染期读取状态） */
+  const handleOpenMore = useCallback(
+    (anchor: AnchorRect) => {
+      if (detail === null) {
+        return;
+      }
+      const itemList: AnchorMenuItem[] = [];
+      if (isMediaFlowType(detail.type)) {
+        const downloadLabel =
+          downloadTask === undefined
+            ? '下载'
+            : downloadTask.status === 'completed'
+              ? '本地播放'
+              : downloadTask.status === 'paused'
+                ? '继续下载'
+                : downloadTask.status === 'failed'
+                  ? '重试下载'
+                  : '下载中';
+        itemList.push({
+          key: 'download',
+          label: downloadLabel,
+          icon: downloadTask?.status === 'completed' ? 'play' : 'download',
+          onPress: handleMoreDownload,
+        });
+      }
+      itemList.push(
+        {
+          key: 'played',
+          label: '标记为已观看',
+          icon: 'flag',
+          disabled: marking,
+          onPress: () => void updatePlayedState(true),
+        },
+        {
+          key: 'unplayed',
+          label: '标记为未观看',
+          icon: 'flagOutline',
+          disabled: marking,
+          onPress: () => void updatePlayedState(false),
+        },
+        {
+          key: 'delete',
+          label: '删除',
+          icon: 'trash',
+          tone: 'danger',
+          onPress: handleDeleteItem,
+        }
+      );
+      setMoreMenu({ anchor, itemList });
+    },
+    [detail, downloadTask, handleDeleteItem, handleMoreDownload, marking, updatePlayedState]
+  );
 
   // —— 收藏 toggle（04 §4.4 新增）：乐观更新——立即翻转 UI → await → 失败回滚 + Toast ——
   const toggleFavorite = useCallback(async () => {
@@ -315,28 +528,46 @@ export function ItemDetailScreen() {
     : null;
   // M6：下载入口仅电影/集级开放（仅可直连条目，服务端 startDownload 判定，设计文档 §7.7）
   const selectedSeasonNumber = selectedSeason?.indexNumber ?? 0;
+  const baseMetaText = metaTextOf(detail);
+  const metaText =
+    bookSizeText === undefined
+      ? baseMetaText
+      : baseMetaText === ''
+        ? bookSizeText
+        : `${baseMetaText} · ${bookSizeText}`;
+  // 参考稿播放按钮：浅色药丸 + 深色图标/文案（主题跟随 surfaceElevated）
+  const playButtonStyle = [
+    styles.playButton,
+    { backgroundColor: t.surfaceElevated, borderColor: t.separator },
+  ];
+  const playButtonTextStyle = [styles.playButtonText, { color: t.textPrimary }];
 
   return (
     <View style={[styles.fill, { backgroundColor: t.bg }]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <HeroHeader detail={detail} />
-        {/* 按钮行（02 §4.11 + 04 §4.4 收藏按钮 + 06 §4.4.5 下载徽标）：
-            主按钮文案随续播判定变化；Series 为「播放第一集」 */}
-        <View style={styles.buttonRow}>
+        <HeroHeader
+          detail={detail}
+          metaText={metaText}
+          onBack={() => navigation.goBack()}
+          onMore={handleOpenMore}
+        />
+        {/* 操作区（参考稿）：大播放按钮 + 收藏/已看图标 */}
+        <View style={styles.actionBlock}>
           {/* Book 主按钮「阅读」（M7 内置阅读器，绕开播放链路） */}
           {isBook && (
             <Pressable
-              style={[styles.playButton, { backgroundColor: t.accent }]}
+              style={playButtonStyle}
               onPress={() =>
                 navigation.navigate(ROUTES.BOOK_READER, { itemId: detail.id, name: detail.name })
               }
             >
-              <Text style={[styles.playButtonText, { color: t.accentOn }]}>阅读</Text>
+              <AppIcon name="file" size={18} color={t.textPrimary} />
+              <Text style={playButtonTextStyle}>阅读</Text>
             </Pressable>
           )}
           {isPlayable && (
             <Pressable
-              style={[styles.playButton, { backgroundColor: t.accent }]}
+              style={playButtonStyle}
               onPress={() =>
                 beginPlay({
                   id: detail.id,
@@ -349,14 +580,15 @@ export function ItemDetailScreen() {
                 })
               }
             >
-              <Text style={[styles.playButtonText, { color: t.accentOn }]}>
+              <AppIcon name="play" size={18} color={t.textPrimary} />
+              <Text style={playButtonTextStyle}>
                 {resumeMs !== null ? `从 ${formatClock(resumeMs)} 继续` : '播放'}
               </Text>
             </Pressable>
           )}
           {isSeries && firstPlayableEpisode !== null && (
             <Pressable
-              style={[styles.playButton, { backgroundColor: t.accent }]}
+              style={playButtonStyle}
               onPress={() =>
                 beginPlay({
                   id: firstPlayableEpisode.id,
@@ -367,36 +599,38 @@ export function ItemDetailScreen() {
                 })
               }
             >
-              <Text style={[styles.playButtonText, { color: t.accentOn }]}>播放第一集</Text>
+              <AppIcon name="play" size={18} color={t.textPrimary} />
+              <Text style={playButtonTextStyle}>播放第一集</Text>
             </Pressable>
           )}
-          <Pressable
-            style={[styles.markButton, { backgroundColor: t.surface }]}
-            onPress={() => void togglePlayed()}
-          >
-            <Text style={[styles.markButtonText, { color: t.textSecondary }]}>
-              {detail.userData.played ? '标记未看' : '标记已看'}
-            </Text>
-          </Pressable>
-          {/* 收藏按钮（04 §4.4 新增）：文案随收藏态翻转 */}
-          <Pressable
-            style={[styles.markButton, { backgroundColor: t.surface }]}
-            onPress={() => void toggleFavorite()}
-          >
-            <Text style={[styles.markButtonText, { color: t.textSecondary }]}>
-              {detail.userData.favorite ? '已收藏' : '收藏'}
-            </Text>
-          </Pressable>
-          {/* M6 下载徽标（电影：按钮行第三按钮；仅可直连条目可下，判定在服务层，06 §4.4.5；
-              Book 不开放——下载前置 resolve 同样触发 PlaybackInfo 500） */}
-          {isPlayable && (
-            <DownloadBadge
-              itemId={detail.id}
-              onStart={() => startDownloadFor(detail)}
-              onPlayLocal={() => playLocal(detail.id)}
-            />
-          )}
+          {/* 收藏 / 已看图标（参考稿：播放按钮下方居中两枚图标） */}
+          <View style={styles.iconRow}>
+            <Pressable
+              style={styles.iconButton}
+              onPress={() => void toggleFavorite()}
+              accessibilityLabel={detail.userData.favorite ? '取消收藏' : '收藏'}
+            >
+              <AppIcon
+                name={detail.userData.favorite ? 'heart' : 'heartOutline'}
+                size={24}
+                color={detail.userData.favorite ? t.accent : t.textSecondary}
+              />
+            </Pressable>
+            <Pressable
+              style={styles.iconButton}
+              onPress={togglePlayed}
+              accessibilityLabel={detail.userData.played ? '标记为未观看' : '标记为已观看'}
+            >
+              <AppIcon
+                name={detail.userData.played ? 'flag' : 'flagOutline'}
+                size={24}
+                color={detail.userData.played ? t.accent : t.textSecondary}
+              />
+            </Pressable>
+          </View>
         </View>
+        {/* 音视频字幕信息（参考稿信息卡） */}
+        <MediaInfoSection detail={detail} />
         {/* 简介：3 行折叠展开 */}
         {detail.overview !== undefined && (
           <Pressable style={styles.overviewBox} onPress={() => setOverviewExpanded((v) => !v)}>
@@ -458,7 +692,14 @@ export function ItemDetailScreen() {
           </View>
         )}
         <SimilarRow itemList={similarList} />
+        {/* 文件信息卡（参考稿底部：路径 + 技术元数据） */}
+        {detail.path !== undefined && <MediaFileCard path={detail.path} metaText={metaText} />}
       </ScrollView>
+      <AnchorMenu
+        anchor={moreMenu?.anchor ?? null}
+        itemList={moreMenu?.itemList ?? []}
+        onClose={() => setMoreMenu(null)}
+      />
       {resumeTarget !== null && (
         <ResumeDialog
           resumeMs={resumeTarget.resumeMs}
@@ -540,29 +781,32 @@ function seasonLabelOf(season: SeasonItem): string {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   content: { paddingBottom: SPACING.xl },
-  buttonRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.m,
+  actionBlock: {
     paddingHorizontal: SPACING.l,
     marginTop: SPACING.m,
+    alignItems: 'center',
+    gap: SPACING.s,
   },
   playButton: {
-    flex: 1,
-    minWidth: 120,
-    borderRadius: POSTER_RADIUS,
-    paddingVertical: SPACING.m,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.s,
+    alignSelf: 'stretch',
+    paddingVertical: 14,
+    borderRadius: 28,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  playButtonText: { fontSize: FONT_SIZE.title },
-  markButton: {
-    borderRadius: POSTER_RADIUS,
-    paddingHorizontal: SPACING.l,
-    paddingVertical: SPACING.m,
+  playButtonText: { fontSize: FONT_SIZE.title, fontWeight: '600' },
+  iconRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 40,
+    marginTop: SPACING.xs,
   },
-  markButtonText: { fontSize: FONT_SIZE.body },
-  overviewBox: { paddingHorizontal: SPACING.l, marginTop: SPACING.m },
+  iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  overviewBox: { paddingHorizontal: SPACING.l, marginTop: SPACING.l },
   overview: { fontSize: FONT_SIZE.body, lineHeight: 22 },
   section: { marginTop: SPACING.l, gap: SPACING.m },
   pickerWrap: { position: 'relative', paddingHorizontal: SPACING.l },

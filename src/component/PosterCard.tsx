@@ -20,9 +20,16 @@ interface PosterCardProps {
   dimmed?: boolean;
   /** 收藏 toggle 回调（传入时渲染收藏角标按钮；仅收藏筛选下传，04 §4.4） */
   onToggleFavorite?: (item: MediaLibraryItem) => void;
+  /** 副标题覆盖（图书卡片惰性采集到文件大小后替换年份副标题） */
+  subtextOverride?: string;
 }
 
-export function PosterCard({ item, dimmed = false, onToggleFavorite }: PosterCardProps) {
+export function PosterCard({
+  item,
+  dimmed = false,
+  onToggleFavorite,
+  subtextOverride,
+}: PosterCardProps) {
   const t = useTheme();
   const posterBoxRef = useRef<ComponentRef<typeof View> | null>(null);
   const begin = useTransitionStore((state) => state.begin);
@@ -59,7 +66,11 @@ export function PosterCard({ item, dimmed = false, onToggleFavorite }: PosterCar
             <Text style={[styles.fallbackText, { color: t.textSecondary }]}>无海报</Text>
           </View>
         )}
-        {item.userData.played && <View style={[styles.watchedBadge, { backgroundColor: t.accent }]} />}
+        {item.userData.played && (
+          <View style={styles.watchedBadge}>
+            <Text style={styles.watchedIcon}>✓</Text>
+          </View>
+        )}
         {/* 收藏角标按钮（04 §4.4：仅收藏筛选下渲染，点击就地取消收藏/恢复） */}
         {onToggleFavorite !== undefined && (
           <Pressable
@@ -81,11 +92,13 @@ export function PosterCard({ item, dimmed = false, onToggleFavorite }: PosterCar
           </View>
         )}
       </View>
-      <Text style={[styles.name, { color: t.textPrimary }]} numberOfLines={2}>
+      <Text style={[styles.name, { color: t.textPrimary }]} numberOfLines={1}>
         {item.name}
       </Text>
-      {item.subtext !== undefined && (
-        <Text style={[styles.subtext, { color: t.textSecondary }]}>{item.subtext}</Text>
+      {(subtextOverride ?? item.subtext) !== undefined && (
+        <Text style={[styles.subtext, { color: t.textSecondary }]}>
+          {subtextOverride ?? item.subtext}
+        </Text>
       )}
     </View>
   );
@@ -101,14 +114,19 @@ const styles = StyleSheet.create({
   poster: { width: '100%', height: '100%' },
   posterFallback: { alignItems: 'center', justifyContent: 'center' },
   fallbackText: { fontSize: FONT_SIZE.body },
+  /** 已看角标（深色圆底 + 白色对勾，与参考稿一致） */
   watchedBadge: {
     position: 'absolute',
-    top: SPACING.s,
-    right: SPACING.s,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    top: SPACING.xs,
+    right: SPACING.xs,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
   },
+  watchedIcon: { color: '#FFFFFF', fontSize: 12, lineHeight: 14, fontWeight: '700' },
   /** 收藏角标按钮（04 §4.4，左上角，不与已看角标重叠） */
   favoriteBadge: {
     position: 'absolute',
@@ -134,6 +152,6 @@ const styles = StyleSheet.create({
   },
   progressFill: { height: '100%' },
   progressIndeterminate: { width: '30%', opacity: 0.7 },
-  name: { fontSize: FONT_SIZE.body },
+  name: { fontSize: FONT_SIZE.body, fontWeight: '600' },
   subtext: { fontSize: FONT_SIZE.body },
 });

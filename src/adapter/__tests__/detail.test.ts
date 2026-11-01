@@ -1,7 +1,7 @@
 /**
  * BaseAdapter 详情主数据单测（M2 文档 §6.1 BaseAdapter.detail 行）：
  * getItemDetail 路径 + Fields 参数断言（含 Overview/Genres/People/MediaSources/Taglines/
- * OriginalTitle/OfficialRating/CommunityRating，02 §4.3 表）+ 响应翻译。
+ * OriginalTitle/OfficialRating/CommunityRating/Path，02 §4.3 表）+ 响应翻译。
  */
 import { EmbyAdapter } from '@/adapter/EmbyAdapter';
 import { JellyfinAdapter } from '@/adapter/JellyfinAdapter';
@@ -49,6 +49,7 @@ const DETAIL_RESPONSE = {
       Size: 123_456,
     },
   ],
+  Path: 'F:\\media\\测试电影.mkv',
   ImageTags: { Primary: 'primaryTag', Logo: 'logoTag' },
   BackdropImageTags: ['backdropTag'],
   UserData: { Played: false, PlayCount: 1, IsFavorite: false, PlaybackPositionTicks: 300_000_000 },
@@ -63,7 +64,7 @@ describe('getItemDetail（详情主数据）', () => {
       expect(req.method).toBe('GET');
       expect(req.url).toBe(
         'http://srv/Users/u1/Items/item1?Fields=' +
-          'Overview%2CGenres%2CPeople%2CMediaSources%2CTaglines%2COriginalTitle%2COfficialRating%2CCommunityRating'
+          'Overview%2CGenres%2CPeople%2CMediaSources%2CTaglines%2COriginalTitle%2COfficialRating%2CCommunityRating%2CPath'
       );
     }
   });
@@ -81,6 +82,7 @@ describe('getItemDetail（详情主数据）', () => {
     expect(detail.runtimeMs).toBe(8_880_000);
     expect(detail.genreList).toEqual(['科幻', '动作']);
     expect(detail.taglineList).toEqual(['标语一']);
+    expect(detail.path).toBe('F:\\media\\测试电影.mkv');
     expect(detail.userData.playbackPositionMs).toBe(30_000);
   });
 
@@ -128,6 +130,76 @@ describe('getItemDetail（详情主数据）', () => {
     expect(source.transcodingUrl).toBe('/videos/ms-1/main.m3u8'); // 透传不改写
     expect(source.runtimeMs).toBe(720_000);
     expect(source.sizeBytes).toBe(123_456);
+  });
+
+  it('MediaStreams 翻译：视频/音频/字幕技术信息（详情页信息卡消费）', async () => {
+    const { adapter } = makeAdapter('EMBY', {
+      ...DETAIL_RESPONSE,
+      MediaSources: [
+        {
+          ...DETAIL_RESPONSE.MediaSources[0],
+          MediaStreams: [
+            {
+              Index: 0,
+              Type: 'Video',
+              Codec: 'hevc',
+              DisplayTitle: '720p HEVC',
+              Profile: 'Main',
+              Level: 93,
+              Width: 962,
+              Height: 720,
+              AspectRatio: '4:3',
+              IsInterlaced: false,
+              RealFrameRate: 30,
+              BitRate: 280_000,
+              VideoRange: 'SDR',
+              ColorSpace: 'bt709',
+              BitDepth: 8,
+              PixelFormat: 'yuv420p',
+              RefFrames: 1,
+            },
+            {
+              Index: 1,
+              Type: 'Audio',
+              Codec: 'aac',
+              DisplayTitle: 'AAC stereo',
+              Channels: 2,
+              ChannelLayout: 'stereo',
+              SampleRate: 24_000,
+              BitRate: 128_000,
+              IsDefault: true,
+            },
+            {
+              Index: 2,
+              Type: 'Subtitle',
+              Codec: 'srt',
+              DisplayTitle: '简体中文',
+              Language: 'chi',
+              DeliveryMethod: 'External',
+            },
+          ],
+        },
+      ],
+    });
+    const source = (await adapter.getItemDetail('u1', 'item1')).mediaSourceList[0];
+    expect(source.videoStreamList).toHaveLength(1);
+    expect(source.videoStreamList?.[0]).toMatchObject({
+      codec: 'hevc',
+      width: 962,
+      height: 720,
+      bitrateBps: 280_000,
+      colorSpace: 'bt709',
+    });
+    expect(source.audioStreamList?.[0]).toMatchObject({
+      codec: 'aac',
+      channelLayout: 'stereo',
+      sampleRate: 24_000,
+    });
+    expect(source.subtitleStreamList?.[0]).toMatchObject({
+      language: 'chi',
+      format: 'srt',
+      isExternal: true,
+    });
   });
 
   it('剧集条目：SeriesId/SeasonId/IndexNumber 翻译', async () => {

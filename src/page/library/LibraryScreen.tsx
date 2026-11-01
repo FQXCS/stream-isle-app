@@ -9,16 +9,24 @@
  * （避免服务端分页索引跳动），下拉刷新后自然收敛（04 §4.4）。
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { FlashList } from '@shopify/flash-list';
-import { ActivityIndicator, BackHandler, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  BackHandler,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  View,
+} from 'react-native';
 
 import type { ItemQuery, MediaLibrary, MediaLibraryItem, MediaItemTypeEnum, SortByEnum } from '@/adapter/model';
+import type { AnchorRect } from '@/component/AnchorMenu';
 import { EmptyView } from '@/component/EmptyView';
 import { ErrorView } from '@/component/ErrorView';
+import { ItemActionMenu } from '@/component/ItemActionMenu';
 import { LoadingView } from '@/component/LoadingView';
-import { PosterCard } from '@/component/PosterCard';
 import { useMiniPlayerPadding } from '@/component/MiniPlayer';
 import { SegmentedControl } from '@/component/SegmentedControl';
 import { SortMenu, SortMenuButton } from '@/component/SortMenu';
@@ -47,9 +55,16 @@ import { visibleFolderItems } from '@/util/library';
 import { MusicLibraryScreen } from '@/page/library/MusicLibraryScreen';
 import { PhotoLibraryScreen } from '@/page/photo/PhotoLibraryScreen';
 import { FolderCard } from '@/page/library/components/FolderCard';
+import { WallGridCell } from '@/page/library/components/WallGridCell';
 import type { RootStackParamList } from '@/page/navigation/types';
 
 type WallNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+/** 操作失败 Toast（文案取 ERROR_MESSAGE_MAP 唯一出处） */
+function toastError(err: unknown): void {
+  const code = err instanceof AppError ? err.code : 'UNKNOWN';
+  showToast(errorMessageOf(code), 'error');
+}
 
 export function LibraryScreen() {
   // native-stack 路由参数：LibrariesScreen 导航传入的库对象（RootStackParamList 类型保证）
@@ -97,6 +112,9 @@ function LibraryBody({ library, accountKey }: LibraryBodyProps) {
   // 排序面板开合（页内浮层，渲染在列表之上）
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  /** 卡片长按菜单：目标条目 + 锚点（null=关闭；菜单出现在卡片下方） */
+  const [longPressItem, setLongPressItem] = useState<MediaLibraryItem | null>(null);
+  const [longPressAnchor, setLongPressAnchor] = useState<AnchorRect | null>(null);
   // 迷你条让位（05 §4.10）：音频活跃时海报墙底部 padding 叠加迷你条高度
   const miniPlayerPadding = useMiniPlayerPadding();
 
@@ -166,6 +184,13 @@ function LibraryBody({ library, accountKey }: LibraryBodyProps) {
   useEffect(() => {
     useBrowseStore.getState().actions.loadWallPage(wallKey, firstPageQuery, true);
   }, [wallKey, firstPageQuery]);
+
+  // 聚焦静默刷新：详情页返回时已看/进度角标即时更新（保留列表与滚动位置，失败静默）
+  useFocusEffect(
+    useCallback(() => {
+      void useBrowseStore.getState().actions.refreshWall(wallKey, firstPageQuery);
+    }, [wallKey, firstPageQuery])
+  );
 
   /** 滚动到底自动翻页（status=READY 且 startIndex < total，§4.10） */
   const handleEndReached = useCallback(() => {
@@ -283,6 +308,42 @@ function LibraryBody({ library, accountKey }: LibraryBodyProps) {
 
   const favoriteViewActive = view === 'favorite';
 
+  // —— 卡片长按菜单（M8 参考稿）：播放 / 下载 / 标记已看 / 收藏 / 删除 ——
+
+  const handleLongPressCell = useCallback((item: MediaLibraryItem, anchor: AnchorRect) => {
+    setLongPressItem(item);
+    setLongPressAnchor(anchor);
+  }, []);
+
+  const handleCloseLongPressMenu = useCallback(() => {
+    setLongPressItem(null);
+    setLongPressAnchor(null);
+  }, []);
+
+  /** 长按菜单标记已看/未看：先就地翻转缓存，失败由 ItemActionMenu 反向回调回滚 */
+  const handleLongPressPlayedChange = useCallback(
+    (item: MediaLibraryItem, played: boolean) => {
+      useBrowseStore.getState().actions.patchItemPlayed(wallKey, item.id, played);
+    },
+    [wallKey]
+  );
+
+  /** 长按菜单收藏/取消收藏：同上，就地翻转缓存 */
+  const handleLongPressFavoriteChange = useCallback(
+    (item: MediaLibraryItem, favorite: boolean) => {
+      useBrowseStore.getState().actions.patchItemFavorite(wallKey, item.id, favorite);
+    },
+    [wallKey]
+  );
+
+  /** 长按菜单删除成功：摘除缓存条目 */
+  const handleLongPressDeleted = useCallback(
+    (item: MediaLibraryItem) => {
+      useBrowseStore.getState().actions.removeWallItem(wallKey, item.id);
+    },
+    [wallKey]
+  );
+
   // 排序面板（任何视图都渲染，避免加载期间点开后面板悬空）
   const sortMenu = sortMenuOpen ? (
     <SortMenu
@@ -327,20 +388,20 @@ function LibraryBody({ library, accountKey }: LibraryBodyProps) {
         renderItem={({ item }: { item: MediaLibraryItem }) =>
           item.type === 'Folder' ? (
             // 文件夹视图的子目录：进入下一层（Recursive=false 逐级浏览）
-            <Pressable onPress={() => handleOpenFolder(item)}>
+            <Pressable style={styles.gridCell} onPress={() => handleOpenFolder(item)}>
               <FolderCard item={item} />
             </Pressable>
           ) : (
-            <Pressable onPress={() => navigation.navigate(ROUTES.ITEM, { itemId: item.id })}>
-              <PosterCard
-                item={item}
-                // 收藏视图下已取消收藏的卡片淡化置灰（04 §4.4）
-                dimmed={favoriteViewActive && !item.userData.favorite}
-                onToggleFavorite={
-                  favoriteViewActive ? (wallItem) => handleToggleFavorite(wallItem) : undefined
-                }
-              />
-            </Pressable>
+            <WallGridCell
+              item={item}
+              // 收藏视图下已取消收藏的卡片淡化置灰（04 §4.4）
+              dimmed={favoriteViewActive && !item.userData.favorite}
+              onPress={() => navigation.navigate(ROUTES.ITEM, { itemId: item.id })}
+              onLongPress={handleLongPressCell}
+              onToggleFavorite={
+                favoriteViewActive ? (wallItem) => handleToggleFavorite(wallItem) : undefined
+              }
+            />
           )
         }
         contentContainerStyle={[
@@ -380,6 +441,14 @@ function LibraryBody({ library, accountKey }: LibraryBodyProps) {
       />
       {listBody}
       {sortMenu}
+      <ItemActionMenu
+        item={longPressItem}
+        anchor={longPressAnchor}
+        onClose={handleCloseLongPressMenu}
+        onPlayedChange={handleLongPressPlayedChange}
+        onFavoriteChange={handleLongPressFavoriteChange}
+        onDeleted={handleLongPressDeleted}
+      />
     </View>
   );
 }
@@ -387,6 +456,8 @@ function LibraryBody({ library, accountKey }: LibraryBodyProps) {
 const createStyles = (t: ThemeTokens) =>
   StyleSheet.create({
     fill: { flex: 1, backgroundColor: t.bg },
-    gridContent: { paddingHorizontal: SPACING.m, paddingBottom: SPACING.xl },
+    gridContent: { paddingHorizontal: SPACING.s, paddingBottom: SPACING.xl },
+    // 网格单元留白：卡间 8pt、行间 12pt，外边距与卡间距协调
+    gridCell: { flex: 1, paddingHorizontal: SPACING.xs, paddingBottom: SPACING.m },
     footer: { paddingVertical: SPACING.l },
   });

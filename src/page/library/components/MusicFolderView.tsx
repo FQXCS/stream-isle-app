@@ -130,7 +130,7 @@ export function MusicFolderView({ folderId, onOpenFolder }: MusicFolderViewProps
         numColumns={GRID_COLUMNS}
         keyExtractor={(item) => item.id}
         renderItem={({ item }: { item: MediaLibraryItem }) => (
-          <Pressable onPress={() => handlePressEntry(item)}>
+          <Pressable style={styles.gridCell} onPress={() => handlePressEntry(item)}>
             {item.type === 'Folder' ? <FolderCard item={item} /> : <PosterCard item={item} />}
           </Pressable>
         )}
@@ -194,7 +194,8 @@ export function MusicFolderView({ folderId, onOpenFolder }: MusicFolderViewProps
 const createStyles = (t: ThemeTokens) =>
   StyleSheet.create({
     loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: t.bg },
-    gridContent: { paddingHorizontal: SPACING.m },
+    gridContent: { paddingHorizontal: SPACING.s },
+    gridCell: { flex: 1, paddingHorizontal: SPACING.xs, paddingBottom: SPACING.m },
     content: { paddingHorizontal: SPACING.m },
     row: {
       flexDirection: 'row',

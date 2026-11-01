@@ -271,12 +271,58 @@ export interface MediaDetail {
   heroImageUrl?: string;
   /** Logo, maxWidth=DETAIL_POSTER_MAX_WIDTH */
   logoImageUrl?: string;
+  /** 服务器文件路径（Fields=Path；详情页「文件信息」卡消费，无权限时不下发） */
+  path?: string;
   userData: UserItemData;
   mediaSourceList: MediaSource[];
   /** Episode/Season 用（集号/季号） */
   seriesId?: string;
   seasonId?: string;
   indexNumber?: number;
+}
+
+/** 视频流技术信息（详情页「音视频字幕信息」展示；字段缺失即不展示对应行） */
+export interface VideoStreamInfo {
+  index: number;
+  title?: string;
+  codec?: string;
+  profile?: string;
+  level?: number;
+  width?: number;
+  height?: number;
+  aspectRatio?: string;
+  isInterlaced?: boolean;
+  frameRate?: number;
+  bitrateBps?: number;
+  videoRange?: string;
+  colorSpace?: string;
+  bitDepth?: number;
+  pixelFormat?: string;
+  refFrames?: number;
+}
+
+/** 音频流技术信息（同上；详情页信息卡） */
+export interface AudioStreamInfo {
+  index: number;
+  title?: string;
+  codec?: string;
+  profile?: string;
+  channelLayout?: string;
+  channels?: number;
+  sampleRate?: number;
+  bitrateBps?: number;
+  isDefault?: boolean;
+}
+
+/** 字幕流技术信息（同上；详情页信息卡） */
+export interface SubtitleStreamInfo {
+  index: number;
+  title?: string;
+  language?: string;
+  format?: string;
+  isExternal?: boolean;
+  isForced?: boolean;
+  isDefault?: boolean;
 }
 
 /** 媒体源（PlaybackInfo 判定产物） */
@@ -292,6 +338,10 @@ export interface MediaSource {
   transcodingUrl?: string;
   /** M1 既有字段，M2 不消费；M6 离线下载依赖（下载空间校验） */
   sizeBytes?: number;
+  /** 详情页音视频字幕信息卡（MediaStreams 翻译；缺省视为无该类型轨道） */
+  videoStreamList?: VideoStreamInfo[];
+  audioStreamList?: AudioStreamInfo[];
+  subtitleStreamList?: SubtitleStreamInfo[];
 }
 
 /** 字幕轨（M3 增量 burnIn/vttUrl） */

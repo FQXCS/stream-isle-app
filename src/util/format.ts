@@ -21,6 +21,20 @@ export function formatClock(ms: number): string {
 }
 
 /**
+ * 毫秒 → 中文时长（M8 详情页元数据「26分钟」口径）：
+ * 不足 1 小时为 "N分钟"，超过为 "N小时" / "N小时M分钟"；负数按 0 处理。
+ */
+export function formatRuntime(ms: number): string {
+  const totalMinutes = Math.max(0, Math.round(ms / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}小时${minutes}分钟` : `${hours}小时`;
+  }
+  return `${minutes}分钟`;
+}
+
+/**
  * 音轨声道数 → 展示文本（M3 文档 §4.8.1 AudioTrackMenu）：6→"5.1"、8→"7.1"、其余数字直显
  * （2→"2"；undefined → undefined 不展示）。
  */

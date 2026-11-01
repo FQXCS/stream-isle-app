@@ -63,6 +63,11 @@ interface BrowseActions {
    * 拉取海报墙一页：reset=筛选/排序/刷新（覆盖）；追加时按 id 去重（随机排序防重复，§7 风险 7）。
    */
   loadWallPage(key: string, query: ItemQuery, reset: boolean): Promise<void>;
+  /**
+   * 静默重拉已加载范围（库页聚焦刷新：详情页返回后已看/进度角标即时更新）。
+   * 不进入 LOADING 态、保留滚动位置；仅 READY/DONE 态生效，失败静默保留旧数据。
+   */
+  refreshWall(key: string, query: ItemQuery): Promise<void>;
   /** 账号切换时清理（keyPrefix = `${serverId}:${userId}`） */
   resetAllForAccount(keyPrefix: string): void;
   /** 删除服务器级联清理（04 §4.7）：清除该 serverId（含其下所有 userId）的浏览缓存 */
@@ -73,6 +78,13 @@ interface BrowseActions {
    * 返回翻转前的值供失败回滚。
    */
   patchItemFavorite(key: string, itemId: string, favorite: boolean): boolean | null;
+  /**
+   * 海报墙已看态就地更新（长按菜单标记已看/未看）：只改当前缓存条目，
+   * 返回翻转前的值供失败回滚。
+   */
+  patchItemPlayed(key: string, itemId: string, played: boolean): boolean | null;
+  /** 删除成功后摘除缓存条目（total 同步减一，支撑长按菜单删除） */
+  removeWallItem(key: string, itemId: string): void;
 }
 
 interface BrowseState {
@@ -156,6 +168,39 @@ export const useBrowseStore = create<BrowseState>()((set, get) => ({
       }
     },
 
+    refreshWall: async (key: string, query: ItemQuery) => {
+      const existing = get().walls[key];
+      // 首屏加载/翻页在途时跳过，避免与 loadWallPage 互相覆盖
+      if (existing === undefined || (existing.status !== 'READY' && existing.status !== 'DONE')) {
+        return;
+      }
+      // 覆盖已加载范围（至少一页），刷新后可直接接续翻页
+      const limit = Math.max(existing.items.length, query.limit);
+      try {
+        const page = await fetchWallPage({ ...query, startIndex: 0, limit });
+        set((state) => {
+          const current = state.walls[key];
+          if (current === undefined) {
+            return state;
+          }
+          return {
+            walls: {
+              ...state.walls,
+              [key]: {
+                ...current,
+                items: page.items,
+                total: page.total,
+                startIndex: 0,
+                status: page.items.length >= page.total ? 'DONE' : 'READY',
+              },
+            },
+          };
+        });
+      } catch {
+        // 静默失败：聚焦刷新不打扰页面，保留缓存
+      }
+    },
+
     resetAllForAccount: (keyPrefix: string) => {
       // 清理该账号的全部浏览缓存：keyPrefix = `${serverId}:${userId}`；
       // 库列表键以 `${serverId}:${userId}` 开头，海报墙键按 §4.8 以 `|` 连接
@@ -218,6 +263,45 @@ export const useBrowseStore = create<BrowseState>()((set, get) => ({
         },
       }));
       return previous;
+    },
+
+    patchItemPlayed: (key: string, itemId: string, played: boolean) => {
+      const slice = get().walls[key];
+      if (slice === undefined) {
+        return null;
+      }
+      const previous = slice.items.find((item) => item.id === itemId)?.userData.played ?? null;
+      set((state) => ({
+        walls: {
+          ...state.walls,
+          [key]: {
+            ...slice,
+            items: slice.items.map((item) =>
+              item.id === itemId
+                ? { ...item, userData: { ...item.userData, played } }
+                : item
+            ),
+          },
+        },
+      }));
+      return previous;
+    },
+
+    removeWallItem: (key: string, itemId: string) => {
+      const slice = get().walls[key];
+      if (slice === undefined || !slice.items.some((item) => item.id === itemId)) {
+        return;
+      }
+      set((state) => ({
+        walls: {
+          ...state.walls,
+          [key]: {
+            ...slice,
+            items: slice.items.filter((item) => item.id !== itemId),
+            total: Math.max(0, slice.total - 1),
+          },
+        },
+      }));
     },
   },
 }));

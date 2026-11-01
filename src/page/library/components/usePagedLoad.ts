@@ -22,12 +22,16 @@ function initialPaged<T>(): PagedState<T> {
 }
 
 /** 通用分页加载 hook（切换区即重置；滚动到底自动追加；refresh 可等待供下拉刷新） */
-export function usePagedLoad<T>(
+export function usePagedLoad<T extends { id: string }>(
   loadPage: (page: number) => Promise<{ items: T[]; total: number }>
 ): PagedState<T> & {
   loadMore: () => void;
   refresh: () => Promise<void>;
   retry: () => void;
+  /** 就地更新条目（长按菜单标记已看/收藏的乐观更新与失败回滚） */
+  patchItem: (itemId: string, updater: (item: T) => T) => void;
+  /** 删除成功后摘除条目 */
+  removeItem: (itemId: string) => void;
 } {
   const [state, setState] = useState<PagedState<T>>(initialPaged);
 
@@ -81,5 +85,20 @@ export function usePagedLoad<T>(
     void fetchPage(0);
   }, [fetchPage]);
 
-  return { ...state, loadMore, refresh, retry };
+  const patchItem = useCallback((itemId: string, updater: (item: T) => T) => {
+    setState((prev) => ({
+      ...prev,
+      itemList: prev.itemList.map((item) => (item.id === itemId ? updater(item) : item)),
+    }));
+  }, []);
+
+  const removeItem = useCallback((itemId: string) => {
+    setState((prev) => ({
+      ...prev,
+      itemList: prev.itemList.filter((item) => item.id !== itemId),
+      total: Math.max(0, prev.total - 1),
+    }));
+  }, []);
+
+  return { ...state, loadMore, refresh, retry, patchItem, removeItem };
 }
