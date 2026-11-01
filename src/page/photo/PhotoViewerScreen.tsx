@@ -58,8 +58,8 @@ export function PhotoViewerScreen() {
   // 下一续载页码：初始片段长度换算（首页 60/页）
   const nextPageRef = useRef(Math.ceil(initialList.length / PHOTO_PAGE_SIZE));
   const [loadingMore, setLoadingMore] = useState(false);
-  // 当前页是否查看原图（可切回；切页自动复位）
-  const [viewingOriginal, setViewingOriginal] = useState(false);
+  // 当前查看原图的页下标（null = 全部用缩放图；切页自动复位）
+  const [originalIndex, setOriginalIndex] = useState<number | null>(null);
 
   /** 续载下一页并追加（失败静默：再次翻到边界时自然重试） */
   const loadMore = useCallback(async () => {
@@ -86,7 +86,7 @@ export function PhotoViewerScreen() {
   const handleIndexChange = useCallback(
     (next: number) => {
       setIndex(next);
-      setViewingOriginal(false);
+      setOriginalIndex(null);
       if (next >= photoList.length - PHOTO_VIEWER_PRELOAD_REMAINING) {
         void loadMore();
       }
@@ -94,16 +94,17 @@ export function PhotoViewerScreen() {
     [photoList.length, loadMore]
   );
 
-  // 图片源：默认查看器缩放图（屏幕宽×dpr）；显式查看原图时当前页切 originalImageUrl
+  // 图片源只在片段追加/原图切换时变化；普通翻页保持数组引用不变，避免查看器内列表重渲染
   const images = useMemo(
     () =>
       photoList.map((photo, i) => ({
-        uri: viewingOriginal && i === index ? photo.originalImageUrl : photo.viewerImageUrl,
+        uri: i === originalIndex ? photo.originalImageUrl : photo.viewerImageUrl,
       })),
-    [photoList, viewingOriginal, index]
+    [photoList, originalIndex]
   );
 
   const currentPhoto = photoList[index] as PhotoItem | undefined;
+  const viewingOriginal = originalIndex !== null;
 
   /** 长按菜单：保存到本地相册 / 查看原图（§4.13/§4.14） */
   const handleLongPress = useCallback(() => {
@@ -114,7 +115,7 @@ export function PhotoViewerScreen() {
       {
         text: '查看原图',
         onPress: () => {
-          setViewingOriginal(true);
+          setOriginalIndex(index);
         },
       },
       {
@@ -125,13 +126,14 @@ export function PhotoViewerScreen() {
       },
       { text: '取消', style: 'cancel' },
     ]);
-  }, [currentPhoto]);
+  }, [currentPhoto, index]);
 
   return (
     <View style={styles.fill}>
       <ImageViewing
         images={images}
-        imageIndex={index}
+        // 固定初始索引：库以 imageIndex 作为内部 key，回传实时索引会整棵重建（Modal 重播淡入 + 图片重载闪屏）
+        imageIndex={initialIndex}
         visible
         doubleTapToZoomEnabled
         swipeToCloseEnabled={false}
@@ -154,7 +156,7 @@ export function PhotoViewerScreen() {
             loadingMore={loadingMore}
             viewingOriginal={viewingOriginal}
             onToggleOriginal={() => {
-              setViewingOriginal((value) => !value);
+              setOriginalIndex((prev) => (prev === null ? index : null));
             }}
             onSave={() => {
               if (currentPhoto !== undefined) {
