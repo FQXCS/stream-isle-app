@@ -54,5 +54,5 @@ const createStyles = (t: ThemeTokens) =>
     paddingVertical: SPACING.s,
     marginTop: SPACING.s,
   },
-  buttonText: { color: t.textPrimary, fontSize: FONT_SIZE.body },
+  buttonText: { color: t.accentOn, fontSize: FONT_SIZE.body },
 });

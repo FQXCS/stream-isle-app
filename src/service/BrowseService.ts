@@ -10,6 +10,7 @@ import type {
   MediaLibrary,
   MediaLibraryItem,
   Paged,
+  SortByEnum,
 } from '@/adapter/model';
 import { PAGE_SIZE } from '@/constant/browse';
 import { getActiveAdapter } from '@/service/adapterProvider';
@@ -50,26 +51,76 @@ export async function fetchWallPage(query: ItemQuery): Promise<Paged<MediaLibrar
   return adapter.listItems(query);
 }
 
-// —— M5：音乐四区查询封装（页码从 0 起，服务端分页步长见 adapter）——
-
-/** 专辑区 */
-export function fetchMusicAlbums(libraryId: string, page: number): Promise<Paged<MediaLibraryItem>> {
-  return getActiveAdapter().getMusicAlbums(requireUserId(), libraryId, page);
-}
+// —— M5：音乐查询封装（页码从 0 起，服务端分页步长见 adapter）——
 
 /** 艺术家区 */
 export function fetchMusicArtists(libraryId: string, page: number): Promise<Paged<MediaLibraryItem>> {
   return getActiveAdapter().getMusicArtists(requireUserId(), libraryId, page);
 }
 
-/** 歌单区（不带 ParentId，查全量歌单） */
-export function fetchMusicPlaylists(page: number): Promise<Paged<MediaLibraryItem>> {
-  return getActiveAdapter().getMusicPlaylists(requireUserId(), page);
-}
-
 /** 全部歌曲区 */
 export function fetchAllSongs(libraryId: string, page: number): Promise<Paged<AudioItem>> {
   return getActiveAdapter().getAllSongs(requireUserId(), libraryId, page);
+}
+
+/**
+ * 文件夹区（目录浏览）：Items?Recursive=false 只列当前目录的子文件夹与条目；
+ * 排序缺省名称升序（库页排序菜单选择后由调用方传入），分页步长复用海报墙 PAGE_SIZE。
+ */
+export function fetchFolderPage(
+  parentId: string,
+  page: number,
+  sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+): Promise<Paged<MediaLibraryItem>> {
+  return fetchWallPage({
+    userId: requireUserId(),
+    parentId,
+    sortBy: sort?.sortBy ?? 'SORT_NAME',
+    sortOrder: sort?.sortOrder ?? 'ASC',
+    recursive: false,
+    startIndex: page * PAGE_SIZE,
+    limit: PAGE_SIZE,
+  });
+}
+
+/**
+ * 文件夹封面取样：服务器不给 Folder 图片（/Images/Primary 为 404），
+ * 递归取目录内前 searchLimit 个「自带海报」类型（照片/视频/影片/剧集/图书/专辑）的条目，
+ * 由调用方挑第一个带海报的作封面——照片库的下一层是相册（相册无图），必须递归才能拿到照片。
+ */
+export function fetchFolderPreview(
+  parentId: string,
+  searchLimit = 5
+): Promise<Paged<MediaLibraryItem>> {
+  return fetchWallPage({
+    userId: requireUserId(),
+    parentId,
+    kinds: ['Movie', 'Series', 'Video', 'Photo', 'Book', 'MusicAlbum'],
+    sortBy: 'SORT_NAME',
+    sortOrder: 'ASC',
+    recursive: true,
+    startIndex: 0,
+    limit: searchLimit,
+  });
+}
+
+/**
+ * 照片库「视频」段：家庭视频/照片混合库内 Video 条目的平铺分页。
+ */
+export function fetchVideoPage(
+  libraryId: string,
+  page: number,
+  sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+): Promise<Paged<MediaLibraryItem>> {
+  return fetchWallPage({
+    userId: requireUserId(),
+    parentId: libraryId,
+    kinds: ['Video'],
+    sortBy: sort?.sortBy ?? 'SORT_NAME',
+    sortOrder: sort?.sortOrder ?? 'ASC',
+    startIndex: page * PAGE_SIZE,
+    limit: PAGE_SIZE,
+  });
 }
 
 /** 取活跃 userId（UI 路由守卫保证有活跃账号） */

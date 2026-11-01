@@ -1,31 +1,35 @@
 /**
  * 库内容页（M1 文档 §4.10 Library 海报墙 / S10 + 04 §4.4 收藏联动；M5 §4.12 类型分发）：
- * MUSIC → MusicLibraryScreen 四区布局；PHOTO → PhotoLibraryScreen 相册布局；
- * BOOK 与视频库（MOVIE/TVSHOW/MIXED）三列海报墙 + 服务端分页（40/页、滚动到底自动加载至 total 尽头）
- * + 类型/排序/筛选切换即重置重拉 + 下拉刷新（Book 条目点击进详情仅元数据，无播放链路）。
- * M4 增量：卡片点击直达 Item 详情（复用 M2 路由）；收藏筛选下收藏角标 toggle——
- * 取消收藏卡片淡化置灰而非立即移除（避免服务端分页索引跳动），下拉刷新后自然收敛（04 §4.4）；
- * 筛选无结果 EmptyView 提供「清除筛选」。
+ * MUSIC → MusicLibraryScreen 三区布局；PHOTO → PhotoLibraryScreen 相册布局；
+ * BOOK 与视频库（MOVIE/TVSHOW/MIXED）三列海报墙 + 服务端分页（40/页、滚动到底自动加载至 total 尽头）。
+ * 顶部为分段控件视图段（互斥单选）：电影库 影片/收藏/未看/文件夹、剧集库 剧集/收藏/未看/文件夹、
+ * 混合库 全部/电影/剧集/文件夹、图书库 书籍/文件夹；文件夹段为目录浏览（adapter 传 Recursive=false，
+ * 子目录逐级进入，可返回上一级）。排序入口在导航栏右上角 SortMenu；切换视图/排序即重置重拉 + 下拉刷新。
+ * M4 增量：卡片点击直达 Item 详情；收藏视图下收藏角标 toggle——取消收藏卡片淡化置灰而非立即移除
+ * （避免服务端分页索引跳动），下拉刷新后自然收敛（04 §4.4）。
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { FlashList } from '@shopify/flash-list';
-import { ActivityIndicator, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import type { ItemQuery, MediaLibrary, MediaLibraryItem, MediaItemTypeEnum, SortByEnum } from '@/adapter/model';
 import { EmptyView } from '@/component/EmptyView';
 import { ErrorView } from '@/component/ErrorView';
-import { FilterSheet } from '@/component/FilterSheet';
 import { LoadingView } from '@/component/LoadingView';
 import { PosterCard } from '@/component/PosterCard';
 import { useMiniPlayerPadding } from '@/component/MiniPlayer';
+import { SegmentedControl } from '@/component/SegmentedControl';
+import { SortMenu, SortMenuButton } from '@/component/SortMenu';
 import { showToast } from '@/component/Toast';
 import {
   GRID_COLUMNS,
+  libraryViewOptionsOf,
   PAGE_END_THRESHOLD,
   PAGE_SIZE,
   SORT_OPTIONS,
+  type LibraryViewEnum,
 } from '@/constant/browse';
 import { SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
@@ -34,41 +38,35 @@ import { errorMessageOf, AppError } from '@/infra/error';
 import { markService } from '@/service/MarkService';
 import { librariesKeyOf, useBrowseStore, wallKeyOf } from '@/store/browseStore';
 import { useAccountStore } from '@/store/accountStore';
+import {
+  DEFAULT_LIBRARY_SORT,
+  librarySortKeyOf,
+  useLibraryViewStore,
+} from '@/store/libraryViewStore';
+import { visibleFolderItems } from '@/util/library';
 import { MusicLibraryScreen } from '@/page/library/MusicLibraryScreen';
 import { PhotoLibraryScreen } from '@/page/photo/PhotoLibraryScreen';
+import { FolderCard } from '@/page/library/components/FolderCard';
 import type { RootStackParamList } from '@/page/navigation/types';
 
 type WallNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-/** 混合库类型选择 → ItemQuery.kinds（§4.10：全部=Movie,Series 显式传两种，不传空） */
-function kindsOfKindSelection(kind: 'Movie' | 'Series' | null): MediaItemTypeEnum[] {
-  if (kind === 'Movie') {
-    return ['Movie'];
-  }
-  if (kind === 'Series') {
-    return ['Series'];
-  }
-  return ['Movie', 'Series'];
-}
-
-/** 筛选状态（页面本地，§4.10：route.params.library + 本地筛选状态） */
-interface WallFilterState {
-  /** MIXED 库类型 chips（null=全部）；MOVIE/TVSHOW 库不使用 */
-  kind: 'Movie' | 'Series' | null;
-  sortBy: SortByEnum;
-  filter: 'IsUnplayed' | 'IsPlayed' | 'IsFavorite' | null;
-}
-
 export function LibraryScreen() {
-  const t = useTheme();
-  const styles = createStyles(t);
   // native-stack 路由参数：LibrariesScreen 导航传入的库对象（RootStackParamList 类型保证）
   const route = useRoute<{ key: string; name: string; params: { library: MediaLibrary } }>();
   const library = route.params.library;
   const active = useAccountStore((state) => state.active);
   const accountKey = active ? librariesKeyOf(active.serverId, active.userId) : '';
 
-  // 账号键参与 wallKey；账号切换时整体重挂载保证筛选状态干净
+  // M5 类型分发（05 §4.12，按 MediaLibrary.type 枚举）：MUSIC 三区 / PHOTO 相册 / 其余海报墙
+  if (library.type === 'MUSIC') {
+    return <MusicLibraryScreen library={library} />;
+  }
+  if (library.type === 'PHOTO') {
+    return <PhotoLibraryScreen libraryId={library.id} />;
+  }
+
+  // 账号键参与 wallKey；账号切换时整体重挂载保证视图状态干净
   return <LibraryBody key={accountKey} library={library} accountKey={accountKey} />;
 }
 
@@ -81,23 +79,43 @@ function LibraryBody({ library, accountKey }: LibraryBodyProps) {
   const t = useTheme();
   const styles = createStyles(t);
   const navigation = useNavigation<WallNavigationProp>();
-  const [filterState, setFilterState] = useState<WallFilterState>(() => ({
-    kind: null,
-    // 默认排序取 SORT_OPTIONS 首项（SORT_NAME），方向取其 defaultOrder
-    sortBy: SORT_OPTIONS[0].value,
-    filter: null,
-  }));
+  const [serverId, userId] = useMemo(() => accountKey.split(':'), [accountKey]);
+  // 排序持久化键：每个库记住自己的排序（重进库页默认沿用上次）
+  const sortKey = librarySortKeyOf(serverId, library.id);
+  const savedSort = useLibraryViewStore((state) => state.sortByKey[sortKey]);
+  // 视图段（互斥单选；folder=目录浏览）
+  const [view, setView] = useState<LibraryViewEnum>('all');
+  // 文件夹浏览路径（空=库根目录；元素为进入过的子目录 id）
+  const [folderPath, setFolderPath] = useState<string[]>([]);
+  // 排序字段/方向（导航栏右上角 SortMenu；初值取该库上次保存的排序）
+  const [sortBy, setSortBy] = useState<SortByEnum>(
+    () => savedSort?.sortBy ?? DEFAULT_LIBRARY_SORT.sortBy
+  );
+  const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>(
+    () => savedSort?.sortOrder ?? DEFAULT_LIBRARY_SORT.sortOrder
+  );
+  // 排序面板开合（页内浮层，渲染在列表之上）
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   // 迷你条让位（05 §4.10）：音频活跃时海报墙底部 padding 叠加迷你条高度
   const miniPlayerPadding = useMiniPlayerPadding();
 
-  const isMixed = library.type === 'MIXED';
+  const isFolderView = view === 'folder';
+  // 当前容器：文件夹浏览取路径末端，其余视图为库根
+  const containerId =
+    folderPath.length > 0 ? folderPath[folderPath.length - 1] : library.id;
 
-  const [serverId, userId] = useMemo(() => accountKey.split(':'), [accountKey]);
-
-  // kinds 取值规则（无空数组态，§4.10）：MOVIE 库固定 Movie；TVSHOW 固定 Series；
-  // BOOK 库固定 Book（M7：图书仅列表浏览）；MIXED 由 chips 决定
-  const kinds: MediaItemTypeEnum[] = useMemo(() => {
+  // 条目类型口径：folder 视图不限定类型（IncludeItemTypes 会把子目录 Folder 过滤掉）
+  const kinds = useMemo<MediaItemTypeEnum[] | undefined>(() => {
+    if (isFolderView) {
+      return undefined;
+    }
+    if (view === 'movie') {
+      return ['Movie'];
+    }
+    if (view === 'series') {
+      return ['Series'];
+    }
     if (library.type === 'MOVIE') {
       return ['Movie'];
     }
@@ -107,38 +125,44 @@ function LibraryBody({ library, accountKey }: LibraryBodyProps) {
     if (library.type === 'BOOK') {
       return ['Book'];
     }
-    return kindsOfKindSelection(filterState.kind);
-  }, [library.type, filterState.kind]);
+    return ['Movie', 'Series'];
+  }, [isFolderView, view, library.type]);
 
-  // 当前排序方向：按 SORT_OPTIONS 的 defaultOrder（RANDOM 忽略升降序 → 不传）
-  const sortOrder = useMemo<'ASC' | 'DESC' | undefined>(() => {
-    const option = SORT_OPTIONS.find((item) => item.value === filterState.sortBy);
-    return option?.defaultOrder ?? undefined;
-  }, [filterState.sortBy]);
+  // 收藏/未看视图的服务器 Filters 原值（其余视图不传）
+  const filters = useMemo<ItemQuery['filters']>(() => {
+    if (view === 'favorite') {
+      return ['IsFavorite'];
+    }
+    if (view === 'unplayed') {
+      return ['IsUnplayed'];
+    }
+    return undefined;
+  }, [view]);
 
   const firstPageQuery: ItemQuery = useMemo(
     () => ({
       userId,
-      parentId: library.id,
+      parentId: containerId,
       kinds,
-      sortBy: filterState.sortBy,
+      sortBy,
       sortOrder,
-      // filters 取值（§4.10，服务器 Filters 原值）：全部=不传
-      filters: filterState.filter !== null ? [filterState.filter] : undefined,
+      filters,
+      // 文件夹浏览只列当前层（Recursive=false）
+      recursive: isFolderView ? false : undefined,
       startIndex: 0,
       limit: PAGE_SIZE,
     }),
-    [userId, library.id, kinds, filterState.sortBy, sortOrder, filterState.filter]
+    [userId, containerId, kinds, sortBy, sortOrder, filters, isFolderView]
   );
 
-  // 缓存键（§4.8 规范化），筛选/排序变化 → 键变化 → effect 重新拉取
+  // 缓存键（§4.8 规范化）：视图/排序/目录变化 → 键变化 → effect 重新拉取
   const wallKey = useMemo(
-    () => wallKeyOf(serverId, userId, library.id, firstPageQuery),
-    [serverId, userId, library.id, firstPageQuery]
+    () => wallKeyOf(serverId, userId, containerId, firstPageQuery),
+    [serverId, userId, containerId, firstPageQuery]
   );
   const slice = useBrowseStore((state) => state.walls[wallKey]);
 
-  // 挂载与筛选变化：重置拉第一页
+  // 挂载与视图/排序/目录变化：重置拉第一页
   useEffect(() => {
     useBrowseStore.getState().actions.loadWallPage(wallKey, firstPageQuery, true);
   }, [wallKey, firstPageQuery]);
@@ -168,26 +192,74 @@ function LibraryBody({ library, accountKey }: LibraryBodyProps) {
     }
   }, [wallKey, firstPageQuery]);
 
-  /** 排序切换（重置重拉由 wallKey 变化触发） */
-  const handleSelectSort = useCallback((sortBy: SortByEnum) => {
-    setFilterState((state) => ({ ...state, sortBy }));
+  /** 视图切换：回到库根目录 */
+  const handleSelectView = useCallback((next: LibraryViewEnum) => {
+    setView(next);
+    setFolderPath([]);
   }, []);
 
-  /** 筛选切换 */
-  const handleSelectFilter = useCallback(
-    (filter: 'IsUnplayed' | 'IsPlayed' | 'IsFavorite' | null) => {
-      setFilterState((state) => ({ ...state, filter }));
-    },
-    []
-  );
-
-  /** 混合库类型切换 */
-  const handleSelectKind = useCallback((kind: 'Movie' | 'Series' | null) => {
-    setFilterState((state) => ({ ...state, kind }));
+  /** 进入子文件夹 */
+  const handleOpenFolder = useCallback((folder: MediaLibraryItem) => {
+    setFolderPath((path) => [...path, folder.id]);
   }, []);
+
+  /** 返回上一级目录 */
+  const handleFolderUp = useCallback(() => {
+    setFolderPath((path) => path.slice(0, -1));
+  }, []);
+
+  // 文件夹浏览中按系统返回键先回上一级（库根目录时交回导航栈退出库页）
+  useEffect(() => {
+    if (!isFolderView || folderPath.length === 0) {
+      return;
+    }
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleFolderUp();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [isFolderView, folderPath.length, handleFolderUp]);
 
   /**
-   * 收藏 toggle（04 §4.4，仅收藏筛选下渲染角标）：乐观更新——先本地翻转 userData.favorite
+   * 排序切换（关闭面板；重置重拉由 wallKey 变化触发）：
+   * 选同一字段 = 切换升降序（随机等无方向字段不切换），选其他字段 = 用该字段默认方向；
+   * 结果写入 libraryViewStore 持久化，下次进入该库默认沿用。
+   */
+  const handleSelectSort = useCallback(
+    (next: SortByEnum) => {
+      setSortMenuOpen(false);
+      const option = SORT_OPTIONS.find((item) => item.value === next);
+      let nextOrder: 'ASC' | 'DESC';
+      if (next === sortBy) {
+        if (option?.defaultOrder === null) {
+          return;
+        }
+        nextOrder = sortOrder === 'ASC' ? 'DESC' : 'ASC';
+      } else {
+        nextOrder = option?.defaultOrder ?? 'ASC';
+      }
+      setSortBy(next);
+      setSortOrder(nextOrder);
+      useLibraryViewStore.getState().actions.setLibrarySort(sortKey, {
+        sortBy: next,
+        sortOrder: nextOrder,
+      });
+    },
+    [sortBy, sortOrder, sortKey]
+  );
+
+  const handleToggleSortMenu = useCallback(() => setSortMenuOpen((open) => !open), []);
+  const handleCloseSortMenu = useCallback(() => setSortMenuOpen(false), []);
+
+  // 排序入口注入导航栏右上角（库名居中标题在 RootNavigator 的 LIBRARY options 中）
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => <SortMenuButton onPress={handleToggleSortMenu} />,
+    });
+  }, [navigation, handleToggleSortMenu]);
+
+  /**
+   * 收藏 toggle（04 §4.4，仅收藏视图下渲染角标）：乐观更新——先本地翻转 userData.favorite
    * （卡片淡化置灰不移除，避免服务端分页索引跳动），失败回滚 + Toast；成功态下拉刷新后
    * 由服务器结果自然收敛。
    */
@@ -209,79 +281,80 @@ function LibraryBody({ library, accountKey }: LibraryBodyProps) {
     [wallKey]
   );
 
-  // M5 类型分发（05 §4.12，按 MediaLibrary.type 枚举）：MUSIC 四区 / PHOTO 相册 / 其余海报墙
-  if (library.type === 'MUSIC') {
-    return <MusicLibraryScreen library={library} />;
-  }
-  if (library.type === 'PHOTO') {
-    return <PhotoLibraryScreen libraryId={library.id} />;
-  }
+  const favoriteViewActive = view === 'favorite';
 
-  if (slice === undefined || slice.status === 'LOADING') {
-    return (
-      <View style={styles.fill}>
-        <LoadingView />
-      </View>
-    );
-  }
+  // 排序面板（任何视图都渲染，避免加载期间点开后面板悬空）
+  const sortMenu = sortMenuOpen ? (
+    <SortMenu
+      sortBy={sortBy}
+      sortOrder={sortOrder}
+      onSelect={handleSelectSort}
+      onClose={handleCloseSortMenu}
+    />
+  ) : null;
 
-  if (slice.status === 'ERROR') {
-    return (
-      <View style={styles.fill}>
-        <ErrorView
-          error={new AppError(slice.errorCode ?? 'UNKNOWN')}
-          onRetry={() =>
-            useBrowseStore.getState().actions.loadWallPage(wallKey, firstPageQuery, true)
-          }
-        />
-      </View>
-    );
-  }
+  // 空态文案：视图相关的「查看全部」快捷返回
+  const emptyTitle = isFolderView
+    ? '文件夹为空'
+    : favoriteViewActive
+      ? '暂无收藏内容'
+      : view === 'unplayed'
+        ? '暂无未看内容'
+        : '库内暂无条目';
+  const showClearView = favoriteViewActive || view === 'unplayed';
 
-  // 收藏筛选下渲染收藏角标按钮（04 §4.4 联动入口），其余筛选不渲染保持 M1 行为
-  const favoriteFilterActive = filterState.filter === 'IsFavorite';
+  // 列表数据：目录浏览时隐藏空文件夹（Folder 且 ChildCount=0，服务器无该过滤参数）
+  const listData = useMemo<MediaLibraryItem[]>(() => {
+    const itemList = slice?.items ?? [];
+    return isFolderView ? visibleFolderItems(itemList) : itemList;
+  }, [isFolderView, slice]);
 
-  return (
-    <View style={styles.fill}>
-      <FilterSheet
-        sortBy={filterState.sortBy}
-        filter={filterState.filter}
-        kind={filterState.kind}
-        showKindRow={isMixed}
-        onSelectSort={handleSelectSort}
-        onSelectFilter={handleSelectFilter}
-        onSelectKind={handleSelectKind}
+  const listBody =
+    slice === undefined || slice.status === 'LOADING' ? (
+      <LoadingView />
+    ) : slice.status === 'ERROR' ? (
+      <ErrorView
+        error={new AppError(slice.errorCode ?? 'UNKNOWN')}
+        onRetry={() =>
+          useBrowseStore.getState().actions.loadWallPage(wallKey, firstPageQuery, true)
+        }
       />
+    ) : (
       <FlashList
-        data={slice.items}
+        data={listData}
         numColumns={GRID_COLUMNS}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }: { item: (typeof slice.items)[number] }) => (
-          <Pressable onPress={() => navigation.navigate(ROUTES.ITEM, { itemId: item.id })}>
-            <PosterCard
-              item={item}
-              // 收藏筛选下已取消收藏的卡片淡化置灰（04 §4.4）
-              dimmed={favoriteFilterActive && !item.userData.favorite}
-              onToggleFavorite={
-                favoriteFilterActive ? (wallItem) => handleToggleFavorite(wallItem) : undefined
-              }
-            />
-          </Pressable>
-        )}
-        contentContainerStyle={[styles.gridContent, { paddingBottom: SPACING.xl + miniPlayerPadding }]}
+        renderItem={({ item }: { item: MediaLibraryItem }) =>
+          item.type === 'Folder' ? (
+            // 文件夹视图的子目录：进入下一层（Recursive=false 逐级浏览）
+            <Pressable onPress={() => handleOpenFolder(item)}>
+              <FolderCard item={item} />
+            </Pressable>
+          ) : (
+            <Pressable onPress={() => navigation.navigate(ROUTES.ITEM, { itemId: item.id })}>
+              <PosterCard
+                item={item}
+                // 收藏视图下已取消收藏的卡片淡化置灰（04 §4.4）
+                dimmed={favoriteViewActive && !item.userData.favorite}
+                onToggleFavorite={
+                  favoriteViewActive ? (wallItem) => handleToggleFavorite(wallItem) : undefined
+                }
+              />
+            </Pressable>
+          )
+        }
+        contentContainerStyle={[
+          styles.gridContent,
+          { paddingBottom: SPACING.xl + miniPlayerPadding },
+        ]}
         onEndReached={handleEndReached}
         onEndReachedThreshold={PAGE_END_THRESHOLD}
         ListEmptyComponent={
-          favoriteFilterActive ? (
-            // 收藏筛选无结果：提供「清除筛选」（04 §4.4）
-            <EmptyView
-              title="暂无收藏内容"
-              actionLabel="清除筛选"
-              onAction={() => handleSelectFilter(null)}
-            />
-          ) : (
-            <EmptyView title="库内暂无条目" />
-          )
+          <EmptyView
+            title={emptyTitle}
+            actionLabel={showClearView ? '查看全部' : undefined}
+            onAction={showClearView ? () => handleSelectView('all') : undefined}
+          />
         }
         ListFooterComponent={
           slice.status === 'LOADING_MORE' ? (
@@ -289,16 +362,31 @@ function LibraryBody({ library, accountKey }: LibraryBodyProps) {
           ) : null
         }
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={t.accent} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={t.accent}
+          />
         }
       />
+    );
+
+  return (
+    <View style={styles.fill}>
+      <SegmentedControl
+        optionList={libraryViewOptionsOf(library.type)}
+        value={view}
+        onChange={handleSelectView}
+      />
+      {listBody}
+      {sortMenu}
     </View>
   );
 }
 
 const createStyles = (t: ThemeTokens) =>
   StyleSheet.create({
-  fill: { flex: 1, backgroundColor: t.bg },
-  gridContent: { paddingHorizontal: SPACING.m, paddingBottom: SPACING.xl },
-  footer: { paddingVertical: SPACING.l },
-});
+    fill: { flex: 1, backgroundColor: t.bg },
+    gridContent: { paddingHorizontal: SPACING.m, paddingBottom: SPACING.xl },
+    footer: { paddingVertical: SPACING.l },
+  });

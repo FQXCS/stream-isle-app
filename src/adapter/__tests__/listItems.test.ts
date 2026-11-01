@@ -31,7 +31,7 @@ describe('listItems query → URL 参数映射全表', () => {
     expect(url).toContain('ParentId=lib1');
     expect(url).toContain('Recursive=true');
     expect(url).toContain('Limit=40');
-    expect(url).toContain('Fields=PrimaryImageAspectRatio%2CUserData');
+    expect(url).toContain('Fields=PrimaryImageAspectRatio%2CUserData%2CChildCount');
     expect(url).toContain('ImageTypeLimit=1');
     expect(url).toContain('SortBy=SortName');
     expect(url).toContain('StartIndex=0');
@@ -47,10 +47,20 @@ describe('listItems query → URL 参数映射全表', () => {
     expect(api.request.mock.calls[0][0].url).toContain('IncludeItemTypes=Movie%2CSeries');
   });
 
-  it('sortBy 映射：SORT_NAME→SortName / PREMIERE_DATE→PremiereDate / RANDOM→Random', async () => {
+  it('sortBy 映射：十三项排序字段（库页排序菜单全集）', async () => {
     const cases: [ItemQuery['sortBy'], string][] = [
       ['SORT_NAME', 'SortBy=SortName'],
+      ['DATE_CREATED', 'SortBy=DateCreated'],
       ['PREMIERE_DATE', 'SortBy=PremiereDate'],
+      ['COMMUNITY_RATING', 'SortBy=CommunityRating'],
+      ['CRITIC_RATING', 'SortBy=CriticRating'],
+      ['OFFICIAL_RATING', 'SortBy=OfficialRating'],
+      ['PLAY_COUNT', 'SortBy=PlayCount'],
+      ['DATE_PLAYED', 'SortBy=DatePlayed'],
+      ['FILENAME', 'SortBy=Filename'],
+      ['RUNTIME', 'SortBy=Runtime'],
+      ['FILE_SIZE', 'SortBy=Size'],
+      ['CONTAINER', 'SortBy=Container'],
       ['RANDOM', 'SortBy=Random'],
     ];
     for (const [sortBy, expected] of cases) {
@@ -124,15 +134,61 @@ describe('listItems query → URL 参数映射全表', () => {
     expect(item.posterImageUrl).toContain('api_key=tok');
   });
 
-  it('响应翻译：Type 词表外（如 Folder/Channel）或缺失的条目直接跳过，不编造默认类型', async () => {
+  it('响应翻译：无自身 Primary 图时用服务器的借用图（PrimaryImageItemId + PrimaryImageTag，Emby 文件夹）', async () => {
+    const { adapter } = makeAdapter('EMBY', {
+      Items: [
+        {
+          Id: 'folder1',
+          Type: 'Folder',
+          Name: 'OVA 示例',
+          ChildCount: 3,
+          // Emby 文件夹实测形态：ImageTags 为空，靠 PrimaryImageItemId 借子条目的图
+          ImageTags: {},
+          PrimaryImageItemId: 'child1',
+          PrimaryImageTag: 'borrowedtag',
+        },
+      ],
+      TotalRecordCount: 1,
+      StartIndex: 0,
+    });
+    const page = await adapter.listItems({ ...BASE_QUERY, recursive: false });
+    expect(page.items[0].posterImageUrl).toContain('/Items/child1/Images/Primary');
+    expect(page.items[0].posterImageUrl).toContain('maxWidth=400');
+    // Emby 不使用 tag 参数（imageTagQuery 差异），Jellyfin 才拼 tag
+    expect(page.items[0].posterImageUrl).not.toContain('tag=');
+  });
+
+  it('recursive=false：文件夹浏览只列当前层（Recursive=false）', async () => {
+    const { adapter, api } = makeAdapter('EMBY');
+    await adapter.listItems({ ...BASE_QUERY, recursive: false });
+    expect(api.request.mock.calls[0][0].url).toContain('Recursive=false');
+    // 缺省（不传）仍为整库递归
+    const { adapter: wholeAdapter, api: wholeApi } = makeAdapter('EMBY');
+    await wholeAdapter.listItems(BASE_QUERY);
+    expect(wholeApi.request.mock.calls[0][0].url).toContain('Recursive=true');
+  });
+
+  it('响应翻译：Folder 条目进入统一模型（文件夹浏览）并带 childCount', async () => {
+    const { adapter } = makeAdapter('EMBY', {
+      Items: [{ Id: 'f1', Type: 'Folder', Name: '3D', ChildCount: 24 }],
+      TotalRecordCount: 1,
+      StartIndex: 0,
+    });
+    const page = await adapter.listItems({ ...BASE_QUERY, recursive: false });
+    expect(page.items).toHaveLength(1);
+    expect(page.items[0].type).toBe('Folder');
+    expect(page.items[0].name).toBe('3D');
+    expect(page.items[0].childCount).toBe(24);
+  });
+
+  it('响应翻译：Type 词表外（如 Channel）或缺失的条目直接跳过，不编造默认类型', async () => {
     const { adapter } = makeAdapter('EMBY', {
       Items: [
         { Id: 'ok1', Type: 'Series', Name: '正常条目' },
-        { Id: 'folder1', Type: 'Folder', Name: '词表外类型' },
         { Id: 'channel1', Type: 'Channel', Name: '频道' },
         { Id: 'noType', Name: '缺 Type' },
       ],
-      TotalRecordCount: 4,
+      TotalRecordCount: 3,
       StartIndex: 0,
     });
     const page = await adapter.listItems(BASE_QUERY);
@@ -182,11 +238,11 @@ describe('getLibraryItemCount（Limit=0 数量请求构造）', () => {
     expect(api2.request.mock.calls[0][0].url).toContain('IncludeItemTypes=PhotoAlbum');
   });
 
-  it('MUSIC / PHOTO 库口径：MusicAlbum / PhotoAlbum', async () => {
-    const { adapter, api } = makeAdapter('EMBY', { TotalRecordCount: 3 });
+  it('MUSIC / PHOTO 库口径：Audio（歌曲数）/ PhotoAlbum（相册数）', async () => {
+    const { adapter, api } = makeAdapter('EMBY', { TotalRecordCount: 3361 });
     await adapter.getLibraryItemCount('u1', 'lib1', 'music');
-    expect(api.request.mock.calls[0][0].url).toContain('IncludeItemTypes=MusicAlbum');
-    const { adapter: a2, api: api2 } = makeAdapter('EMBY', { TotalRecordCount: 3 });
+    expect(api.request.mock.calls[0][0].url).toContain('IncludeItemTypes=Audio');
+    const { adapter: a2, api: api2 } = makeAdapter('EMBY', { TotalRecordCount: 939 });
     await a2.getLibraryItemCount('u1', 'lib1', 'photos');
     expect(api2.request.mock.calls[0][0].url).toContain('IncludeItemTypes=PhotoAlbum');
   });

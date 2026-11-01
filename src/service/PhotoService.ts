@@ -10,7 +10,7 @@
 import * as MediaLibrary from 'expo-media-library/legacy';
 import * as FileSystem from 'expo-file-system/legacy';
 
-import type { Paged, PhotoAlbumSummary, PhotoItem } from '@/adapter/model';
+import type { Paged, PhotoItem, SortByEnum } from '@/adapter/model';
 import { SAVE_ALBUM_NAME } from '@/constant/photo';
 import { AppError } from '@/infra/error';
 import { getActiveAdapter } from '@/service/adapterProvider';
@@ -25,20 +25,18 @@ function requireUserId(): string {
 }
 
 export class PhotoService {
-  /** 相册网格分页（封面 = 相册 Primary 服务器自动取首图，名称/数量随条目） */
-  async loadAlbums(libraryId: string, page: number): Promise<Paged<PhotoAlbumSummary>> {
-    const adapter = getActiveAdapter();
-    return adapter.getPhotoAlbums(requireUserId(), libraryId, page);
-  }
-
-  /** 相册内照片分页（widths 由页面经 util/photo 计算后传入，adapter 预拼三个 URL） */
+  /**
+   * 照片分页（widths 由页面经 util/photo 计算后传入，adapter 预拼三个 URL）：
+   * parentId 可传相册 id（相册内）或库 id（「图片」段的全部图片，Recursive=true）。
+   */
   async loadPhotos(
-    albumId: string,
+    parentId: string,
     page: number,
-    widths: { gridMaxWidth: number; viewerMaxWidth: number }
+    widths: { gridMaxWidth: number; viewerMaxWidth: number },
+    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
   ): Promise<Paged<PhotoItem>> {
     const adapter = getActiveAdapter();
-    return adapter.getPhotos(requireUserId(), albumId, page, widths);
+    return adapter.getPhotos(requireUserId(), parentId, page, widths, sort);
   }
 
   /**

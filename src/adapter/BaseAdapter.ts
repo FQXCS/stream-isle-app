@@ -91,10 +91,26 @@ export interface AdapterDeps {
   api?: ApiClient;
 }
 
-/** SortBy 枚举 → 服务器参数映射（§4.6.3 参数名映射表） */
+/**
+ * SortBy 枚举 → 服务器参数映射（§4.6.3 参数名映射表）。
+ * FILENAME / FILE_SIZE / CONTAINER 为 Emby 专有排序列（分别对应 Filename / Size / Container，
+ * 已用 Emby 4.10 实测可排序；非 Emby 词表内的值会 500）。Jellyfin 的 ItemSortBy 无这三个值，
+ * 其逗号分隔绑定器按「忽略无法解析的值」处理（CommaDelimitedCollectionModelBinder），
+ * 故不会报错，仅退回服务器默认顺序。
+ */
 const SORTBY_PARAM_MAP: Record<SortByEnum, string> = {
   SORT_NAME: 'SortName',
+  DATE_CREATED: 'DateCreated',
   PREMIERE_DATE: 'PremiereDate',
+  COMMUNITY_RATING: 'CommunityRating',
+  CRITIC_RATING: 'CriticRating',
+  OFFICIAL_RATING: 'OfficialRating',
+  PLAY_COUNT: 'PlayCount',
+  DATE_PLAYED: 'DatePlayed',
+  FILENAME: 'Filename',
+  RUNTIME: 'Runtime',
+  FILE_SIZE: 'Size',
+  CONTAINER: 'Container',
   RANDOM: 'Random',
 };
 
@@ -133,6 +149,13 @@ interface ServerItemResponse {
   RunTimeTicks?: number;
   CollectionType?: string;
   ImageTags?: { Primary?: string };
+  /**
+   * 借用图回退（Emby 实测：文件夹/虚拟条目自身无 Primary 图时，服务器指向一个子条目的图）：
+   * PrimaryImageItemId = 提供图片的条目 id，PrimaryImageTag = 该图的 tag。
+   * 图片 URL 需用 PrimaryImageItemId 而不是本条目 id 拼接。
+   */
+  PrimaryImageItemId?: string;
+  PrimaryImageTag?: string;
   UserData?: {
     Played?: boolean;
     PlayCount?: number;
@@ -272,12 +295,20 @@ function seasonNumberOrder(indexNumber: number): number {
 
 /**
  * 服务器条目 Type → MediaItemTypeEnum 白名单翻译（model.ts 即服务器 Item Type 词表）。
- * 词表外（服务器扩展类型如 Folder/Channel 等）或缺失返回 undefined，调用方决定跳过该条目，
+ * 词表外（服务器扩展类型如 Channel 等）或缺失返回 undefined，调用方决定跳过该条目，
  * 不编造默认值、不做无校验强转（统一模型不透传脏值）。
+ * Folder 仅在文件夹浏览（Items?Recursive=false）时纳入：其余列表（搜索/照片/季集等）
+ * 仍按词表外跳过，避免目录条目混入可点开的条目列表。
  */
-function translateItemType(raw: string | undefined): MediaItemTypeEnum | undefined {
+function translateItemType(
+  raw: string | undefined,
+  allowFolder = false
+): MediaItemTypeEnum | undefined {
   if (raw === undefined) {
     return undefined;
+  }
+  if (raw === 'Folder') {
+    return allowFolder ? 'Folder' : undefined;
   }
   const VALID_TYPES: ReadonlySet<string> = new Set<MediaItemTypeEnum>([
     'Movie',
@@ -291,6 +322,7 @@ function translateItemType(raw: string | undefined): MediaItemTypeEnum | undefin
     'Playlist',
     'PhotoAlbum',
     'Photo',
+    'Video',
     'Book',
   ]);
   return VALID_TYPES.has(raw) ? (raw as MediaItemTypeEnum) : undefined;
@@ -610,6 +642,7 @@ export abstract class BaseAdapter implements ServerAdapter {
    * 海报墙/列表统一入口：GET /Users/{uid}/Items，服务端分页。
    * 参数名映射（§4.6.3 表）：kinds→IncludeItemTypes 原值直传、sortBy→SortBy 映射、
    * sortOrder→Ascending/Descending、filters→Filters 原值逗号连接。
+   * 文件夹浏览传 recursive=false 只列当前层（子目录以 Folder 条目返回，Fields=ChildCount 供数量角标）。
    */
   async listItems(query: ItemQuery): Promise<Paged<MediaLibraryItem>> {
     const sortBy = query.sortBy ?? 'SORT_NAME';
@@ -624,17 +657,18 @@ export abstract class BaseAdapter implements ServerAdapter {
           Filters: query.filters?.length ? query.filters.join(',') : undefined,
           StartIndex: String(query.startIndex),
           Limit: String(query.limit),
-          Recursive: 'true',
-          Fields: 'PrimaryImageAspectRatio,UserData',
+          Recursive: query.recursive === false ? 'false' : 'true',
+          Fields: 'PrimaryImageAspectRatio,UserData,ChildCount',
           ImageTypeLimit: '1',
         })}`
       ),
       headers: this.buildHeaders(this.token),
     });
     return {
-      // Type 词表外/缺失的条目直接跳过（不进统一模型，避免越界脏值流入 M2 分发）
+      // Type 词表外/缺失的条目直接跳过（不进统一模型，避免越界脏值流入 M2 分发）；
+      // 文件夹浏览（Recursive=false）时把子目录 Folder 一并纳入
       items: (data.Items ?? []).flatMap((item) => {
-        const translated = this.translateListItem(item);
+        const translated = this.translateListItem(item, query.recursive === false);
         return translated === null ? [] : [translated];
       }),
       total: data.TotalRecordCount ?? 0,
@@ -645,14 +679,31 @@ export abstract class BaseAdapter implements ServerAdapter {
   /**
    * 条目 → 统一模型（海报墙消费；subtext 取年份）。
    * Type 词表外或缺失时返回 null，由调用方跳过该条目（不编造默认类型）。
+   * allowFolder：文件夹浏览时为 true，子目录 Folder 进统一模型。
    */
-  private translateListItem(item: ServerItemResponse): MediaLibraryItem | null {
+  private translateListItem(
+    item: ServerItemResponse,
+    allowFolder = false
+  ): MediaLibraryItem | null {
     const id = item.Id ?? '';
-    const type = translateItemType(item.Type);
+    const type = translateItemType(item.Type, allowFolder);
     if (type === undefined) {
       return null;
     }
     const tag = item.ImageTags?.Primary;
+    // 海报 URL：自身有 Primary 图则用；否则用服务器的借用图回退（PrimaryImageItemId + PrimaryImageTag）。
+    // Emby 实测：文件夹自身 ImageTags 为空，但会给出目录内某子条目的图（Emby Web 文件夹卡就是这么显示的）。
+    const posterImageUrl =
+      tag !== undefined
+        ? this.buildImageUrl(id, 'Primary', POSTER_MAX_WIDTH, tag)
+        : item.PrimaryImageItemId !== undefined
+          ? this.buildImageUrl(
+              item.PrimaryImageItemId,
+              'Primary',
+              POSTER_MAX_WIDTH,
+              item.PrimaryImageTag
+            )
+          : undefined;
     // M5：专辑网格副标题「艺人 · 年份」（视频条目维持年份不变）
     const yearText = item.ProductionYear !== undefined ? String(item.ProductionYear) : undefined;
     const subtext =
@@ -667,8 +718,10 @@ export abstract class BaseAdapter implements ServerAdapter {
       name: item.Name ?? '',
       subtext,
       productionYear: item.ProductionYear,
-      posterImageUrl: tag ? this.buildImageUrl(id, 'Primary', POSTER_MAX_WIDTH, tag) : undefined,
+      posterImageUrl,
       runtimeMs: item.RunTimeTicks !== undefined ? ticksToMs(item.RunTimeTicks) : undefined,
+      // 文件夹浏览的数量角标（Fields=ChildCount）；服务器未返回该字段时不产出
+      ...(item.ChildCount !== undefined ? { childCount: item.ChildCount } : {}),
       userData: translateUserData(item),
     };
   }
@@ -1385,25 +1438,28 @@ export abstract class BaseAdapter implements ServerAdapter {
   }
 
   /**
-   * 相册内照片分页：IncludeItemTypes=Photo，三个 URL 按 widths 预拼
+   * 照片分页：IncludeItemTypes=Photo，三个 URL 按 widths 预拼
    * （grid/viewer/original，UI 拿到即用不感知拼接）；fileName 取 Path 的 basename
    * （缺失回退 name），只透传文件名、不透传完整服务器路径（05 文档 §4.2/§4.3）。
+   * parentId 可传相册 id 或库 id（库 id + Recursive=true 即「全部图片」）；
+   * sort 缺省按名称升序（库页排序菜单选择后由调用方传入）。
    */
   async getPhotos(
     userId: string,
-    albumId: string,
+    parentId: string,
     page: number,
-    widths: { gridMaxWidth: number; viewerMaxWidth: number }
+    widths: { gridMaxWidth: number; viewerMaxWidth: number },
+    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
   ): Promise<Paged<PhotoItem>> {
     const data = await this.api.request<ItemsResponse>({
       method: 'GET',
       url: this.urlOf(
         `/Users/${userId}/Items?${this.buildQuery({
-          ParentId: albumId,
+          ParentId: parentId,
           IncludeItemTypes: 'Photo',
           Recursive: 'true',
-          SortBy: 'SortName',
-          SortOrder: 'Ascending',
+          SortBy: SORTBY_PARAM_MAP[sort?.sortBy ?? 'SORT_NAME'],
+          SortOrder: SORT_ORDER_PARAM_MAP[sort?.sortOrder ?? 'ASC'],
           Fields: 'PrimaryImageAspectRatio,Path',
           // 照片分页步长 = 照片页大小 60（与 Limit 一致，避免页间重叠）
           StartIndex: String(page * PHOTO_PAGE_SIZE),

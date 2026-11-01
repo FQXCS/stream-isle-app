@@ -1,14 +1,21 @@
 /**
- * 相册内 3 列分页网格（M5 文档 §4.13；设计文档 §7.6）：FlashList numColumns=3 等宽方格，
- * 图片按格子尺寸请求（getPhotoCellMaxWidth = 格宽×dpr，日志抽查 maxWidth 的 A16 依据）；
- * 滚动到底分页（PHOTO_PAGE_SIZE）。expo-image cachePolicy=disk + recyclingKey；GIF 缩略图直接动。
+ * 照片网格（M5 文档 §4.13；M7 调整）：FlashList numColumns=3 等宽方格 + 服务端分页（照片页大小 60），
+ * 图片按格子尺寸请求（getPhotoCellMaxWidth = 格宽×dpr）；expo-image cachePolicy=disk + recyclingKey。
+ * 父容器可为库 id（「图片」段 = 全部图片，Recursive=true）或相册 id；排序由库页排序菜单传入。
  * 点击任意格 → PhotoViewer 路由，携带当前已加载片段与 initialIndex（后续页由查看器续载）。
  */
 import { useCallback, useState } from 'react';
 import { Image } from 'expo-image';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 
 import type { PhotoItem } from '@/adapter/model';
@@ -21,19 +28,29 @@ import { type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { AppError, type AppErrorCode } from '@/infra/error';
 import { photoService } from '@/service/PhotoService';
+import type { LibrarySortState } from '@/store/libraryViewStore';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { getPhotoCellMaxWidth, getPhotoViewerMaxWidth } from '@/util/photo';
 
 type WallNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface PhotoGridScreenProps {
-  albumId: string;
-  albumName: string;
-  /** 返回相册网格（wrapper 内部切页） */
-  onBack: () => void;
+  /** 照片父容器 id：库 id（全部图片）或相册/目录 id */
+  parentId: string;
+  /** 底部相册名轻标题（不传则不显示） */
+  title?: string;
+  /** 排序（库页排序菜单；缺省名称升序） */
+  sort?: LibrarySortState;
+  /** 空态文案 */
+  emptyTitle?: string;
 }
 
-export function PhotoGridScreen({ albumId, albumName, onBack }: PhotoGridScreenProps) {
+export function PhotoGridScreen({
+  parentId,
+  title,
+  sort,
+  emptyTitle = '暂无照片',
+}: PhotoGridScreenProps) {
   const t = useTheme();
   const styles = createStyles(t);
   const navigation = useNavigation<WallNavigationProp>();
@@ -45,6 +62,9 @@ export function PhotoGridScreen({ albumId, albumName, onBack }: PhotoGridScreenP
   // 迷你条让位（05 §4.10）：音频活跃时网格底部 padding 叠加迷你条高度
   const miniPlayerPadding = useMiniPlayerPadding();
 
+  const sortBy = sort?.sortBy;
+  const sortOrder = sort?.sortOrder;
+
   const [itemList, setItemList] = useState<PhotoItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -55,7 +75,12 @@ export function PhotoGridScreen({ albumId, albumName, onBack }: PhotoGridScreenP
   const fetchPage = useCallback(
     async (targetPage: number) => {
       try {
-        const result = await photoService.loadPhotos(albumId, targetPage, { gridMaxWidth, viewerMaxWidth });
+        const result = await photoService.loadPhotos(
+          parentId,
+          targetPage,
+          { gridMaxWidth, viewerMaxWidth },
+          sortBy !== undefined && sortOrder !== undefined ? { sortBy, sortOrder } : undefined
+        );
         setItemList((prev) => (targetPage === 0 ? result.items : [...prev, ...result.items]));
         setTotal(result.total);
         setPage(targetPage);
@@ -67,12 +92,12 @@ export function PhotoGridScreen({ albumId, albumName, onBack }: PhotoGridScreenP
         setLoadingMore(false);
       }
     },
-    // gridMaxWidth 随窗口尺寸派生（正常浏览不变）；账号切换由父级 LibraryScreen 按 key 重挂载兜底
+    // gridMaxWidth 随窗口尺寸派生（正常浏览不变）；账号切换/排序变化由父级重挂载或依赖变化兜底
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [albumId]
+    [parentId, sortBy, sortOrder]
   );
 
-  // 聚焦加载（M2 详情页同口径：页面局部 state + useFocusEffect，05 §4.7）
+  // 聚焦与排序变化：重置拉第一页（M2 详情页同口径：页面局部 state + useFocusEffect，05 §4.7）
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
@@ -105,16 +130,13 @@ export function PhotoGridScreen({ albumId, albumName, onBack }: PhotoGridScreenP
   if (itemList.length === 0) {
     return (
       <View style={styles.fill}>
-        <EmptyView title="相册内暂无照片" />
+        <EmptyView title={emptyTitle} />
       </View>
     );
   }
 
   return (
     <View style={styles.fill}>
-      <Pressable style={styles.backRow} onPress={onBack}>
-        <Text style={styles.backText}>‹ 相册</Text>
-      </Pressable>
       <FlashList
         data={itemList}
         numColumns={PHOTO_GRID_COLUMNS}
@@ -124,7 +146,7 @@ export function PhotoGridScreen({ albumId, albumName, onBack }: PhotoGridScreenP
             style={styles.cell}
             onPress={() =>
               navigation.navigate(ROUTES.PHOTO_VIEWER, {
-                albumId,
+                albumId: parentId,
                 totalCount: total,
                 photoList: itemList,
                 initialIndex: index,
@@ -146,10 +168,12 @@ export function PhotoGridScreen({ albumId, albumName, onBack }: PhotoGridScreenP
         ListFooterComponent={loadingMore ? <ActivityIndicator style={styles.footer} color={t.accent} /> : null}
         contentContainerStyle={[styles.gridContent, { paddingBottom: 24 + miniPlayerPadding }]}
       />
-      {/* 相册名轻标题（页内自绘，不遮内容） */}
-      <Text style={styles.albumTitle} numberOfLines={1}>
-        {albumName}
-      </Text>
+      {/* 相册名轻标题（页内自绘，不遮内容；「全部图片」等无标题场景不渲染） */}
+      {title !== undefined && (
+        <Text style={styles.albumTitle} numberOfLines={1}>
+          {title}
+        </Text>
+      )}
     </View>
   );
 }
@@ -157,8 +181,6 @@ export function PhotoGridScreen({ albumId, albumName, onBack }: PhotoGridScreenP
 const createStyles = (t: ThemeTokens) =>
   StyleSheet.create({
   fill: { flex: 1, backgroundColor: t.bg },
-  backRow: { paddingHorizontal: 12, paddingVertical: 8 },
-  backText: { color: t.textPrimary, fontSize: 14 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   gridContent: {},
   cell: { flex: 1, padding: 1 },

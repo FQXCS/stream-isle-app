@@ -303,7 +303,9 @@ export function ItemDetailScreen() {
   // Book 主按钮为「阅读」（M7）：不发 PlaybackInfo（Emby 对 Book 必 500，Book 未实现
   // IHasMediaSources），也不开放下载；Movie/Episode 走播放链路
   const isBook = detail.type === 'Book';
-  const isPlayable = detail.type === 'Movie' || detail.type === 'Episode';
+  // Movie/Episode 走播放链路；家庭视频库（homevideos）的 Video 条目同样可播
+  const isPlayable =
+    detail.type === 'Movie' || detail.type === 'Episode' || detail.type === 'Video';
   const selectedSeason = seasons.find((season) => season.id === selectedSeasonId) ?? null;
   const resumeMs = getResumePositionMs(toResumeSource(detail));
   // Series 无媒体流（对 Series id 发 PlaybackInfo 必然空 MediaSources → PLAYBACK_UNSUPPORTED），

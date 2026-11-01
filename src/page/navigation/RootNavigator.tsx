@@ -134,10 +134,15 @@ export function RootNavigator() {
               component={TabsNavigator}
               options={{ headerShown: false }}
             />
+            {/* 库页：库名居中标题（参考稿），右上角排序按钮由 LibraryScreen setOptions 注入 */}
             <RootStack.Screen
               name={ROUTES.LIBRARY}
               component={LibraryScreen}
-              options={{ headerBackTitle: '返回' }}
+              options={({ route }) => ({
+                title: route.params.library.name,
+                headerTitleAlign: 'center',
+                headerBackTitle: '返回',
+              })}
             />
             {/* M2 详情页：Hero 自绘头部，隐藏系统导航栏 */}
             <RootStack.Screen

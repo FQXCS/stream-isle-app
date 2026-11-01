@@ -28,6 +28,7 @@ import type {
   SearchResultGroup,
   ServerFlavor,
   ServerInfo,
+  SortByEnum,
 } from '@/adapter/model';
 
 export interface ServerAdapter {
@@ -155,14 +156,16 @@ export interface ServerAdapter {
   getPhotoAlbums(userId: string, libraryId: string, page: number): Promise<Paged<PhotoAlbumSummary>>;
 
   /**
-   * 相册内照片分页；三个 URL 由 adapter 按 widths 预拼（grid/viewer/original），
-   * fileName 取服务器 Path 的 basename（缺失回退 name），只透传文件名不透传完整路径
+   * 照片分页；三个 URL 由 adapter 按 widths 预拼（grid/viewer/original），
+   * fileName 取服务器 Path 的 basename（缺失回退 name），只透传文件名不透传完整路径。
+   * parentId 为相册 id 或库 id（库 id + Recursive=true = 全部图片）；sort 缺省按名称升序。
    */
   getPhotos(
     userId: string,
-    albumId: string,
+    parentId: string,
     page: number,
-    widths: { gridMaxWidth: number; viewerMaxWidth: number }
+    widths: { gridMaxWidth: number; viewerMaxWidth: number },
+    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
   ): Promise<Paged<PhotoItem>>;
 
   /**

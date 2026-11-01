@@ -29,6 +29,8 @@ export interface ThemeTokens {
   accent: string;
   /** 主色上的文字 */
   accentOn: string;
+  /** 主色淡底（分段控件选中态） */
+  accentSoft: string;
   danger: string;
   success: string;
   /** 警示（版本过低提示等，现状 #F5A524 反推） */
@@ -48,6 +50,7 @@ export const DARK_TOKENS: ThemeTokens = {
   separator: '#232B35',
   accent: '#4C8DFF',
   accentOn: '#FFFFFF',
+  accentSoft: 'rgba(76,141,255,0.18)',
   danger: '#E5484D',
   success: '#46A758',
   warning: '#F5A524',
@@ -65,6 +68,7 @@ export const LIGHT_TOKENS: ThemeTokens = {
   separator: '#E2E5E9',
   accent: '#2F6FDE',
   accentOn: '#FFFFFF',
+  accentSoft: 'rgba(47,111,222,0.12)',
   danger: '#C93338',
   success: '#217A42',
   warning: '#9A6700',

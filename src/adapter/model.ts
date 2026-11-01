@@ -25,10 +25,28 @@ export type MediaItemTypeEnum =
   | 'Playlist' // M5 音乐
   | 'PhotoAlbum'
   | 'Photo' // M5 照片
-  | 'Book'; // 图书库（books）条目，M7 起仅列表浏览不提供阅读器
+  | 'Video' // 家庭视频/照片混合库（homevideos）的视频条目
+  | 'Book' // 图书库（books）条目，M7 起仅列表浏览不提供阅读器
+  | 'Folder'; // 文件夹浏览（Items?Recursive=false 的子目录）
 
-/** 排序字段（服务器 SortBy 词表） */
-export type SortByEnum = 'SORT_NAME' | 'PREMIERE_DATE' | 'RANDOM';
+/**
+ * 排序字段（服务器 SortBy 词表，客户端自有枚举，参数映射见 BaseAdapter）。
+ * 库页排序菜单按参考稿补齐十三个字段（含文件大小/文件格式/随机）。
+ */
+export type SortByEnum =
+  | 'SORT_NAME'
+  | 'DATE_CREATED'
+  | 'PREMIERE_DATE'
+  | 'COMMUNITY_RATING'
+  | 'CRITIC_RATING'
+  | 'OFFICIAL_RATING'
+  | 'PLAY_COUNT'
+  | 'DATE_PLAYED'
+  | 'FILENAME'
+  | 'RUNTIME'
+  | 'FILE_SIZE'
+  | 'CONTAINER'
+  | 'RANDOM';
 
 /** 图片类型（与 URL 段同形 /Images/{type}，调用字面量直接兼容） */
 export type ImageTypeEnum = 'Primary' | 'Backdrop' | 'Thumb' | 'Logo' | 'Banner' | 'Profile';
@@ -84,6 +102,8 @@ export interface MediaLibraryItem {
   /** Primary 完整海报 URL（含 maxWidth=POSTER_MAX_WIDTH、quality=85，Jellyfin 含 tag） */
   posterImageUrl?: string;
   runtimeMs?: number;
+  /** 子项数量（文件夹/相册的 Fields=ChildCount；无该字段时不产出） */
+  childCount?: number;
   userData: UserItemData;
 }
 
@@ -114,6 +134,8 @@ export interface ItemQuery {
   sortOrder?: 'ASC' | 'DESC';
   /** 服务器查询参数 Filters 原值；不传即全部 */
   filters?: ('IsPlayed' | 'IsUnplayed' | 'IsFavorite')[];
+  /** 是否递归（缺省 true=整库；文件夹浏览传 false，只列当前层子项与子目录） */
+  recursive?: boolean;
   /** 服务端分页，步长 PAGE_SIZE=40 */
   startIndex: number;
   limit: number;

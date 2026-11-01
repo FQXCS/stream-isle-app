@@ -1,13 +1,15 @@
 /**
- * 库卡片（M1 文档 §4.9 Tab.Libraries）：图标按 LibraryTypeEnum 映射、名称、itemCount。
+ * 库卡片（M1 文档 §4.9 Tab.Libraries）：库图（服务器 Primary 图，如照片库的拼图海报）+ 名称 + itemCount；
+ * 服务器无图（如 asmr 音乐库）时回退按 LibraryTypeEnum 映射的图标字形。
  */
+import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { LibraryTypeEnum, MediaLibrary } from '@/adapter/model';
 import { POSTER_RADIUS, FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 
-/** 库类型 → 图标字形（M1 无图标库，字符占位；视觉打磨 P1） */
+/** 库类型 → 图标字形（服务器无库图时的占位；M1 无图标库） */
 const LIBRARY_ICON_MAP: Record<LibraryTypeEnum, string> = {
   MOVIE: '🎬',
   TVSHOW: '📺',
@@ -30,7 +32,17 @@ export function LibraryCard({ library, onPress }: LibraryCardProps) {
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
       onPress={() => onPress(library)}
     >
-      <Text style={styles.icon}>{LIBRARY_ICON_MAP[library.type]}</Text>
+      {library.primaryImageUrl !== undefined ? (
+        <Image
+          source={{ uri: library.primaryImageUrl }}
+          style={styles.thumb}
+          contentFit="cover"
+          transition={150}
+          recyclingKey={library.id}
+        />
+      ) : (
+        <Text style={styles.icon}>{LIBRARY_ICON_MAP[library.type]}</Text>
+      )}
       <View style={styles.meta}>
         <Text style={styles.name} numberOfLines={1}>
           {library.name}
@@ -54,7 +66,9 @@ const createStyles = (t: ThemeTokens) =>
     gap: SPACING.m,
   },
   pressed: { opacity: 0.7 },
-  icon: { fontSize: 28 },
+  icon: { fontSize: 28, width: 84, textAlign: 'center' },
+  // 库图多为 16:9（如照片库 640×360 拼图海报），用横向缩略图避免过度裁切
+  thumb: { width: 84, height: 48, borderRadius: 8, backgroundColor: t.bg },
   meta: { flex: 1, gap: 2 },
   name: { color: t.textPrimary, fontSize: FONT_SIZE.title, fontWeight: '600' },
   count: { color: t.textSecondary, fontSize: FONT_SIZE.body },

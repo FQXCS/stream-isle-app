@@ -67,3 +67,5 @@ Desktop.ini
 android/keystore.properties
 android/keystores/
 release.keystore
+/.dsh*
+/.qoder
