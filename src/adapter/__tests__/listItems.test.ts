@@ -140,6 +140,19 @@ describe('listItems query → URL 参数映射全表', () => {
     expect(page.items.map((item) => item.id)).toEqual(['ok1']);
     expect(page.items[0].type).toBe('Series');
   });
+
+  it('响应翻译：Book 条目进入统一模型（books 库海报墙可列）', async () => {
+    const { adapter } = makeAdapter('EMBY', {
+      Items: [{ Id: 'book1', Type: 'Book', Name: '漫画样本' }],
+      TotalRecordCount: 1,
+      StartIndex: 0,
+    });
+    const page = await adapter.listItems(BASE_QUERY);
+    expect(page.total).toBe(1);
+    expect(page.items).toHaveLength(1);
+    expect(page.items[0].type).toBe('Book');
+    expect(page.items[0].name).toBe('漫画样本');
+  });
 });
 
 describe('getLibraryItemCount（Limit=0 数量请求构造）', () => {
@@ -156,8 +169,17 @@ describe('getLibraryItemCount（Limit=0 数量请求构造）', () => {
 
   it('MIXED 库（未知 CollectionType）：IncludeItemTypes=Movie,Series', async () => {
     const { adapter, api } = makeAdapter('EMBY', { TotalRecordCount: 7 });
-    await adapter.getLibraryItemCount('u1', 'lib1', 'homevideos');
+    await adapter.getLibraryItemCount('u1', 'lib1', 'playlists');
     expect(api.request.mock.calls[0][0].url).toContain('IncludeItemTypes=Movie%2CSeries');
+  });
+
+  it('BOOK / homevideos 库口径：Book / PhotoAlbum（books/homevideos 均为词表内映射）', async () => {
+    const { adapter, api } = makeAdapter('EMBY', { TotalRecordCount: 550 });
+    await adapter.getLibraryItemCount('u1', 'lib1', 'books');
+    expect(api.request.mock.calls[0][0].url).toContain('IncludeItemTypes=Book');
+    const { adapter: a2, api: api2 } = makeAdapter('EMBY', { TotalRecordCount: 939 });
+    await a2.getLibraryItemCount('u1', 'lib1', 'homevideos');
+    expect(api2.request.mock.calls[0][0].url).toContain('IncludeItemTypes=PhotoAlbum');
   });
 
   it('MUSIC / PHOTO 库口径：MusicAlbum / PhotoAlbum', async () => {

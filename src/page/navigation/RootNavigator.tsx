@@ -24,6 +24,7 @@ import { SharedPosterOverlay } from '@/component/SharedPosterOverlay';
 import { ToastHost } from '@/component/Toast';
 import { useResolvedScheme, useTheme } from '@/component/useTheme';
 import { AlbumDetailScreen } from '@/page/album/AlbumDetailScreen';
+import { BookReaderScreen } from '@/page/reader/BookReaderScreen';
 import { DownloadsScreen } from '@/page/downloads/DownloadsScreen';
 import { HistoryScreen } from '@/page/history/HistoryScreen';
 import { ItemDetailScreen } from '@/page/item/ItemDetailScreen';
@@ -184,6 +185,12 @@ export function RootNavigator() {
               name={ROUTES.DOWNLOADS}
               component={DownloadsScreen}
               options={{ headerBackTitle: '返回' }}
+            />
+            {/* M7：图书阅读器（WebView+PDF.js 全屏沉浸） */}
+            <RootStack.Screen
+              name={ROUTES.BOOK_READER}
+              component={BookReaderScreen}
+              options={{ headerShown: false }}
             />
             {/* M4 设置页「添加用户/添加服务器」入口（04 §4.5）：复用 Onboarding 两屏，
                 modal 呈现；登录成功后由页面就地 pop 返回设置页 */}

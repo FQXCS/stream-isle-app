@@ -42,7 +42,9 @@ export const FILTER_OPTIONS: readonly {
 
 /**
  * 服务器 CollectionType → 客户端库类型。
- * 其余（homevideos、books、空值等）一律归 MIXED，进入后按视频库展示
+ * homevideos 归 PHOTO：Emby/Jellyfin 该类型库普遍为照片+视频混合（家庭影集），
+ * 视频墙口径（Movie,Series）对其恒为空，照片相册布局才可消费其内容；
+ * 其余（playlists、livetv、空值等）仍归 MIXED，进入后按视频库展示
  * （IncludeItemTypes=Movie,Series），库内无此类条目时自然呈现空态——不为低频类型单独建布局。
  */
 export const COLLECTION_TYPE_MAP: Record<string, LibraryTypeEnum> = {
@@ -50,6 +52,8 @@ export const COLLECTION_TYPE_MAP: Record<string, LibraryTypeEnum> = {
   tvshows: 'TVSHOW',
   music: 'MUSIC',
   photos: 'PHOTO',
+  homevideos: 'PHOTO',
+  books: 'BOOK',
 };
 
 /** MIXED 库海报墙的条目类型（chips「全部」= Movie,Series） */
@@ -61,5 +65,6 @@ export const INCLUDE_ITEM_TYPES_BY_LIBRARY: Record<LibraryTypeEnum, string> = {
   TVSHOW: 'Series',
   MUSIC: 'MusicAlbum',
   PHOTO: 'PhotoAlbum',
+  BOOK: 'Book',
   MIXED: MIXED_LIBRARY_KINDS.join(','),
 };

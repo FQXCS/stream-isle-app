@@ -37,6 +37,8 @@ export type RootStackParamList = {
   [ROUTES.HISTORY]: undefined;
   /** M6：下载管理（设计文档 §10.2 已预留，06 §4.10 注册） */
   [ROUTES.DOWNLOADS]: undefined;
+  /** M7：图书阅读器（Book 详情页进入；仅元数据传参，文件缓存与断点由阅读器页内经服务读取） */
+  [ROUTES.BOOK_READER]: { itemId: string; name: string };
 };
 
 /** 底部四 Tab 参数表 */

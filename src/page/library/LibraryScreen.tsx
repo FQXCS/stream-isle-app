@@ -1,8 +1,8 @@
 /**
  * 库内容页（M1 文档 §4.10 Library 海报墙 / S10 + 04 §4.4 收藏联动；M5 §4.12 类型分发）：
  * MUSIC → MusicLibraryScreen 四区布局；PHOTO → PhotoLibraryScreen 相册布局；
- * 视频库（MOVIE/TVSHOW/MIXED）三列海报墙 + 服务端分页（40/页、滚动到底自动加载至 total 尽头）
- * + 类型/排序/筛选切换即重置重拉 + 下拉刷新。
+ * BOOK 与视频库（MOVIE/TVSHOW/MIXED）三列海报墙 + 服务端分页（40/页、滚动到底自动加载至 total 尽头）
+ * + 类型/排序/筛选切换即重置重拉 + 下拉刷新（Book 条目点击进详情仅元数据，无播放链路）。
  * M4 增量：卡片点击直达 Item 详情（复用 M2 路由）；收藏筛选下收藏角标 toggle——
  * 取消收藏卡片淡化置灰而非立即移除（避免服务端分页索引跳动），下拉刷新后自然收敛（04 §4.4）；
  * 筛选无结果 EmptyView 提供「清除筛选」。
@@ -95,13 +95,17 @@ function LibraryBody({ library, accountKey }: LibraryBodyProps) {
 
   const [serverId, userId] = useMemo(() => accountKey.split(':'), [accountKey]);
 
-  // kinds 取值规则（无空数组态，§4.10）：MOVIE 库固定 Movie；TVSHOW 固定 Series；MIXED 由 chips 决定
+  // kinds 取值规则（无空数组态，§4.10）：MOVIE 库固定 Movie；TVSHOW 固定 Series；
+  // BOOK 库固定 Book（M7：图书仅列表浏览）；MIXED 由 chips 决定
   const kinds: MediaItemTypeEnum[] = useMemo(() => {
     if (library.type === 'MOVIE') {
       return ['Movie'];
     }
     if (library.type === 'TVSHOW') {
       return ['Series'];
+    }
+    if (library.type === 'BOOK') {
+      return ['Book'];
     }
     return kindsOfKindSelection(filterState.kind);
   }, [library.type, filterState.kind]);

@@ -291,6 +291,7 @@ function translateItemType(raw: string | undefined): MediaItemTypeEnum | undefin
     'Playlist',
     'PhotoAlbum',
     'Photo',
+    'Book',
   ]);
   return VALID_TYPES.has(raw) ? (raw as MediaItemTypeEnum) : undefined;
 }
@@ -1083,6 +1084,18 @@ export abstract class BaseAdapter implements ServerAdapter {
       TranscodingAudioCodec: AUDIO_TRANSCODING_AUDIO_CODEC,
     });
     return this.urlOf(`/Audio/${itemId}/universal?${query}`);
+  }
+
+  // —— M7：图书阅读（全部共享实现，双 Adapter 不新增覆写）——
+
+  /**
+   * Book 原文件下载 URL：{base}/Items/{itemId}/Download + api_key={token}。
+   * 下载经 expo-file-system（不经 ApiClient）、渲染经 WebView，均不携带请求头，
+   * 认证只能进 URL（与图片/音频 URL 同款机制）。Book 无媒体源概念，
+   * 禁走 PlaybackInfo（Emby 对 Book 必 500），一律以本端点取原文件。
+   */
+  buildBookFileUrl(itemId: string): string {
+    return this.urlOf(`/Items/${itemId}/Download?api_key=${encodeURIComponent(this.token ?? '')}`);
   }
 
   /** 服务器条目 → AudioItem（歌曲翻译共用路径；封面 = 条目 Primary） */

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<!--
+ * PDF 连续滚动阅读器（M7 内置阅读器）：由 BookReaderScreen 以 file:///android_asset/pdf/reader.html 加载。
+ * pdf.min.js / pdf.worker.min.js 拷自 pdfjs-dist@3.11.174 legacy/build（最后一个提供 UMD 构建的版本，
+ * 4.x+ 纯 ESM 在 file:// 协议下会被 Chromium 阻止），升级 pdfjs-dist 时须同步拷贝。
+ * 渲染模式：全部页垂直排列、**body 原生滚动**（WebView 内 absolute 容器滚动在手势层被禁，
+ * touch 事件可达但原生 pan 不触发，故用 document 滚动路径），可视区 ±1 页懒渲染、离屏回收
+ * （虚拟化），页宽恒为屏宽（fit width），双击切换 1x/2x（2x 横向可滚）。
+ * 与 RN 的桥协议（BookReaderScreen 消费）：
+ *   RN → HTML：window.__reader.init(fileUrl)（onLoadEnd 后注入）、window.__reader.goToPage(n)
+ *   HTML → RN：{type:'ready',pageCount} / {type:'page',page}（滚动经过页变化时上报，1-based）
+ *             / {type:'tap'} / {type:'error',message}
+-->
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<style>
+  html, body { margin: 0; padding: 0; width: 100%; background: #141414;
+               -webkit-user-select: none; user-select: none;
+               /* 显式放行原生 pan（body 滚动路径）；页面缩放由自管双击 zoom 承担 */
+               touch-action: pan-x pan-y; }
+  body { overflow-x: auto; overflow-y: scroll; }
+  #pages { width: max-content; margin: 0 auto; }
+  .pageSlot { position: relative; background: #202020; }
+  .pageSlot canvas { display: block; }
+  #hint { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+          color: #9aa0a6; font: 14px sans-serif; z-index: 2; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="pages"></div>
+<div id="hint">正在加载…</div>
+<script src="pdf.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  var pagesEl = document.getElementById('pages');
+  var hint = document.getElementById('hint');
+  // document 滚动元素（html）：scrollTop/scrollHeight/clientHeight 直接读写根滚动
+  var scroller = document.scrollingElement || document.documentElement;
+
+  function post(msg) {
+    window.ReactNativeWebView.postMessage(JSON.stringify(msg));
+  }
+
+  // Chromium 的 fetch API 不支持 file:// scheme（仅 XHR 受 allowFileAccessFromFileURLs 控制），
+  // 本地资源一律经 XHR 读取：PDF → ArrayBuffer、worker 脚本 → 文本再 Blob URL
+  function readViaXhr(url, responseType) {
+    return new Promise(function (resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url);
+      xhr.responseType = responseType;
+      xhr.onload = function () {
+        if (xhr.response !== null && xhr.response !== undefined) {
+          resolve(xhr.response);
+        } else {
+          reject(new Error('空响应'));
+        }
+      };
+      xhr.onerror = function () { reject(new Error('读取失败：' + url)); };
+      xhr.send();
+    });
+  }
+
+  // worker 以 Blob URL 创建：file:// 协议下 new Worker('file://…') 被 Chromium 禁止
+  readViaXhr('pdf.worker.min.js', 'text')
+    .then(function (text) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([text], { type: 'application/javascript' }));
+    })
+    .catch(function () { post({ type: 'error', message: '加载渲染引擎失败' }); });
+
+  var doc = null;
+  var pageCount = 0;
+  var zoom = 1;                       // 双击切换 1x / 2x
+  var dpr = window.devicePixelRatio || 1;
+  var pageWidth = 0;                  // 页逻辑宽（1x = 视口宽）
+  var firstRatio = 1;                 // 第 1 页高宽比（占位基准，渲染时逐页校正）
+  var slots = [];                     // {el, canvas, task, rendering, rendered, cssH}
+  var cachedTops = null;              // 占位 top 前缀和缓存（高度校正后置脏重算）
+  var pendingPage = 0;                // 文档未就绪期间的跳页请求（断点续读）
+  var reportedPage = 0;               // 已上报 RN 的当前页（去重）
+  var ZOOM_MAX = 2;
+
+  function pageW() {
+    return pageWidth * zoom;
+  }
+
+  // —— 占位与几何 ——
+  function buildSlots() {
+    pagesEl.innerHTML = '';
+    slots = [];
+    for (var i = 0; i < pageCount; i++) {
+      var el = document.createElement('div');
+      el.className = 'pageSlot';
+      el.style.width = pageW() + 'px';
+      el.style.height = Math.round(pageW() * firstRatio) + 'px';
+      pagesEl.appendChild(el);
+      slots.push({ el: el, canvas: null, task: null, rendering: false, rendered: false, cssH: 0 });
+    }
+    cachedTops = null;
+  }
+
+  /** 占位 top 前缀和（二分可视区用；tops[0]=0，长度 pageCount） */
+  function slotTops() {
+    if (cachedTops !== null) { return cachedTops; }
+    var top = 0;
+    var arr = new Array(slots.length);
+    for (var i = 0; i < slots.length; i++) {
+      arr[i] = top;
+      top += slots[i].el.offsetHeight;
+    }
+    cachedTops = arr;
+    return arr;
+  }
+
+  /** 第一个 top > value 的下标（tops 递增） */
+  function upperBound(tops, value) {
+    var lo = 0, hi = tops.length;
+    while (lo < hi) {
+      var mid = (lo + hi) >> 1;
+      if (tops[mid] <= value) { lo = mid + 1; } else { hi = mid; }
+    }
+    return lo;
+  }
+
+  // —— 渲染（懒加载 + 回收） ——
+  function ensureCanvas(slot) {
+    if (slot.canvas === null) {
+      slot.canvas = document.createElement('canvas');
+      slot.el.appendChild(slot.canvas);
+    }
+    return slot.canvas;
+  }
+
+  function recycleSlot(slot) {
+    if (slot.task !== null) {
+      slot.task.cancel();
+      slot.task = null;
+    }
+    if (slot.canvas !== null) {
+      // 尺寸清零即刻释放位图内存
+      slot.canvas.width = 0;
+      slot.canvas.height = 0;
+    }
+    slot.rendering = false;
+    slot.rendered = false;
+  }
+
+  function renderSlot(index) {
+    var slot = slots[index];
+    if (slot.rendered || slot.rendering) { return; }
+    slot.rendering = true;
+    var canvas = ensureCanvas(slot);
+    doc.getPage(index + 1).then(function (page) {
+      if (!slot.rendering) { return; }
+      var base = page.getViewport({ scale: 1 });
+      var viewport = page.getViewport({ scale: (pageW() / base.width) * dpr });
+      var cssH = Math.round(viewport.height / dpr);
+      // 高度校正（首渲染后占位与实际不符）：更新占位 + 置脏 top 缓存
+      if (Math.abs(slot.el.offsetHeight - cssH) > 1) {
+        slot.el.style.height = cssH + 'px';
+        cachedTops = null;
+      }
+      slot.cssH = cssH;
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      canvas.style.width = (viewport.width / dpr) + 'px';
+      canvas.style.height = cssH + 'px';
+      var task = page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport });
+      slot.task = task;
+      return task.promise.then(function () {
+        slot.task = null;
+        slot.rendering = false;
+        slot.rendered = true;
+      });
+    }).catch(function (err) {
+      slot.rendering = false;
+      if (err && err.name === 'RenderingCancelledException') { return; }
+      post({ type: 'error', message: '第 ' + (index + 1) + ' 页渲染失败' });
+    });
+  }
+
+  // —— 滚动驱动（rAF 节流）：可视区 ±1 渲染、离屏 >2 屏回收、当前页上报 ——
+  var ticking = false;
+  window.addEventListener('scroll', function () {
+    if (!ticking) {
+      ticking = true;
+      requestAnimationFrame(update);
+    }
+  }, { passive: true });
+
+  function update() {
+    ticking = false;
+    if (doc === null || slots.length === 0) { return; }
+    var st = scroller.scrollTop;
+    var vh = window.innerHeight;
+    var tops = slotTops();
+    var first = Math.max(0, upperBound(tops, st) - 1);
+    var last = Math.min(slots.length - 1, upperBound(tops, st + vh) - 1);
+    var from = Math.max(0, first - 1);
+    var to = Math.min(slots.length - 1, last + 1);
+    for (var i = from; i <= to; i++) {
+      renderSlot(i);
+    }
+    // 回收：渲染页离开可视区 2 屏以外即释放
+    var margin = vh * 2;
+    for (var j = 0; j < slots.length; j++) {
+      if (!slots[j].rendered) { continue; }
+      var slotTop = tops[j];
+      var slotBottom = slotTop + slots[j].el.offsetHeight;
+      if (slotBottom < st - margin || slotTop > st + vh + margin) {
+        recycleSlot(slots[j]);
+      }
+    }
+    // 当前页（滚动中心所在页）变化才上报 RN
+    var current = Math.min(slots.length, Math.max(1, upperBound(tops, st + vh / 2)));
+    if (current !== reportedPage) {
+      reportedPage = current;
+      post({ type: 'page', page: current });
+    }
+  }
+
+  // —— 对外接口 ——
+  function scrollToPage(pageNum) {
+    if (doc === null) {
+      pendingPage = pageNum;
+      return;
+    }
+    var n = Math.min(pageCount, Math.max(1, Math.round(pageNum)));
+    var tops = slotTops();
+    var vh = window.innerHeight;
+    var slotH = slots[n - 1].el.offsetHeight;
+    // 目标页滚至视口中心
+    scroller.scrollTop = Math.max(0, tops[n - 1] - (vh - slotH) / 2);
+  }
+
+  function setZoom(next) {
+    zoom = next;
+    var anchor = reportedPage;
+    for (var i = 0; i < slots.length; i++) {
+      slots[i].el.style.width = pageW() + 'px';
+      recycleSlot(slots[i]);
+    }
+    // 高度重排：已渲染页按真实 1x 高度 × zoom，未渲染页按占位比例
+    for (var k = 0; k < slots.length; k++) {
+      var s = slots[k];
+      s.el.style.height = Math.round(s.cssH > 0 ? s.cssH * zoom : pageW() * firstRatio * zoom) + 'px';
+    }
+    cachedTops = null;
+    // 锚定当前页并重算可视区（布局生效后执行）
+    requestAnimationFrame(function () {
+      reportedPage = 0; // 强制重新上报当前页
+      scrollToPage(anchor);
+      update();
+    });
+  }
+
+  window.__reader = {
+    init: function (fileUrl) {
+      // 本地 PDF 经 XHR 读入内存后以 data 形态交给 pdf.js（绕开 fetch 不支持 file:// 的限制）
+      readViaXhr(fileUrl, 'arraybuffer')
+        .then(function (buffer) {
+          return pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+        })
+        .then(function (loaded) {
+          doc = loaded;
+          pageCount = loaded.numPages;
+          pageWidth = window.innerWidth;
+          hint.style.display = 'none';
+          return loaded.getPage(1).then(function (page1) {
+            var base = page1.getViewport({ scale: 1 });
+            firstRatio = base.height / base.width;
+            buildSlots();
+            post({ type: 'ready', pageCount: pageCount });
+            if (pendingPage > 0) {
+              // 断点跳转必须延后：onLoadEnd 早期程序性 scrollTop 赋值会把 Android WebView 的
+              // 手势滚动锁死（native 层缓存初始位置并持续纠正，合成器层面表现，JS 不可见）——
+              // 双 rAF 等内核与合成器同步完成后再跳
+              var target = pendingPage;
+              pendingPage = 0;
+              requestAnimationFrame(function () {
+                requestAnimationFrame(function () { scrollToPage(target); });
+              });
+            }
+            update();
+          });
+        })
+        .catch(function () {
+          post({ type: 'error', message: '文档打开失败，文件可能已损坏' });
+        });
+    },
+    goToPage: function (pageNum) { scrollToPage(pageNum); },
+  };
+
+  // —— 手势：单击/双击判定（滚动交给 body 原生滚动；双击切换缩放） ——
+  var start = null;
+  var lastTapAt = 0;
+  var TAP_MAX_MOVE = 10;
+
+  document.addEventListener('touchstart', function (e) {
+    if (e.touches.length === 1) {
+      start = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+    } else {
+      start = null;
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', function (e) {
+    if (e.touches.length !== 0 || start === null) { return; }
+    var dx = e.changedTouches[0].clientX - start.x;
+    var dy = e.changedTouches[0].clientY - start.y;
+    var moved = Math.sqrt(dx * dx + dy * dy) >= TAP_MAX_MOVE;
+    var quick = Date.now() - start.t < 350;
+    start = null;
+    if (!moved && quick) {
+      var now = Date.now();
+      if (now - lastTapAt < 300) {
+        // 双击：1x ↔ 2x
+        lastTapAt = 0;
+        setZoom(zoom > 1 ? 1 : ZOOM_MAX);
+      } else {
+        lastTapAt = now;
+        setTimeout(function () {
+          if (lastTapAt !== 0) { lastTapAt = 0; post({ type: 'tap' }); }
+        }, 300);
+      }
+    }
+  }, { passive: true });
+})();
+</script>
+</body>
+</html>

@@ -10,7 +10,7 @@ import type { DecoderCapabilities } from '@/adapter/DeviceProfileBuilder';
 export type ServerFlavor = 'JELLYFIN' | 'EMBY';
 
 /** 库类型（库卡片图标/布局归并用；由 CollectionType 经 COLLECTION_TYPE_MAP 翻译） */
-export type LibraryTypeEnum = 'MOVIE' | 'TVSHOW' | 'MUSIC' | 'PHOTO' | 'MIXED';
+export type LibraryTypeEnum = 'MOVIE' | 'TVSHOW' | 'MUSIC' | 'PHOTO' | 'BOOK' | 'MIXED';
 
 /** 条目类型（服务器 Item Type 直译，含 M5 扩展值，全集唯一） */
 export type MediaItemTypeEnum =
@@ -24,7 +24,8 @@ export type MediaItemTypeEnum =
   | 'Audio'
   | 'Playlist' // M5 音乐
   | 'PhotoAlbum'
-  | 'Photo'; // M5 照片
+  | 'Photo' // M5 照片
+  | 'Book'; // 图书库（books）条目，M7 起仅列表浏览不提供阅读器
 
 /** 排序字段（服务器 SortBy 词表） */
 export type SortByEnum = 'SORT_NAME' | 'PREMIERE_DATE' | 'RANDOM';

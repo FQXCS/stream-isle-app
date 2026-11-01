@@ -28,6 +28,13 @@ npx expo run:android            # 真机构建安装（Android 8+ / minSdk 26）
 - CI：lint + test + Android debug 构建；三件套全绿是每个里程碑验收第 1 条。Android 构建需 **JDK 21**（compileSdk 37 的 core-for-system-modules.jar 需 JDK 21 的 jlink，JDK 17 实测 JdkImageTransform 失败）。
 - 分支习惯：每个里程碑一个 `feature/m<N>-xxx` 分支（如 M1 用 `feature/m1-skeleton`）。
 
+## 本地联调测试环境（Emby 模拟器实测）
+
+- 测试服务器：Emby **RYM 4.10.2.0**（宿主机 Windows 服务），主机地址 `http://localhost:8096/`，账密 `test / 123456`（本地测试账号）。
+- **模拟器内连接必须用 `http://10.0.2.2:8096/`**：Android 模拟器的 `localhost` 指模拟器自身，`10.0.2.2` 才映射到宿主机；真机调试则用局域网 IP。
+- 本机构建 JDK：默认 JAVA_HOME 为 JDK 8，`android/gradle.properties` 已固定 `org.gradle.java.home=E:/Java/jdk-21.0.10`。
+- 排障：Emby 服务端日志在 `E:/emby/programdata/logs/embyserver.txt`，可核对请求是否到达服务器、状态码与认证头（曾借此定位「服务器 200 但客户端报错」的 SecureStore key 问题）。
+
 ## 专项规则（触发式加载）
 
 执行以下操作时，**必须先读取对应规则文件，再动手**：

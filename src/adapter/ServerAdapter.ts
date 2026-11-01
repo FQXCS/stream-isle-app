@@ -118,6 +118,12 @@ export interface ServerAdapter {
    */
   buildAudioUniversalUrl(itemId: string, playSessionId: string, maxBitrateBps?: number): string;
 
+  /**
+   * Book 原文件下载 URL（M7）：{base}/Items/{itemId}/Download + api_key。
+   * 下载/渲染组件不携带请求头，认证只能进 URL（与音频 universal 同款机制）。
+   */
+  buildBookFileUrl(itemId: string): string;
+
   /** 专辑区：ParentId={libraryId} + IncludeItemTypes=MusicAlbum，SortName 升序分页 */
   getMusicAlbums(userId: string, libraryId: string, page: number): Promise<Paged<MediaLibraryItem>>;
 

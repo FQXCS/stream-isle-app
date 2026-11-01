@@ -20,14 +20,16 @@ export const ROUTES = {
   PHOTO_VIEWER: 'PhotoViewer',
   HISTORY: 'History',
   DOWNLOADS: 'Downloads',
+  BOOK_READER: 'BookReader',
 } as const;
 
 /** ROUTES 值联合（供导航类型 ParamList 使用） */
 export type RouteName = (typeof ROUTES)[keyof typeof ROUTES];
 
-/** 隐藏迷你播放条的路由（全屏沉浸页：视频播放器 / Now Playing / 照片查看器，M5 文档 §4.10） */
+/** 隐藏迷你播放条的路由（全屏沉浸页：视频播放器 / Now Playing / 照片查看器 / 图书阅读器，M5 文档 §4.10） */
 export const MINI_PLAYER_HIDDEN_ROUTES: readonly string[] = [
   ROUTES.PLAYER,
   ROUTES.NOW_PLAYING,
   ROUTES.PHOTO_VIEWER,
+  ROUTES.BOOK_READER,
 ];

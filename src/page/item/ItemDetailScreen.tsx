@@ -300,6 +300,10 @@ export function ItemDetailScreen() {
   }
 
   const isSeries = detail.type === 'Series';
+  // Book 主按钮为「阅读」（M7）：不发 PlaybackInfo（Emby 对 Book 必 500，Book 未实现
+  // IHasMediaSources），也不开放下载；Movie/Episode 走播放链路
+  const isBook = detail.type === 'Book';
+  const isPlayable = detail.type === 'Movie' || detail.type === 'Episode';
   const selectedSeason = seasons.find((season) => season.id === selectedSeasonId) ?? null;
   const resumeMs = getResumePositionMs(toResumeSource(detail));
   // Series 无媒体流（对 Series id 发 PlaybackInfo 必然空 MediaSources → PLAYBACK_UNSUPPORTED），
@@ -317,7 +321,18 @@ export function ItemDetailScreen() {
         {/* 按钮行（02 §4.11 + 04 §4.4 收藏按钮 + 06 §4.4.5 下载徽标）：
             主按钮文案随续播判定变化；Series 为「播放第一集」 */}
         <View style={styles.buttonRow}>
-          {!isSeries && (
+          {/* Book 主按钮「阅读」（M7 内置阅读器，绕开播放链路） */}
+          {isBook && (
+            <Pressable
+              style={[styles.playButton, { backgroundColor: t.accent }]}
+              onPress={() =>
+                navigation.navigate(ROUTES.BOOK_READER, { itemId: detail.id, name: detail.name })
+              }
+            >
+              <Text style={[styles.playButtonText, { color: t.accentOn }]}>阅读</Text>
+            </Pressable>
+          )}
+          {isPlayable && (
             <Pressable
               style={[styles.playButton, { backgroundColor: t.accent }]}
               onPress={() =>
@@ -370,8 +385,9 @@ export function ItemDetailScreen() {
               {detail.userData.favorite ? '已收藏' : '收藏'}
             </Text>
           </Pressable>
-          {/* M6 下载徽标（电影：按钮行第三按钮；仅可直连条目可下，判定在服务层，06 §4.4.5） */}
-          {!isSeries && (
+          {/* M6 下载徽标（电影：按钮行第三按钮；仅可直连条目可下，判定在服务层，06 §4.4.5；
+              Book 不开放——下载前置 resolve 同样触发 PlaybackInfo 500） */}
+          {isPlayable && (
             <DownloadBadge
               itemId={detail.id}
               onStart={() => startDownloadFor(detail)}
