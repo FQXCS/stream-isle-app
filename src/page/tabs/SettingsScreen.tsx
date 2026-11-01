@@ -2,7 +2,7 @@
  * 设置页（04 文档 §4.5 完整化；设计文档 §5.1/§8.2/§9/§10.2/§11；M6 文档 §4.4.5/§4.9.3）：
  * 账号（AccountSection）/ 服务器管理（ServerSection）/ 播放（M3 PlaybackSettingsSection
  * 收编回归 + M4 新增「默认字幕语言」单选弹层）/ 外观（M6 浅色主题三态，06 §4.6.1）/
- * 下载与历史入口（06 §4.4.5 设置页入口）/ 关于（应用名/版本号/版本 Code + GitHub Releases 外链）。
+ * 下载与历史入口（06 §4.4.5 设置页入口）/ 收录类型二级页入口 / 关于（应用名/版本号/版本 Code + GitHub Releases 外链）。
  */
 import { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
@@ -93,6 +93,15 @@ export function SettingsScreen() {
           description="媒体沉浸页（播放器/照片查看器/正在播放）固定深色"
           value={selectedThemeOption?.label ?? '跟随系统'}
           onPress={() => setThemeSheetOpen(true)}
+        />
+      </View>
+      {/* 收录类型二级页入口：继续观看/观看历史分别设置（类型集不同） */}
+      <View style={[styles.card, { backgroundColor: t.surface }]}>
+        <SettingRow
+          label="收录类型"
+          description="继续观看与观看历史分别设置"
+          showArrow
+          onPress={() => navigation.navigate(ROUTES.MEDIA_TYPE_SETTINGS)}
         />
       </View>
       {/* M6 下载与历史入口（06 §4.4.5 设置页入口行） */}

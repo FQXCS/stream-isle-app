@@ -15,6 +15,7 @@ import type {
 import { PAGE_SIZE } from '@/constant/browse';
 import { getActiveAdapter } from '@/service/adapterProvider';
 import { useAccountStore } from '@/store/accountStore';
+import { useSettingsStore } from '@/store/settingsStore';
 
 /**
  * 库列表：adapter.getUserViews → Promise.all(每库 getLibraryItemCount) 填 itemCount
@@ -137,10 +138,12 @@ function requireUserId(): string {
 /**
  * 观看历史分页（服务端已看条目按 DatePlayed 倒序）：页码从 0 起，
  * 步长复用海报墙 PAGE_SIZE=40（06 文档 §4.3.1「分页沿用海报墙 StartIndex/Limit」）。
+ * 收录类型由设置页二级页单独配置（默认 Movie,Episode,Video）。
  */
 export function loadHistory(page: number): Promise<Paged<HistoryEntry>> {
   return getActiveAdapter().getWatchHistory(requireUserId(), {
     startIndex: page * PAGE_SIZE,
     limit: PAGE_SIZE,
+    includeItemTypes: useSettingsStore.getState().historyTypeList,
   });
 }

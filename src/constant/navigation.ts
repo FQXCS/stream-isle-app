@@ -20,6 +20,7 @@ export const ROUTES = {
   PHOTO_VIEWER: 'PhotoViewer',
   HISTORY: 'History',
   DOWNLOADS: 'Downloads',
+  MEDIA_TYPE_SETTINGS: 'MediaTypeSettings',
   BOOK_READER: 'BookReader',
 } as const;
 

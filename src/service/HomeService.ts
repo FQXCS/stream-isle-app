@@ -5,6 +5,7 @@
 import type { MediaLibraryItem } from '@/adapter/model';
 import { getActiveAdapter } from '@/service/adapterProvider';
 import { useAccountStore } from '@/store/accountStore';
+import { useSettingsStore } from '@/store/settingsStore';
 
 /** 首页三区数据 */
 export interface HomeSections {
@@ -33,8 +34,10 @@ export class HomeService {
   async loadHome(): Promise<HomeSections> {
     const adapter = getActiveAdapter();
     const userId = requireUserId();
+    // 继续观看收录类型由设置页二级页单独配置（默认 Movie,Episode,Video）
+    const includeItemTypes = useSettingsStore.getState().resumeTypeList;
     const [resumeList, nextUpList, latestList] = await Promise.all([
-      adapter.getResume(userId),
+      adapter.getResume(userId, includeItemTypes),
       adapter.getNextUp(userId),
       adapter.getLatest(userId),
     ]);

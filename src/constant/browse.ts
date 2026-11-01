@@ -1,13 +1,36 @@
 /**
  * 浏览域常量（M1 文档 §4.3）：分页、海报墙网格、排序/筛选选项、库类型映射。
  */
-import type { LibraryTypeEnum, SortByEnum } from '@/adapter/model';
+import type { LibraryTypeEnum, MediaItemTypeEnum, SortByEnum } from '@/adapter/model';
 
 /** 服务端分页页大小 */
 export const PAGE_SIZE = 40;
 
 /** 首页三区横向卡片行长度（继续观看/下一集/最新添加共用，04 §3） */
 export const HOME_ROW_LIMIT = 12;
+
+/**
+ * 继续观看可选类型（设置页二级页多选）：仅视频类会记录服务端播放断点，
+ * 图书/照片没有 PlaybackPositionTicks，选了也不会出现。
+ */
+export const RESUME_TYPE_OPTIONS: readonly { type: MediaItemTypeEnum; label: string }[] = [
+  { type: 'Movie', label: '电影' },
+  { type: 'Episode', label: '剧集' },
+  { type: 'Video', label: '家庭视频' },
+];
+
+/**
+ * 观看历史可选类型（设置页二级页多选）：视频类 + 有已看态的图书/音乐。
+ * Book 需读到末页触发 markPlayed；Photo 因 App 不上报已看，暂不提供。
+ */
+export const HISTORY_TYPE_OPTIONS: readonly { type: MediaItemTypeEnum; label: string }[] = [
+  ...RESUME_TYPE_OPTIONS,
+  { type: 'Book', label: '图书' },
+  { type: 'Audio', label: '音乐' },
+];
+
+/** 默认收录类型（继续观看/观看历史共用）：Movie,Episode,Video */
+export const DEFAULT_FEED_TYPES: readonly MediaItemTypeEnum[] = ['Movie', 'Episode', 'Video'];
 
 /** 海报墙列数 */
 export const GRID_COLUMNS = 3;

@@ -29,6 +29,7 @@ import { DownloadsScreen } from '@/page/downloads/DownloadsScreen';
 import { HistoryScreen } from '@/page/history/HistoryScreen';
 import { ItemDetailScreen } from '@/page/item/ItemDetailScreen';
 import { LibraryScreen } from '@/page/library/LibraryScreen';
+import { MediaTypeSettingsScreen } from '@/page/settings/MediaTypeSettingsScreen';
 import { navigationRef } from '@/page/navigation/navigationRef';
 import type { RootStackParamList, TabsParamList } from '@/page/navigation/types';
 import { NowPlayingScreen } from '@/page/nowplaying/NowPlayingScreen';
@@ -190,6 +191,12 @@ export function RootNavigator() {
               name={ROUTES.DOWNLOADS}
               component={DownloadsScreen}
               options={{ headerBackTitle: '返回' }}
+            />
+            {/* 收录类型二级页：继续观看/观看历史分别多选（类型集不同） */}
+            <RootStack.Screen
+              name={ROUTES.MEDIA_TYPE_SETTINGS}
+              component={MediaTypeSettingsScreen}
+              options={{ title: '收录类型', headerBackTitle: '返回' }}
             />
             {/* M7：图书阅读器（WebView+PDF.js 全屏沉浸） */}
             <RootStack.Screen

@@ -16,6 +16,7 @@ import type {
   MediaDetail,
   MediaLibrary,
   MediaLibraryItem,
+  MediaItemTypeEnum,
   Paged,
   PhotoAlbumSummary,
   PhotoItem,
@@ -65,7 +66,8 @@ export interface ServerAdapter {
    */
   getNextUp(userId: string): Promise<EpisodeItem[]>;
 
-  getResume(userId: string): Promise<MediaLibraryItem[]>;
+  /** 首页继续观看：类型由设置页多选（默认 Movie,Episode,Video） */
+  getResume(userId: string, includeItemTypes: readonly MediaItemTypeEnum[]): Promise<MediaLibraryItem[]>;
 
   getLatest(userId: string, parentId?: string): Promise<MediaLibraryItem[]>;
 

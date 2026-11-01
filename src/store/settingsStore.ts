@@ -9,8 +9,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+import type { MediaItemTypeEnum } from '@/adapter/model';
 import type { BitrateTierKey } from '@/constant/bitrate';
 import { DEFAULT_BITRATE_TIER } from '@/constant/bitrate';
+import { DEFAULT_FEED_TYPES, HISTORY_TYPE_OPTIONS, RESUME_TYPE_OPTIONS } from '@/constant/browse';
 import type { ThemeModeEnum } from '@/constant/theme';
 import { SETTINGS_STORE_KEY } from '@/constant/storage';
 import { syncTlsBypassHosts } from '@/infra/tlsBypass';
@@ -36,6 +38,10 @@ interface SettingsActions {
   setBatteryGuideShown(): void;
   /** M6：浅色主题三态（system/light/dark，默认跟随系统；06 文档 §4.6.1） */
   setThemeMode(mode: ThemeModeEnum): void;
+  /** 首页继续观看收录类型多选（至少保留一项，空列表变更忽略） */
+  toggleResumeType(type: MediaItemTypeEnum): void;
+  /** 观看历史收录类型多选（至少保留一项，空列表变更忽略） */
+  toggleHistoryType(type: MediaItemTypeEnum): void;
 }
 
 interface SettingsState {
@@ -53,7 +59,30 @@ interface SettingsState {
   batteryGuideShown: boolean;
   /** M6：主题模式（默认 system 跟随系统；随既有 MMKV persist 持久化，06 文档 §4.6.1） */
   themeMode: ThemeModeEnum;
+  /** 继续观看收录类型（默认 Movie,Episode,Video；persist） */
+  resumeTypeList: MediaItemTypeEnum[];
+  /** 观看历史收录类型（默认 Movie,Episode,Video；persist；较继续观看多图书/音乐） */
+  historyTypeList: MediaItemTypeEnum[];
   actions: SettingsActions;
+}
+
+/**
+ * 在指定选项集内切换收录类型：返回按选项固定顺序重排的新列表；
+ * 取消最后一项时返回 null（调用方维持原值，避免查询类型为空）。
+ */
+function toggleTypeInList(
+  currentList: readonly MediaItemTypeEnum[],
+  type: MediaItemTypeEnum,
+  optionList: readonly { type: MediaItemTypeEnum }[]
+): MediaItemTypeEnum[] | null {
+  const selected = new Set(currentList);
+  if (selected.has(type)) {
+    selected.delete(type);
+  } else {
+    selected.add(type);
+  }
+  const next = optionList.map((option) => option.type).filter((item) => selected.has(item));
+  return next.length === 0 ? null : next;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -66,6 +95,8 @@ export const useSettingsStore = create<SettingsState>()(
       preferredSubtitleLang: null,
       batteryGuideShown: false,
       themeMode: 'system',
+      resumeTypeList: [...DEFAULT_FEED_TYPES],
+      historyTypeList: [...DEFAULT_FEED_TYPES],
 
       actions: {
         setInsecureTlsAllowed: (baseUrl: string, allowed: boolean) => {
@@ -114,11 +145,43 @@ export const useSettingsStore = create<SettingsState>()(
         setThemeMode: (mode: ThemeModeEnum) => {
           set({ themeMode: mode });
         },
+
+        toggleResumeType: (type: MediaItemTypeEnum) => {
+          set((state) => {
+            const next = toggleTypeInList(state.resumeTypeList, type, RESUME_TYPE_OPTIONS);
+            return next === null ? state : { resumeTypeList: next };
+          });
+        },
+
+        toggleHistoryType: (type: MediaItemTypeEnum) => {
+          set((state) => {
+            const next = toggleTypeInList(state.historyTypeList, type, HISTORY_TYPE_OPTIONS);
+            return next === null ? state : { historyTypeList: next };
+          });
+        },
       },
     }),
     {
       name: SETTINGS_STORE_KEY,
       storage: createMmkvJSONStorage(),
+      // 只持久化设置字段：actions 是函数集合，JSON 序列化为 {}，回灌会清空全部 action
+      partialize: (state) => ({
+        allowInsecureTls: state.allowInsecureTls,
+        maxBitrateMode: state.maxBitrateMode,
+        allowHevcDirectPlay: state.allowHevcDirectPlay,
+        autoDowngradeOnCellular: state.autoDowngradeOnCellular,
+        preferredSubtitleLang: state.preferredSubtitleLang,
+        batteryGuideShown: state.batteryGuideShown,
+        themeMode: state.themeMode,
+        resumeTypeList: state.resumeTypeList,
+        historyTypeList: state.historyTypeList,
+      }),
+      // 兼容已落盘的旧快照（内含 "actions":{}）：回灌时始终保留当前 actions
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...(persistedState ?? {}),
+        actions: currentState.actions,
+      }),
     }
   )
 );

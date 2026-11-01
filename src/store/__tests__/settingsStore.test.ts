@@ -71,6 +71,70 @@ describe('settingsStore（证书白名单，04 §4.6/§4.7 终态）', () => {
   });
 });
 
+describe('settingsStore（继续观看/观看历史收录类型）', () => {
+  beforeEach(() => {
+    mmkv.clearAll();
+    useSettingsStore.setState({
+      resumeTypeList: ['Movie', 'Episode', 'Video'],
+      historyTypeList: ['Movie', 'Episode', 'Video'],
+    });
+  });
+
+  it('两组默认均为 Movie,Episode,Video', () => {
+    expect(useSettingsStore.getState().resumeTypeList).toEqual(['Movie', 'Episode', 'Video']);
+    expect(useSettingsStore.getState().historyTypeList).toEqual(['Movie', 'Episode', 'Video']);
+  });
+
+  it('继续观看：按选项固定顺序增删，取消最后一项被忽略', () => {
+    const { toggleResumeType } = useSettingsStore.getState().actions;
+    toggleResumeType('Video');
+    expect(useSettingsStore.getState().resumeTypeList).toEqual(['Movie', 'Episode']);
+    toggleResumeType('Video');
+    expect(useSettingsStore.getState().resumeTypeList).toEqual(['Movie', 'Episode', 'Video']);
+    toggleResumeType('Movie');
+    toggleResumeType('Episode');
+    expect(useSettingsStore.getState().resumeTypeList).toEqual(['Video']);
+    // 至少保留一项：取消最后一项不生效
+    toggleResumeType('Video');
+    expect(useSettingsStore.getState().resumeTypeList).toEqual(['Video']);
+  });
+
+  it('观看历史：支持追加图书/音乐，与继续观看互不影响', () => {
+    const { toggleHistoryType } = useSettingsStore.getState().actions;
+    toggleHistoryType('Book');
+    toggleHistoryType('Audio');
+    expect(useSettingsStore.getState().historyTypeList).toEqual([
+      'Movie',
+      'Episode',
+      'Video',
+      'Book',
+      'Audio',
+    ]);
+    expect(useSettingsStore.getState().resumeTypeList).toEqual(['Movie', 'Episode', 'Video']);
+  });
+
+  it('persist 快照包含两组字段并随 MMKV 落盘', () => {
+    useSettingsStore.getState().actions.toggleHistoryType('Book');
+    const snapshot = mmkv.getString(SETTINGS_STORE_KEY) ?? '';
+    expect(snapshot).toContain('"resumeTypeList":["Movie","Episode","Video"]');
+    expect(snapshot).toContain('"historyTypeList":["Movie","Episode","Video","Book"]');
+    // actions 为函数集合，JSON 序列化后是 {}，不能落盘（否则回灌会清空 action）
+    expect(snapshot).not.toContain('"actions"');
+  });
+
+  it('旧快照含 "actions":{} 时回灌仍保留 action 与设置值（冷启动回归）', async () => {
+    mmkv.set(
+      SETTINGS_STORE_KEY,
+      JSON.stringify({ state: { themeMode: 'dark', actions: {} }, version: 0 })
+    );
+    await useSettingsStore.persist.rehydrate();
+    expect(useSettingsStore.getState().themeMode).toBe('dark');
+    expect(typeof useSettingsStore.getState().actions.toggleResumeType).toBe('function');
+    expect(typeof useSettingsStore.getState().actions.toggleHistoryType).toBe('function');
+    expect(useSettingsStore.getState().resumeTypeList).toEqual(['Movie', 'Episode', 'Video']);
+  });
+});
+
 describe('settingsStore（M3 播放设置四字段，03 §4.7.2）', () => {
   beforeEach(() => {
     mmkv.clearAll();

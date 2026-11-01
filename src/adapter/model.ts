@@ -426,6 +426,8 @@ export interface QuickConnectState {
 export interface HistoryQuery {
   startIndex: number;
   limit: number;
+  /** 收录类型（设置页多选，默认 Movie,Episode,Video） */
+  includeItemTypes: readonly MediaItemTypeEnum[];
 }
 
 /** 历史条目（/Users/{uid}/Items 翻译结果 + 观看时间） */

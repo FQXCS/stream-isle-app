@@ -1051,17 +1051,21 @@ export abstract class BaseAdapter implements ServerAdapter {
   // —— M4：首页三区与搜索（04 §3/§4.3；共享 listItems 翻译路径的具名封装）——
 
   /**
-   * 继续观看：GET /Users/{uid}/Items?Filters=IsResumable&IncludeItemTypes=Movie,Episode
-   * &Recursive=true&SortBy=DatePlayed&SortOrder=Descending&Limit=HOME_ROW_LIMIT。
+   * 继续观看：GET /Users/{uid}/Items?Filters=IsResumable&IncludeItemTypes={类型}&Recursive=true
+   * &SortBy=DatePlayed&SortOrder=Descending&Limit=HOME_ROW_LIMIT。
+   * 类型由设置页多选（默认 Movie,Episode,Video；Video 为家庭视频/照片库中的视频条目）。
    * 按最近播放序返回有断点的条目（首页横向卡片行，设计文档 §7.1）。
    */
-  async getResume(userId: string): Promise<MediaLibraryItem[]> {
+  async getResume(
+    userId: string,
+    includeItemTypes: readonly MediaItemTypeEnum[]
+  ): Promise<MediaLibraryItem[]> {
     const data = await this.api.request<ItemsResponse>({
       method: 'GET',
       url: this.urlOf(
         `/Users/${userId}/Items?${this.buildQuery({
           Filters: 'IsResumable',
-          IncludeItemTypes: 'Movie,Episode',
+          IncludeItemTypes: includeItemTypes.join(','),
           Recursive: 'true',
           SortBy: 'DatePlayed',
           SortOrder: 'Descending',
@@ -1947,7 +1951,7 @@ export abstract class BaseAdapter implements ServerAdapter {
 
   /**
    * 观看历史（06 文档 §4.3.1 端点映射表）：GET /Users/{uid}/Items，已看条目按观看时间倒序。
-   * Filters=IsPlayed + SortBy=DatePlayed + SortOrder=Descending + IncludeItemTypes=Movie,Episode
+   * Filters=IsPlayed + SortBy=DatePlayed + SortOrder=Descending + IncludeItemTypes={设置页多选}
    * + Recursive=true + StartIndex/Limit（分页沿用海报墙步长口径，页大小由调用方传入）。
    */
   async getWatchHistory(userId: string, query: HistoryQuery): Promise<Paged<HistoryEntry>> {
@@ -1955,7 +1959,7 @@ export abstract class BaseAdapter implements ServerAdapter {
       method: 'GET',
       url: this.urlOf(
         `/Users/${userId}/Items?${this.buildQuery({
-          IncludeItemTypes: 'Movie,Episode',
+          IncludeItemTypes: query.includeItemTypes.join(','),
           Filters: 'IsPlayed',
           SortBy: 'DatePlayed',
           SortOrder: 'Descending',

@@ -19,13 +19,13 @@ function makeAdapter(responses: unknown[]): { adapter: JellyfinAdapter; api: { r
 }
 
 describe('adapter 首页三区（04 §3 认领补齐）', () => {
-  it('getResume：Filters=IsResumable + Movie,Episode + DatePlayed 降序 + Limit', async () => {
+  it('getResume：Filters=IsResumable + 设置页类型 + DatePlayed 降序 + Limit', async () => {
     const { adapter, api } = makeAdapter([{ Items: [], TotalRecordCount: 0 }]);
-    await adapter.getResume('u1');
+    await adapter.getResume('u1', ['Movie', 'Episode', 'Video']);
     const req = api.request.mock.calls[0][0];
     expect(req.url).toContain('/Users/u1/Items?');
     expect(req.url).toContain('Filters=IsResumable');
-    expect(req.url).toContain('IncludeItemTypes=Movie%2CEpisode');
+    expect(req.url).toContain('IncludeItemTypes=Movie%2CEpisode%2CVideo');
     expect(req.url).toContain('SortBy=DatePlayed');
     expect(req.url).toContain('SortOrder=Descending');
     expect(req.url).toContain(`Limit=${HOME_ROW_LIMIT}`);
