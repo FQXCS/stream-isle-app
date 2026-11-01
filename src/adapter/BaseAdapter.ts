@@ -114,6 +114,9 @@ const SORTBY_PARAM_MAP: Record<SortByEnum, string> = {
   FILE_SIZE: 'Size',
   CONTAINER: 'Container',
   RANDOM: 'Random',
+  // 音频专有排序（音乐库菜单）
+  ALBUM: 'Album',
+  ALBUM_ARTIST: 'AlbumArtist',
 };
 
 /** 排序方向 → 服务器参数映射 */
@@ -1320,11 +1323,15 @@ export abstract class BaseAdapter implements ServerAdapter {
     };
   }
 
-  /** 艺术家区：同专辑行，IncludeItemTypes=MusicArtist（头像 = Primary） */
+  /**
+   * 艺人区：同专辑行，IncludeItemTypes=MusicArtist（头像 = Primary）。
+   * 排序由音乐库菜单传入（艺人虚拟条目仅名称/添加日期/随机有效），缺省 SortName 升序。
+   */
   async getMusicArtists(
     userId: string,
     libraryId: string,
-    page: number
+    page: number,
+    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
   ): Promise<Paged<MediaLibraryItem>> {
     const data = await this.api.request<ItemsResponse>({
       method: 'GET',
@@ -1333,8 +1340,8 @@ export abstract class BaseAdapter implements ServerAdapter {
           ParentId: libraryId,
           IncludeItemTypes: 'MusicArtist',
           Recursive: 'true',
-          SortBy: 'SortName',
-          SortOrder: 'Ascending',
+          SortBy: SORTBY_PARAM_MAP[sort?.sortBy ?? 'SORT_NAME'],
+          SortOrder: SORT_ORDER_PARAM_MAP[sort?.sortOrder ?? 'ASC'],
           Fields: 'PrimaryImageAspectRatio,ChildCount',
           StartIndex: String(this.startIndexOfPage(page)),
           Limit: String(PAGE_SIZE),
@@ -1384,8 +1391,17 @@ export abstract class BaseAdapter implements ServerAdapter {
     };
   }
 
-  /** 全部歌曲区：IncludeItemTypes=Audio&SortBy=SortName，服务端分页 */
-  async getAllSongs(userId: string, libraryId: string, page: number): Promise<Paged<AudioItem>> {
+  /**
+   * 全部歌曲区：IncludeItemTypes=Audio，服务端分页。
+   * 排序由音乐库菜单传入（标题/专辑/专辑艺人/日期/播放态/文件名/大小/容器/随机），
+   * 缺省 SortName 升序。
+   */
+  async getAllSongs(
+    userId: string,
+    libraryId: string,
+    page: number,
+    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+  ): Promise<Paged<AudioItem>> {
     const data = await this.api.request<ItemsResponse>({
       method: 'GET',
       url: this.urlOf(
@@ -1393,8 +1409,8 @@ export abstract class BaseAdapter implements ServerAdapter {
           ParentId: libraryId,
           IncludeItemTypes: 'Audio',
           Recursive: 'true',
-          SortBy: 'SortName',
-          SortOrder: 'Ascending',
+          SortBy: SORTBY_PARAM_MAP[sort?.sortBy ?? 'SORT_NAME'],
+          SortOrder: SORT_ORDER_PARAM_MAP[sort?.sortOrder ?? 'ASC'],
           Fields: 'PrimaryImageAspectRatio,ChildCount',
           StartIndex: String(this.startIndexOfPage(page)),
           Limit: String(PAGE_SIZE),

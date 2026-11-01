@@ -50,6 +50,27 @@ describe('音乐四区查询', () => {
     expect(api.request.mock.calls[0][0].url).toContain('IncludeItemTypes=MusicArtist');
   });
 
+  it('getAllSongs：排序由音乐库菜单传入（含音频专有 Album/AlbumArtist 映射）', async () => {
+    const { adapter, api } = makeAdapter('EMBY');
+    await adapter.getAllSongs('u1', 'lib1', 0, { sortBy: 'ALBUM_ARTIST', sortOrder: 'DESC' });
+    const url = api.request.mock.calls[0][0].url as string;
+    expect(url).toContain('SortBy=AlbumArtist');
+    expect(url).toContain('SortOrder=Descending');
+  });
+
+  it('getMusicArtists：排序透传，缺省仍为 SortName 升序', async () => {
+    const { adapter, api } = makeAdapter('EMBY');
+    await adapter.getMusicArtists('u1', 'lib1', 0, { sortBy: 'DATE_CREATED', sortOrder: 'DESC' });
+    const customUrl = api.request.mock.calls[0][0].url as string;
+    expect(customUrl).toContain('SortBy=DateCreated');
+    expect(customUrl).toContain('SortOrder=Descending');
+
+    await adapter.getMusicArtists('u1', 'lib1', 0);
+    const defaultUrl = api.request.mock.calls[1][0].url as string;
+    expect(defaultUrl).toContain('SortBy=SortName');
+    expect(defaultUrl).toContain('SortOrder=Ascending');
+  });
+
   it('getMusicPlaylists：IncludeItemTypes=Playlist 且不带 ParentId（歌单为服务端全局条目）', async () => {
     const { adapter, api } = makeAdapter('EMBY');
     await adapter.getMusicPlaylists('u1', 0);

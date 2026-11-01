@@ -1,8 +1,8 @@
 /**
  * 库页排序菜单（参考稿：库名居中、右上角排序）：
- * 导航栏右上角按钮（三条递减横线图标）+ 页内下拉面板，列出 SORT_OPTIONS 十三项
- * （标题 / 添加日期 / 发行日期 / 公众评分 / 影评人评分 / 分级 / 播放次数 / 播放日期 /
- * 文件名 / 文件时长 / 文件大小 / 文件格式 / 随机）。选中项显示「✓」并跟随升降序箭头
+ * 导航栏右上角按钮（三条递减横线图标）+ 页内下拉面板，默认列出视频类 SORT_OPTIONS 十三项，
+ * 调用方可传 optionList 按当前页面/条目类型收窄（书库/文件夹/照片/音频各自的可用字段）。
+ * 选中项显示「✓」并跟随升降序箭头
  * （↓ 降序 / ↑ 升序；随机排序无方向，不显示箭头）。项数多于可视高度时面板内滚动。
  * 面板为页内浮层（非 Modal）：覆盖筛选条与海报墙，点击空白处或系统返回键关闭。
  */
@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 
 import type { SortByEnum } from '@/adapter/model';
-import { SORT_OPTIONS } from '@/constant/browse';
+import { SORT_OPTIONS, type SortOption } from '@/constant/browse';
 import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 
@@ -55,10 +55,18 @@ interface SortMenuProps {
   sortOrder: 'ASC' | 'DESC';
   onSelect: (sortBy: SortByEnum) => void;
   onClose: () => void;
+  /** 可用排序项（按页面/条目类型过滤；缺省为视频类十三项） */
+  optionList?: readonly SortOption[];
 }
 
 /** 排序下拉面板（绝对定位铺满页面内容区，面板贴右上角；超出一屏时面板内滚动） */
-export function SortMenu({ sortBy, sortOrder, onSelect, onClose }: SortMenuProps) {
+export function SortMenu({
+  sortBy,
+  sortOrder,
+  onSelect,
+  onClose,
+  optionList = SORT_OPTIONS,
+}: SortMenuProps) {
   const t = useTheme();
   const styles = createStyles(t);
   // 面板最大高度 = 屏高 55%（13 项超出时内部滚动，不撑满整屏）
@@ -85,7 +93,7 @@ export function SortMenu({ sortBy, sortOrder, onSelect, onClose }: SortMenuProps
           contentContainerStyle={styles.panelContent}
           bounces={false}
         >
-          {SORT_OPTIONS.map((option) => {
+          {optionList.map((option) => {
             const active = option.value === sortBy;
             return (
               <Pressable

@@ -54,14 +54,22 @@ export async function fetchWallPage(query: ItemQuery): Promise<Paged<MediaLibrar
 
 // —— M5：音乐查询封装（页码从 0 起，服务端分页步长见 adapter）——
 
-/** 艺术家区 */
-export function fetchMusicArtists(libraryId: string, page: number): Promise<Paged<MediaLibraryItem>> {
-  return getActiveAdapter().getMusicArtists(requireUserId(), libraryId, page);
+/** 艺术家区（排序由音乐库菜单传入；缺省 SortName 升序） */
+export function fetchMusicArtists(
+  libraryId: string,
+  page: number,
+  sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+): Promise<Paged<MediaLibraryItem>> {
+  return getActiveAdapter().getMusicArtists(requireUserId(), libraryId, page, sort);
 }
 
-/** 全部歌曲区 */
-export function fetchAllSongs(libraryId: string, page: number): Promise<Paged<AudioItem>> {
-  return getActiveAdapter().getAllSongs(requireUserId(), libraryId, page);
+/** 全部歌曲区（排序由音乐库菜单传入；缺省 SortName 升序） */
+export function fetchAllSongs(
+  libraryId: string,
+  page: number,
+  sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+): Promise<Paged<AudioItem>> {
+  return getActiveAdapter().getAllSongs(requireUserId(), libraryId, page, sort);
 }
 
 /**

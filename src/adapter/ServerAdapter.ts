@@ -133,8 +133,13 @@ export interface ServerAdapter {
   /** 专辑区：ParentId={libraryId} + IncludeItemTypes=MusicAlbum，SortName 升序分页 */
   getMusicAlbums(userId: string, libraryId: string, page: number): Promise<Paged<MediaLibraryItem>>;
 
-  /** 艺术家区：IncludeItemTypes=MusicArtist，头像 = Primary */
-  getMusicArtists(userId: string, libraryId: string, page: number): Promise<Paged<MediaLibraryItem>>;
+  /** 艺术家区：IncludeItemTypes=MusicArtist，头像 = Primary；排序由音乐库菜单传入 */
+  getMusicArtists(
+    userId: string,
+    libraryId: string,
+    page: number,
+    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+  ): Promise<Paged<MediaLibraryItem>>;
 
   /**
    * 歌单区：IncludeItemTypes=Playlist 全量查询，**不带 ParentId**——歌单常独立于音乐库
@@ -142,8 +147,13 @@ export interface ServerAdapter {
    */
   getMusicPlaylists(userId: string, page: number): Promise<Paged<MediaLibraryItem>>;
 
-  /** 全部歌曲区：IncludeItemTypes=Audio，SortName 升序服务端分页 */
-  getAllSongs(userId: string, libraryId: string, page: number): Promise<Paged<AudioItem>>;
+  /** 全部歌曲区：IncludeItemTypes=Audio，服务端分页；排序由音乐库菜单传入 */
+  getAllSongs(
+    userId: string,
+    libraryId: string,
+    page: number,
+    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+  ): Promise<Paged<AudioItem>>;
 
   /** 专辑曲目（专辑数量级小，不翻页；曲序 = ParentIndexNumber,IndexNumber,SortName 多键排序） */
   getAlbumTracks(userId: string, albumId: string): Promise<AudioItem[]>;

@@ -32,6 +32,8 @@ import { SegmentedControl } from '@/component/SegmentedControl';
 import { SortMenu, SortMenuButton } from '@/component/SortMenu';
 import { showToast } from '@/component/Toast';
 import {
+  BOOK_SORT_OPTIONS,
+  FOLDER_SORT_OPTIONS,
   GRID_COLUMNS,
   libraryViewOptionsOf,
   PAGE_END_THRESHOLD,
@@ -119,6 +121,19 @@ function LibraryBody({ library, accountKey }: LibraryBodyProps) {
   const miniPlayerPadding = useMiniPlayerPadding();
 
   const isFolderView = view === 'folder';
+  // 当前视图可用的排序项：仅展示该条目类型有实际排序意义的字段
+  const sortOptionList = useMemo(() => {
+    if (isFolderView) {
+      return FOLDER_SORT_OPTIONS;
+    }
+    return library.type === 'BOOK' ? BOOK_SORT_OPTIONS : SORT_OPTIONS;
+  }, [isFolderView, library.type]);
+
+  // 当前字段不在可用集合（如从视频视图切到书库/文件夹）时按默认标题升序查询与展示，
+  // 切回支持该字段的视图自动恢复；不写 state，避免视图切换产生连锁渲染
+  const sortSupported = sortOptionList.some((option) => option.value === sortBy);
+  const activeSortBy = sortSupported ? sortBy : DEFAULT_LIBRARY_SORT.sortBy;
+  const activeSortOrder = sortSupported ? sortOrder : DEFAULT_LIBRARY_SORT.sortOrder;
   // 当前容器：文件夹浏览取路径末端，其余视图为库根
   const containerId =
     folderPath.length > 0 ? folderPath[folderPath.length - 1] : library.id;
@@ -162,15 +177,15 @@ function LibraryBody({ library, accountKey }: LibraryBodyProps) {
       userId,
       parentId: containerId,
       kinds,
-      sortBy,
-      sortOrder,
+      sortBy: activeSortBy,
+      sortOrder: activeSortOrder,
       filters,
       // 文件夹浏览只列当前层（Recursive=false）
       recursive: isFolderView ? false : undefined,
       startIndex: 0,
       limit: PAGE_SIZE,
     }),
-    [userId, containerId, kinds, sortBy, sortOrder, filters, isFolderView]
+    [userId, containerId, kinds, activeSortBy, activeSortOrder, filters, isFolderView]
   );
 
   // 缓存键（§4.8 规范化）：视图/排序/目录变化 → 键变化 → effect 重新拉取
@@ -253,13 +268,13 @@ function LibraryBody({ library, accountKey }: LibraryBodyProps) {
   const handleSelectSort = useCallback(
     (next: SortByEnum) => {
       setSortMenuOpen(false);
-      const option = SORT_OPTIONS.find((item) => item.value === next);
+      const option = sortOptionList.find((item) => item.value === next);
       let nextOrder: 'ASC' | 'DESC';
-      if (next === sortBy) {
+      if (next === activeSortBy) {
         if (option?.defaultOrder === null) {
           return;
         }
-        nextOrder = sortOrder === 'ASC' ? 'DESC' : 'ASC';
+        nextOrder = activeSortOrder === 'ASC' ? 'DESC' : 'ASC';
       } else {
         nextOrder = option?.defaultOrder ?? 'ASC';
       }
@@ -270,7 +285,7 @@ function LibraryBody({ library, accountKey }: LibraryBodyProps) {
         sortOrder: nextOrder,
       });
     },
-    [sortBy, sortOrder, sortKey]
+    [activeSortBy, activeSortOrder, sortKey, sortOptionList]
   );
 
   const handleToggleSortMenu = useCallback(() => setSortMenuOpen((open) => !open), []);
@@ -346,8 +361,9 @@ function LibraryBody({ library, accountKey }: LibraryBodyProps) {
   // 排序面板（任何视图都渲染，避免加载期间点开后面板悬空）
   const sortMenu = sortMenuOpen ? (
     <SortMenu
-      sortBy={sortBy}
-      sortOrder={sortOrder}
+      sortBy={activeSortBy}
+      sortOrder={activeSortOrder}
+      optionList={sortOptionList}
       onSelect={handleSelectSort}
       onClose={handleCloseSortMenu}
     />

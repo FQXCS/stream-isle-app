@@ -39,15 +39,20 @@ export const GRID_COLUMNS = 3;
 export const PAGE_END_THRESHOLD = 0.5;
 
 /**
- * 库页排序选项（参考稿排序菜单十三项；value 为客户端枚举，服务器参数名映射见 BaseAdapter）。
- * defaultOrder 为首次选中该字段时的排序方向；再次点击当前项由页面切换升降序
- * （随机排序无方向，defaultOrder 为 null，不显示箭头也不切换）。
+ * 排序选项（value 为客户端枚举，label 为菜单文案，defaultOrder 为首次选中该字段时的排序方向；
+ * 随机排序无方向，defaultOrder 为 null，不显示箭头也不切换）。
  */
-export const SORT_OPTIONS: readonly {
+export interface SortOption {
   value: SortByEnum;
   label: string;
   defaultOrder: 'ASC' | 'DESC' | null;
-}[] = [
+}
+
+/**
+ * 库页排序选项（参考稿排序菜单十三项；服务器参数名映射见 BaseAdapter）。
+ * 仅用于视频类（电影/剧集/家庭视频）：这些条目有大小/容器/时长/评分元数据。
+ */
+export const SORT_OPTIONS: readonly SortOption[] = [
   { value: 'SORT_NAME', label: '标题', defaultOrder: 'ASC' },
   { value: 'DATE_CREATED', label: '添加日期', defaultOrder: 'DESC' },
   { value: 'PREMIERE_DATE', label: '发行日期', defaultOrder: 'DESC' },
@@ -62,6 +67,75 @@ export const SORT_OPTIONS: readonly {
   { value: 'CONTAINER', label: '文件格式', defaultOrder: 'ASC' },
   { value: 'RANDOM', label: '随机', defaultOrder: null },
 ];
+
+/** 音频专有排序项（Emby 音乐排序词表；仅音乐库菜单展示） */
+const AUDIO_ONLY_SORT_OPTIONS: readonly SortOption[] = [
+  { value: 'ALBUM', label: '专辑', defaultOrder: 'ASC' },
+  { value: 'ALBUM_ARTIST', label: '专辑艺人', defaultOrder: 'ASC' },
+];
+
+/** 排序项查表（分组选项按 value 复用既有标签与默认方向） */
+const SORT_OPTION_MAP: Record<string, SortOption> = Object.fromEntries(
+  [...SORT_OPTIONS, ...AUDIO_ONLY_SORT_OPTIONS].map((option) => [option.value, option])
+);
+
+/** 按给定顺序取排序项（顺序即菜单展示顺序） */
+function sortOptionsOf(valueList: readonly SortByEnum[]): readonly SortOption[] {
+  return valueList.map((value) => SORT_OPTION_MAP[value]);
+}
+
+/**
+ * 音频（全部歌曲）排序项：Emby Web 音频菜单中本库有值的字段（实测大小/容器/时长均生效），
+ * 相对顺序沿用 SORT_OPTIONS；专辑/专辑艺人紧跟标题。
+ */
+export const AUDIO_SORT_OPTIONS: readonly SortOption[] = sortOptionsOf([
+  'SORT_NAME',
+  'ALBUM',
+  'ALBUM_ARTIST',
+  'DATE_CREATED',
+  'PREMIERE_DATE',
+  'PLAY_COUNT',
+  'DATE_PLAYED',
+  'FILENAME',
+  'RUNTIME',
+  'FILE_SIZE',
+  'CONTAINER',
+  'RANDOM',
+]);
+
+/** 音乐艺人：虚拟条目，仅名称/添加日期/随机有排序意义 */
+export const ARTIST_SORT_OPTIONS: readonly SortOption[] = sortOptionsOf([
+  'SORT_NAME',
+  'DATE_CREATED',
+  'RANDOM',
+]);
+
+/** 书库：仅名称/添加日期/播放态/文件名有值（首映日期/评分/时长/大小/容器实测为空） */
+export const BOOK_SORT_OPTIONS: readonly SortOption[] = sortOptionsOf([
+  'SORT_NAME',
+  'DATE_CREATED',
+  'PLAY_COUNT',
+  'DATE_PLAYED',
+  'FILENAME',
+]);
+
+/** 照片：名称/日期/文件名/容器/随机；评分与播放态基本无值，大小/时长实测不生效 */
+export const PHOTO_SORT_OPTIONS: readonly SortOption[] = sortOptionsOf([
+  'SORT_NAME',
+  'DATE_CREATED',
+  'PREMIERE_DATE',
+  'FILENAME',
+  'CONTAINER',
+  'RANDOM',
+]);
+
+/** 文件夹视图：子目录无大小/容器/时长/评分/播放态，仅名称/添加日期/文件名/随机 */
+export const FOLDER_SORT_OPTIONS: readonly SortOption[] = sortOptionsOf([
+  'SORT_NAME',
+  'DATE_CREATED',
+  'FILENAME',
+  'RANDOM',
+]);
 
 /**
  * 库页视图段（分段控件互斥单选项）：all=全部条目、favorite=收藏、unplayed=未看、

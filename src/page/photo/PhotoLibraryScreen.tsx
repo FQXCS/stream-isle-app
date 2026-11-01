@@ -7,7 +7,7 @@
  * 排序入口在导航栏右上角 SortMenu，选择按「服务器 + 库」持久化（libraryViewStore），重进默认沿用。
  * PhotoViewer 为独立全屏路由（05 §4.15）。
  */
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BackHandler, StyleSheet, View } from 'react-native';
@@ -15,7 +15,13 @@ import { BackHandler, StyleSheet, View } from 'react-native';
 import type { MediaLibraryItem, SortByEnum } from '@/adapter/model';
 import { SegmentedControl } from '@/component/SegmentedControl';
 import { SortMenu, SortMenuButton } from '@/component/SortMenu';
-import { PHOTO_VIEW_OPTIONS, SORT_OPTIONS, type PhotoViewEnum } from '@/constant/browse';
+import {
+  FOLDER_SORT_OPTIONS,
+  PHOTO_SORT_OPTIONS,
+  PHOTO_VIEW_OPTIONS,
+  SORT_OPTIONS,
+  type PhotoViewEnum,
+} from '@/constant/browse';
 import { type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { useAccountStore } from '@/store/accountStore';
@@ -57,7 +63,6 @@ export function PhotoLibraryScreen({ libraryId }: PhotoLibraryScreenProps) {
   const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>(
     () => savedSort?.sortOrder ?? DEFAULT_LIBRARY_SORT.sortOrder
   );
-  const sort: LibrarySortState = { sortBy, sortOrder };
   // 视图段：视频 / 图片 / 文件夹
   const [view, setView] = useState<PhotoViewEnum>('photo');
   // 文件夹浏览路径（空=库根目录）
@@ -66,6 +71,24 @@ export function PhotoLibraryScreen({ libraryId }: PhotoLibraryScreenProps) {
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
 
   const current = folderPath.length > 0 ? folderPath[folderPath.length - 1] : null;
+
+  // 当前视图可用的排序项：视频=全量视频字段，图片/相册=照片字段，文件夹=目录字段
+  const sortOptionList = useMemo(() => {
+    if (view === 'video') {
+      return SORT_OPTIONS;
+    }
+    if (view === 'photo') {
+      return PHOTO_SORT_OPTIONS;
+    }
+    return current?.kind === 'album' ? PHOTO_SORT_OPTIONS : FOLDER_SORT_OPTIONS;
+  }, [view, current]);
+
+  // 当前字段不在可用集合（如视频视图的大小/时长切到图片或文件夹）时按默认标题升序，
+  // 切回支持该字段的视图自动恢复；不写 state，避免视图切换产生连锁渲染
+  const sortSupported = sortOptionList.some((option) => option.value === sortBy);
+  const activeSortBy = sortSupported ? sortBy : DEFAULT_LIBRARY_SORT.sortBy;
+  const activeSortOrder = sortSupported ? sortOrder : DEFAULT_LIBRARY_SORT.sortOrder;
+  const sort: LibrarySortState = { sortBy: activeSortBy, sortOrder: activeSortOrder };
 
   /** 进入下一层（子目录或相册） */
   const handleOpenEntry = useCallback((entry: PhotoFolderRef) => {
@@ -102,13 +125,13 @@ export function PhotoLibraryScreen({ libraryId }: PhotoLibraryScreenProps) {
   const handleSelectSort = useCallback(
     (next: SortByEnum) => {
       setSortMenuOpen(false);
-      const option = SORT_OPTIONS.find((item) => item.value === next);
+      const option = sortOptionList.find((item) => item.value === next);
       let nextOrder: 'ASC' | 'DESC';
-      if (next === sortBy) {
+      if (next === activeSortBy) {
         if (option?.defaultOrder === null) {
           return;
         }
-        nextOrder = sortOrder === 'ASC' ? 'DESC' : 'ASC';
+        nextOrder = activeSortOrder === 'ASC' ? 'DESC' : 'ASC';
       } else {
         nextOrder = option?.defaultOrder ?? 'ASC';
       }
@@ -119,7 +142,7 @@ export function PhotoLibraryScreen({ libraryId }: PhotoLibraryScreenProps) {
         sortOrder: nextOrder,
       });
     },
-    [sortBy, sortOrder, sortKey]
+    [activeSortBy, activeSortOrder, sortKey, sortOptionList]
   );
 
   const handleToggleSortMenu = useCallback(() => setSortMenuOpen((open) => !open), []);
@@ -175,8 +198,9 @@ export function PhotoLibraryScreen({ libraryId }: PhotoLibraryScreenProps) {
         ))}
       {sortMenuOpen && (
         <SortMenu
-          sortBy={sortBy}
-          sortOrder={sortOrder}
+          sortBy={activeSortBy}
+          sortOrder={activeSortOrder}
+          optionList={sortOptionList}
           onSelect={handleSelectSort}
           onClose={handleCloseSortMenu}
         />

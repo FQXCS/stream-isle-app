@@ -9,7 +9,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { FlashList } from '@shopify/flash-list';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import type { AudioItem, MediaLibraryItem } from '@/adapter/model';
+import type { AudioItem, MediaLibraryItem, SortByEnum } from '@/adapter/model';
 import { EmptyView } from '@/component/EmptyView';
 import { ErrorView } from '@/component/ErrorView';
 import { useMiniPlayerPadding } from '@/component/MiniPlayer';
@@ -50,15 +50,21 @@ interface MusicFolderViewProps {
   folderId: string;
   /** 进入子文件夹（由页面维护路径栈） */
   onOpenFolder: (folder: MediaLibraryItem) => void;
+  /** 排序字段/方向（目录层可用项由音乐库菜单按视图决定） */
+  sortBy: SortByEnum;
+  sortOrder: 'ASC' | 'DESC';
 }
 
-export function MusicFolderView({ folderId, onOpenFolder }: MusicFolderViewProps) {
+export function MusicFolderView({ folderId, onOpenFolder, sortBy, sortOrder }: MusicFolderViewProps) {
   const t = useTheme();
   const styles = createStyles(t);
   const navigation = useNavigation<LibraryNavigationProp>();
   const miniPlayerPadding = useMiniPlayerPadding();
   const state = usePagedLoad<MediaLibraryItem>(
-    useCallback((page) => fetchFolderPage(folderId, page), [folderId])
+    useCallback(
+      (page) => fetchFolderPage(folderId, page, { sortBy, sortOrder }),
+      [folderId, sortBy, sortOrder]
+    )
   );
 
   // 已加载的目录条目（其余类型过滤掉，避免出现空行；空文件夹不展示）

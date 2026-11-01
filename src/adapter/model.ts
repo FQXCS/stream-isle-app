@@ -46,7 +46,10 @@ export type SortByEnum =
   | 'RUNTIME'
   | 'FILE_SIZE'
   | 'CONTAINER'
-  | 'RANDOM';
+  | 'RANDOM'
+  // 音频专有排序（音乐库菜单；Emby 音乐排序词表）
+  | 'ALBUM'
+  | 'ALBUM_ARTIST';
 
 /** 图片类型（与 URL 段同形 /Images/{type}，调用字面量直接兼容） */
 export type ImageTypeEnum = 'Primary' | 'Backdrop' | 'Thumb' | 'Logo' | 'Banner' | 'Profile';
