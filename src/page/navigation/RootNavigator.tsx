@@ -20,6 +20,7 @@ import { ROUTES } from '@/constant/navigation';
 import { LIBRARY_TYPE_LABELS, TAB_CATALOG } from '@/constant/libraryTabs';
 import { errorMessageOf } from '@/infra/error';
 import { apiEvents } from '@/infra/api/apiEvents';
+import { AppIcon } from '@/component/AppIcon';
 import { MiniPlayer } from '@/component/MiniPlayer';
 import { SharedPosterOverlay } from '@/component/SharedPosterOverlay';
 import { ToastHost } from '@/component/Toast';
@@ -61,17 +62,37 @@ const Tabs = createBottomTabNavigator<TabsParamList>();
 function TabsNavigator() {
   return (
     <Tabs.Navigator screenOptions={{ headerShown: false }}>
-      <Tabs.Screen name={ROUTES.TAB_HOME} component={HomeScreen} options={{ title: '首页' }} />
+      <Tabs.Screen
+        name={ROUTES.TAB_HOME}
+        component={HomeScreen}
+        options={{
+          title: '首页',
+          tabBarIcon: ({ color, size }) => <AppIcon name="home" size={size} color={color} />,
+        }}
+      />
       <Tabs.Screen
         name={ROUTES.TAB_LIBRARIES}
         component={LibrariesScreen}
-        options={{ title: '媒体库' }}
+        options={{
+          title: '媒体库',
+          tabBarIcon: ({ color, size }) => <AppIcon name="library" size={size} color={color} />,
+        }}
       />
-      <Tabs.Screen name={ROUTES.TAB_SEARCH} component={SearchScreen} options={{ title: '搜索' }} />
+      <Tabs.Screen
+        name={ROUTES.TAB_SEARCH}
+        component={SearchScreen}
+        options={{
+          title: '搜索',
+          tabBarIcon: ({ color, size }) => <AppIcon name="search" size={size} color={color} />,
+        }}
+      />
       <Tabs.Screen
         name={ROUTES.TAB_SETTINGS}
         component={SettingsScreen}
-        options={{ title: '设置' }}
+        options={{
+          title: '设置',
+          tabBarIcon: ({ color, size }) => <AppIcon name="settings" size={size} color={color} />,
+        }}
       />
     </Tabs.Navigator>
   );

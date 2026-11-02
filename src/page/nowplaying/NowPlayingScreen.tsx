@@ -11,6 +11,7 @@ import { useProgress } from '@rntp/player';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { SeekBar } from '@/page/player/components/SeekBar';
+import { AppIcon } from '@/component/AppIcon';
 import { EmptyView } from '@/component/EmptyView';
 import { COLORS, SPACING } from '@/constant/theme';
 import { audioService } from '@/service/AudioService';
@@ -62,7 +63,7 @@ export function NowPlayingScreen() {
               />
             ) : (
               <View style={[styles.cover, styles.coverFallback]}>
-                <Text style={styles.coverFallbackText}>♪</Text>
+                <AppIcon name="audio" size={64} color={COLORS.textSecondary} />
               </View>
             )}
           </>
@@ -91,8 +92,9 @@ export function NowPlayingScreen() {
             onPress={() => {
               void audioService.previous();
             }}
+            accessibilityLabel="上一首"
           >
-            <Text style={styles.controlIcon}>⏮</Text>
+            <AppIcon name="skipPrevious" size={26} color={COLORS.textPrimary} />
           </Pressable>
           <Pressable
             hitSlop={8}
@@ -100,24 +102,27 @@ export function NowPlayingScreen() {
             onPress={() => {
               void audioService.togglePlayPause();
             }}
+            accessibilityLabel={isPlaying ? '暂停' : '播放'}
           >
-            <Text style={styles.playIcon}>{isPlaying ? '⏸' : '▶'}</Text>
+            <AppIcon name={isPlaying ? 'pause' : 'play'} size={28} color="#FFFFFF" />
           </Pressable>
           <Pressable
             hitSlop={8}
             onPress={() => {
               void audioService.next();
             }}
+            accessibilityLabel="下一首"
           >
-            <Text style={styles.controlIcon}>⏭</Text>
+            <AppIcon name="skipNext" size={26} color={COLORS.textPrimary} />
           </Pressable>
           <Pressable
             hitSlop={8}
             onPress={() => {
               setQueueVisible((value) => !value);
             }}
+            accessibilityLabel="播放队列"
           >
-            <Text style={styles.controlIcon}>☰</Text>
+            <AppIcon name="playlist" size={26} color={COLORS.textPrimary} />
           </Pressable>
           {/* M6：封面/歌词双态切换（06 §4.6.3） */}
           <Pressable
@@ -125,8 +130,13 @@ export function NowPlayingScreen() {
             onPress={() => {
               setShowLyrics((value) => !value);
             }}
+            accessibilityLabel={showLyrics ? '显示封面' : '显示歌词'}
           >
-            <Text style={[styles.controlIcon, showLyrics && styles.controlIconActive]}>词</Text>
+            <AppIcon
+              name="lyrics"
+              size={26}
+              color={showLyrics ? COLORS.accent : COLORS.textPrimary}
+            />
           </Pressable>
         </View>
       </ScrollView>
@@ -151,10 +161,8 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xl,
   },
   coverFallback: { alignItems: 'center', justifyContent: 'center' },
-  coverFallbackText: { color: COLORS.textSecondary, fontSize: 64 },
   /** M6 歌词态容器（与大封面同占位） */
   lyricsBox: { height: 340, alignSelf: 'stretch' },
-  controlIconActive: { color: COLORS.accent },
   titleBlock: { alignItems: 'center', gap: SPACING.xs },
   title: { color: COLORS.textPrimary, fontSize: 20, fontWeight: '600' },
   artist: { color: COLORS.textSecondary, fontSize: 14 },
@@ -164,7 +172,6 @@ const styles = StyleSheet.create({
     gap: SPACING.xl,
     marginTop: SPACING.s,
   },
-  controlIcon: { color: COLORS.textPrimary, fontSize: 26 },
   playButton: {
     width: 64,
     height: 64,
@@ -173,7 +180,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: COLORS.accent,
   },
-  playIcon: { color: '#FFFFFF', fontSize: 28 },
   queuePanel: {
     position: 'absolute',
     left: 0,

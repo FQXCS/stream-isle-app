@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { SeekBar } from '@/page/player/components/SeekBar';
+import { AppIcon } from '@/component/AppIcon';
 import { CONTROLS_AUTO_HIDE_MS } from '@/constant/playback';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
 import { formatClock } from '@/util/format';
@@ -83,31 +84,55 @@ export function ControlOverlay({
     <View style={styles.container} pointerEvents="box-none">
       {/* 顶部：返回 + 标题 + 锁屏 */}
       <View style={styles.topBar}>
-        <Pressable style={styles.iconButton} onPress={interact(onExit)}>
-          <Text style={styles.iconText}>←</Text>
+        <Pressable
+          style={styles.iconButton}
+          onPress={interact(onExit)}
+          accessibilityLabel="返回"
+        >
+          <AppIcon name="arrowLeft" size={20} color={COLORS.textPrimary} />
         </Pressable>
         <Text style={styles.title} numberOfLines={1}>
           {title}
         </Text>
-        <Pressable style={styles.iconButton} onPress={interact(onToggleLock)}>
-          <Text style={styles.iconText}>🔒</Text>
+        <Pressable
+          style={styles.iconButton}
+          onPress={interact(onToggleLock)}
+          accessibilityLabel="锁定屏幕"
+        >
+          <AppIcon name="lock" size={20} color={COLORS.textPrimary} />
         </Pressable>
       </View>
       <View style={styles.flexSpacer} pointerEvents="none" />
       {/* 底部：播放/暂停 + 字幕/音轨/码率三按钮 + SeekBar + 时长 / 剩余 */}
       <View style={styles.bottomBar}>
-        <Pressable style={styles.iconButton} onPress={interact(onTogglePlay)}>
-          <Text style={styles.iconText}>{isPlaying ? '⏸' : '▶'}</Text>
+        <Pressable
+          style={styles.iconButton}
+          onPress={interact(onTogglePlay)}
+          accessibilityLabel={isPlaying ? '暂停' : '播放'}
+        >
+          <AppIcon name={isPlaying ? 'pause' : 'play'} size={20} color={COLORS.textPrimary} />
         </Pressable>
-        <Pressable style={styles.iconButton} onPress={interact(onOpenSubtitleMenu)}>
-          <Text style={styles.iconText}>字</Text>
+        <Pressable
+          style={styles.iconButton}
+          onPress={interact(onOpenSubtitleMenu)}
+          accessibilityLabel="字幕"
+        >
+          <AppIcon name="subtitle" size={20} color={COLORS.textPrimary} />
         </Pressable>
-        <Pressable style={styles.iconButton} onPress={interact(onOpenAudioTrackMenu)}>
-          <Text style={styles.iconText}>音</Text>
+        <Pressable
+          style={styles.iconButton}
+          onPress={interact(onOpenAudioTrackMenu)}
+          accessibilityLabel="音轨"
+        >
+          <AppIcon name="audio" size={20} color={COLORS.textPrimary} />
         </Pressable>
         {showBitrate && (
-          <Pressable style={styles.iconButton} onPress={interact(onOpenBitrateMenu)}>
-            <Text style={styles.iconText}>码</Text>
+          <Pressable
+            style={styles.iconButton}
+            onPress={interact(onOpenBitrateMenu)}
+            accessibilityLabel="码率"
+          >
+            <AppIcon name="bitrate" size={20} color={COLORS.textPrimary} />
           </Pressable>
         )}
         <SeekBar
@@ -151,7 +176,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.35)',
   },
   iconButton: { padding: SPACING.s },
-  iconText: { color: COLORS.textPrimary, fontSize: 20 },
   title: {
     color: COLORS.textPrimary,
     fontSize: FONT_SIZE.body,

@@ -6,6 +6,7 @@
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { AppIcon } from '@/component/AppIcon';
 import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 
@@ -45,7 +46,7 @@ export function SettingRow({ label, description, avatarUrl, value, badge, onPres
             />
           ) : (
             // 无头像通用占位（避免与标签首字混淆）
-            <Text style={styles.avatarFallback}>👤</Text>
+            <AppIcon name="account" size={16} color={t.textSecondary} />
           )}
         </View>
       ) : null}
@@ -58,7 +59,9 @@ export function SettingRow({ label, description, avatarUrl, value, badge, onPres
           <Text style={[styles.badge, badge.danger && styles.badgeDanger]}>{badge.text}</Text>
         )}
         {value !== undefined && <Text style={styles.value}>{value}</Text>}
-        {(showArrow ?? onPress !== undefined) && <Text style={styles.arrow}>›</Text>}
+        {(showArrow ?? onPress !== undefined) && (
+          <AppIcon name="chevronRight" size={16} color={t.textSecondary} />
+        )}
       </View>
     </>
   );
@@ -92,7 +95,6 @@ const createStyles = (t: ThemeTokens) =>
     justifyContent: 'center',
   },
   avatar: { width: '100%', height: '100%' },
-  avatarFallback: { color: t.textSecondary, fontSize: FONT_SIZE.body },
   textWrap: { flex: 1, gap: 2 },
   label: { color: t.textPrimary, fontSize: FONT_SIZE.body },
   description: { color: t.textSecondary, fontSize: FONT_SIZE.body - 2 },
@@ -109,5 +111,4 @@ const createStyles = (t: ThemeTokens) =>
   },
   badgeDanger: { color: t.warning, borderColor: t.warning },
   value: { color: t.textSecondary, fontSize: FONT_SIZE.body },
-  arrow: { color: t.textSecondary, fontSize: FONT_SIZE.title },
 });

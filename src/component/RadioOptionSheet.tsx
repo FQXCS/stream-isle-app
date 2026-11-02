@@ -4,6 +4,7 @@
  */
 import { Modal, Pressable, StyleSheet, Text } from 'react-native';
 
+import { AppIcon } from '@/component/AppIcon';
 import { POSTER_RADIUS, FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 
@@ -49,7 +50,7 @@ export function RadioOptionSheet<K extends string>({
                 <Text style={[styles.optionText, active && styles.optionTextActive]}>
                   {option.label}
                 </Text>
-                {active && <Text style={styles.check}>✓</Text>}
+                {active && <AppIcon name="check" size={14} color={t.accent} />}
               </Pressable>
             );
           })}
@@ -87,5 +88,4 @@ const createStyles = (t: ThemeTokens) =>
   pressed: { opacity: 0.7 },
   optionText: { color: t.textPrimary, fontSize: FONT_SIZE.body },
   optionTextActive: { color: t.accent },
-  check: { color: t.accent, fontSize: FONT_SIZE.body },
 });

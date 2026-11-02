@@ -20,12 +20,14 @@ interface HeroHeaderProps {
   detail: MediaDetail;
   /** 元数据行文案（页面按可播放/剧集口径拼好） */
   metaText: string;
+  /** 社区评分（仅非媒体流条目传入；以图标 + 数字渲染） */
+  rating?: number;
   onBack: () => void;
   /** 「更多」按钮矩形回调（菜单锚定用） */
   onMore: (anchor: AnchorRect) => void;
 }
 
-export function HeroHeader({ detail, metaText, onBack, onMore }: HeroHeaderProps) {
+export function HeroHeader({ detail, metaText, rating, onBack, onMore }: HeroHeaderProps) {
   // M6 转场：本页为飞行目标时真图延后淡入（active.uri 与海报同源时才生效，异源直接显示）
   const active = useTransitionStore((state) => state.active);
   const markTarget = useTransitionStore((state) => state.markTarget);
@@ -104,6 +106,12 @@ export function HeroHeader({ detail, metaText, onBack, onMore }: HeroHeaderProps
         <Text style={styles.meta} numberOfLines={2}>
           {metaText}
         </Text>
+        {rating !== undefined && (
+          <View style={styles.ratingRow}>
+            <AppIcon name="star" size={12} color="rgba(255,255,255,0.75)" />
+            <Text style={styles.meta}>{rating.toFixed(1)}</Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -150,4 +158,5 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.body - 1,
     textAlign: 'center',
   },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
 });

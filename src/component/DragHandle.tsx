@@ -1,10 +1,10 @@
 /**
- * 拖动把手（设置页已启用区）：Ionicons reorder-three（三条等长横线），
+ * 拖动把手（设置页已启用区）：图标库 drag-vertical，
  * 长按触发 ReorderableList 的 drag；颜色比标签文字更浅。
  */
-import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet } from 'react-native';
 
+import { AppIcon } from '@/component/AppIcon';
 import { SPACING } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 
@@ -23,7 +23,7 @@ export function DragHandle({ onLongPress }: DragHandleProps) {
       accessibilityRole="button"
       accessibilityLabel="拖动排序"
     >
-      <Ionicons name="reorder-three" size={20} color={t.textTertiary} />
+      <AppIcon name="dragHandle" size={20} color={t.textTertiary} />
     </Pressable>
   );
 }

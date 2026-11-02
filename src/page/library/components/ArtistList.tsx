@@ -6,6 +6,7 @@ import { FlashList } from '@shopify/flash-list';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { MediaLibraryItem } from '@/adapter/model';
+import { AppIcon } from '@/component/AppIcon';
 import { useMiniPlayerPadding } from '@/component/MiniPlayer';
 import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
@@ -41,7 +42,7 @@ export function ArtistList({ items, onPressItem, onEndReached, footer, onRefresh
             />
           ) : (
             <View style={[styles.avatar, styles.avatarFallback]}>
-              <Text style={styles.fallbackText}>♪</Text>
+              <AppIcon name="audio" size={16} color={t.textSecondary} />
             </View>
           )}
           <Text style={styles.name} numberOfLines={1}>
@@ -70,6 +71,5 @@ const createStyles = (t: ThemeTokens) =>
   },
   avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: t.surface },
   avatarFallback: { alignItems: 'center', justifyContent: 'center' },
-  fallbackText: { color: t.textSecondary, fontSize: FONT_SIZE.title },
   name: { color: t.textPrimary, fontSize: FONT_SIZE.body, flex: 1 },
 });

@@ -7,8 +7,9 @@
  */
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { AppIcon, type AppIconName } from '@/component/AppIcon';
 import { FONT_SIZE, POSTER_RADIUS, SPACING } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { ROUTES } from '@/constant/navigation';
@@ -35,9 +36,11 @@ export function DownloadBadge({ itemId, onStart, onPlayLocal, compact = false }:
   const navigation = useNavigation<NavigationProp>();
   const task = useDownloadStore((state) => state.taskMap[itemId]);
 
-  const label = (): string => {
+  const badgeContent = (): BadgeContent => {
     if (task === undefined) {
-      return compact ? '⬇' : '下载';
+      return compact
+        ? { icon: 'download', text: '', accessibilityLabel: '下载' }
+        : { text: '下载', accessibilityLabel: '下载' };
     }
     switch (task.status) {
       case 'queued':
@@ -45,16 +48,27 @@ export function DownloadBadge({ itemId, onStart, onPlayLocal, compact = false }:
         const total = task.totalBytes ?? 0;
         const percent =
           total > 0 ? Math.min(99, Math.round((task.progressBytes / total) * 100)) : 0;
-        return compact ? `${percent}%` : `下载中 ${percent}%`;
+        return {
+          text: compact ? `${percent}%` : `下载中 ${percent}%`,
+          accessibilityLabel: `下载中 ${percent}%`,
+        };
       }
       case 'paused':
-        return compact ? '⏸ 继续' : '继续';
+        return compact
+          ? { icon: 'pause', text: '继续', accessibilityLabel: '继续下载' }
+          : { text: '继续', accessibilityLabel: '继续下载' };
       case 'completed':
-        return compact ? '▶ 本地' : '已下载 · 本地播放';
+        return compact
+          ? { icon: 'play', text: '本地', accessibilityLabel: '本地播放' }
+          : { text: '已下载 · 本地播放', accessibilityLabel: '本地播放' };
       case 'failed':
-        return compact ? '⟳ 重试' : '重试';
+        return compact
+          ? { icon: 'refresh', text: '重试', accessibilityLabel: '重试下载' }
+          : { text: '重试', accessibilityLabel: '重试下载' };
       default:
-        return compact ? '⬇' : '下载';
+        return compact
+          ? { icon: 'download', text: '', accessibilityLabel: '下载' }
+          : { text: '下载', accessibilityLabel: '下载' };
     }
   };
 
@@ -87,6 +101,8 @@ export function DownloadBadge({ itemId, onStart, onPlayLocal, compact = false }:
     }
   };
 
+  const badge = badgeContent();
+
   return (
     <Pressable
       style={({ pressed }) => [
@@ -96,10 +112,27 @@ export function DownloadBadge({ itemId, onStart, onPlayLocal, compact = false }:
         task !== undefined && task.status === 'completed' && { backgroundColor: t.success },
       ]}
       onPress={handlePress}
+      accessibilityLabel={badge.accessibilityLabel}
     >
-      <Text style={[styles.text, compact && styles.textCompact]}>{label()}</Text>
+      {badge.icon !== undefined ? (
+        <View style={styles.iconLabelRow}>
+          <AppIcon name={badge.icon} size={12} color="#FFFFFF" />
+          {badge.text !== '' && (
+            <Text style={[styles.text, styles.textCompact]}>{badge.text}</Text>
+          )}
+        </View>
+      ) : (
+        <Text style={[styles.text, compact && styles.textCompact]}>{badge.text}</Text>
+      )}
     </Pressable>
   );
+}
+
+interface BadgeContent {
+  icon?: AppIconName;
+  text: string;
+  /** 无障碍完整语义（紧凑态文案被压缩） */
+  accessibilityLabel: string;
 }
 
 const styles = StyleSheet.create({
@@ -118,6 +151,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   pressed: { opacity: 0.7 },
+  iconLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   text: { color: '#FFFFFF', fontSize: FONT_SIZE.body },
   textCompact: { fontSize: FONT_SIZE.body - 2 },
 });

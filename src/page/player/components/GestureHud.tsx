@@ -4,6 +4,7 @@
  */
 import { StyleSheet, Text, View } from 'react-native';
 
+import { AppIcon, type AppIconName } from '@/component/AppIcon';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
 import { formatClock } from '@/util/format';
 
@@ -25,19 +26,29 @@ export function GestureHud({ hud }: GestureHudProps) {
     return null;
   }
   let text: string;
+  let icon: AppIconName | null = null;
   if (hud.kind === 'seek') {
     const deltaMs = hud.deltaMs ?? 0;
     const sign = deltaMs >= 0 ? '+' : '-';
     text = `${sign}${formatClock(Math.abs(deltaMs))}（${formatClock(hud.value)}）`;
   } else if (hud.kind === 'brightness') {
-    text = `☀ ${Math.round(hud.value * 100)}%`;
+    icon = 'brightness';
+    text = `${Math.round(hud.value * 100)}%`;
   } else {
-    text = `🔊 ${Math.round(hud.value * 100)}%`;
+    icon = 'volume';
+    text = `${Math.round(hud.value * 100)}%`;
   }
   return (
     <View style={styles.container} pointerEvents="none">
       <View style={styles.bubble}>
-        <Text style={styles.text}>{text}</Text>
+        {icon !== null ? (
+          <View style={styles.row}>
+            <AppIcon name={icon} size={16} color={COLORS.textPrimary} />
+            <Text style={styles.text}>{text}</Text>
+          </View>
+        ) : (
+          <Text style={styles.text}>{text}</Text>
+        )}
       </View>
     </View>
   );
@@ -59,5 +70,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.l,
     paddingVertical: SPACING.m,
   },
+  row: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs },
   text: { color: COLORS.textPrimary, fontSize: FONT_SIZE.title },
 });

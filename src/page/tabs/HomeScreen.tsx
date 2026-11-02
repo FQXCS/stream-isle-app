@@ -11,6 +11,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppError } from '@/infra/error';
+import { AppIcon } from '@/component/AppIcon';
 import { EmptyView } from '@/component/EmptyView';
 import { ErrorView } from '@/component/ErrorView';
 import { LoadingView } from '@/component/LoadingView';
@@ -109,8 +110,9 @@ export function HomeScreen() {
           hitSlop={8}
           onPress={() => navigation.navigate(ROUTES.HISTORY)}
           style={({ pressed }) => [styles.historyButton, pressed && styles.pressed]}
+          accessibilityLabel="观看历史"
         >
-          <Text style={[styles.historyIcon, { color: t.textPrimary }]}>🕘</Text>
+          <AppIcon name="history" size={22} color={t.textPrimary} />
         </Pressable>
       </View>
       {status === 'empty' ? (
@@ -154,7 +156,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: FONT_SIZE.header, fontWeight: '700' },
   historyButton: { padding: SPACING.s },
-  historyIcon: { fontSize: 22 },
   pressed: { opacity: 0.7 },
   section: { marginTop: SPACING.l, gap: SPACING.m },
   sectionTitle: {

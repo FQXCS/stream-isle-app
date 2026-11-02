@@ -10,6 +10,7 @@ import { FlashList } from '@shopify/flash-list';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { MediaLibraryItem } from '@/adapter/model';
+import { AppIcon } from '@/component/AppIcon';
 import { EmptyView } from '@/component/EmptyView';
 import { ErrorView } from '@/component/ErrorView';
 import { useMiniPlayerPadding } from '@/component/MiniPlayer';
@@ -193,7 +194,7 @@ export function LiveListTab({ tab, sort }: LiveListTabProps) {
               />
             ) : (
               <View style={[styles.thumb, styles.thumbFallback]}>
-                <Text style={styles.thumbFallbackText}>📺</Text>
+                <AppIcon name="tv" size={20} color={t.textSecondary} />
               </View>
             )}
             <View style={styles.textWrap}>
@@ -238,7 +239,6 @@ const createStyles = (t: ThemeTokens) =>
     },
     thumb: { width: 56, height: 40, borderRadius: 6, backgroundColor: t.bg },
     thumbFallback: { alignItems: 'center', justifyContent: 'center' },
-    thumbFallbackText: { fontSize: 20 },
     textWrap: { flex: 1, gap: 2 },
     name: { color: t.textPrimary, fontSize: FONT_SIZE.body },
     subtext: { color: t.textSecondary, fontSize: FONT_SIZE.body - 1 },

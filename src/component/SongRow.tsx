@@ -6,6 +6,7 @@ import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AudioItem } from '@/adapter/model';
+import { AppIcon } from '@/component/AppIcon';
 import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { formatClock } from '@/util/format';
@@ -53,7 +54,7 @@ export function SongRow({
         />
       ) : (
         <View style={[styles.cover, styles.coverFallback]}>
-          <Text style={styles.fallbackText}>♪</Text>
+          <AppIcon name="audio" size={16} color={t.textSecondary} />
         </View>
       )}
       <View style={styles.center}>
@@ -93,7 +94,6 @@ const createStyles = (t: ThemeTokens) =>
     },
     cover: { width: 44, height: 44, borderRadius: 6, backgroundColor: t.surface },
     coverFallback: { alignItems: 'center', justifyContent: 'center' },
-    fallbackText: { color: t.textSecondary, fontSize: FONT_SIZE.title },
     center: { flex: 1, gap: 2 },
     name: { color: t.textPrimary, fontSize: FONT_SIZE.body },
     activeText: { color: t.accent },

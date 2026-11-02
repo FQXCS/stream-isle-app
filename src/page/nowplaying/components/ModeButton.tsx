@@ -6,6 +6,7 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
 
 import type { RepeatModeEnum } from '@/adapter/model';
+import { AppIcon, type AppIconName } from '@/component/AppIcon';
 import { audioService } from '@/service/AudioService';
 import { usePlayerStore } from '@/store/playerStore';
 import { COLORS } from '@/constant/theme';
@@ -13,10 +14,10 @@ import { COLORS } from '@/constant/theme';
 /** 组合模式（shuffle 与 repeatMode 的合并展示态） */
 type CombinedMode = 'queue' | 'shuffle' | 'track';
 
-const MODE_META: Record<CombinedMode, { label: string; icon: string }> = {
-  queue: { label: '列表循环', icon: '🔁' },
-  shuffle: { label: '随机播放', icon: '🔀' },
-  track: { label: '单曲循环', icon: '🔂' },
+const MODE_META: Record<CombinedMode, { label: string; icon: AppIconName }> = {
+  queue: { label: '列表循环', icon: 'repeat' },
+  shuffle: { label: '随机播放', icon: 'shuffle' },
+  track: { label: '单曲循环', icon: 'repeatOne' },
 };
 
 function combinedOf(repeatMode: RepeatModeEnum, shuffle: boolean): CombinedMode {
@@ -48,7 +49,7 @@ export function ModeButton() {
 
   return (
     <Pressable hitSlop={8} style={styles.button} onPress={handleCycle}>
-      <Text style={styles.icon}>{MODE_META[mode].icon}</Text>
+      <AppIcon name={MODE_META[mode].icon} size={22} color={COLORS.textPrimary} />
       <Text style={styles.label}>{MODE_META[mode].label}</Text>
     </Pressable>
   );
@@ -56,6 +57,5 @@ export function ModeButton() {
 
 const styles = StyleSheet.create({
   button: { alignItems: 'center', paddingHorizontal: 12, paddingVertical: 4 },
-  icon: { fontSize: 22, color: COLORS.textPrimary },
   label: { color: COLORS.textSecondary, fontSize: 10, marginTop: 2 },
 });

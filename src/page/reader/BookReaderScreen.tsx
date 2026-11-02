@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import WebViewBase, { type WebViewMessageEvent, type WebViewProps } from 'react-native-webview';
 import * as ScreenOrientation from 'expo-screen-orientation';
 
+import { AppIcon } from '@/component/AppIcon';
 import { ErrorView } from '@/component/ErrorView';
 import { LoadingView } from '@/component/LoadingView';
 import { useTheme } from '@/component/useTheme';
@@ -231,8 +232,12 @@ export function BookReaderScreen() {
       {controlsVisible && (
         <>
           <View style={[styles.topBar, { paddingTop: insets.top + SPACING.s }]}>
-            <Pressable hitSlop={12} onPress={() => navigation.goBack()}>
-              <Text style={styles.closeText}>✕</Text>
+            <Pressable
+              hitSlop={12}
+              onPress={() => navigation.goBack()}
+              accessibilityLabel="关闭"
+            >
+              <AppIcon name="close" size={16} color="#FFFFFF" />
             </Pressable>
             <Text style={styles.title} numberOfLines={1}>
               {name}
@@ -277,7 +282,6 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.s,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
-  closeText: { color: '#fff', fontSize: FONT_SIZE.title },
   title: { flex: 1, color: '#fff', fontSize: FONT_SIZE.body },
   pageLabel: { color: '#fff', fontSize: FONT_SIZE.body },
   bottomBar: {

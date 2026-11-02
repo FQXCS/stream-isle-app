@@ -10,6 +10,7 @@ import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { MediaLibraryItem } from '@/adapter/model';
+import { AppIcon } from '@/component/AppIcon';
 import { FONT_SIZE, POSTER_RADIUS, SPACING } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { useTransitionStore } from '@/store/transitionStore';
@@ -68,7 +69,7 @@ export function PosterCard({
         )}
         {item.userData.played && (
           <View style={styles.watchedBadge}>
-            <Text style={styles.watchedIcon}>✓</Text>
+            <AppIcon name="check" size={12} color="#FFFFFF" />
           </View>
         )}
         {/* 收藏角标按钮（04 §4.4：仅收藏筛选下渲染，点击就地取消收藏/恢复） */}
@@ -77,8 +78,14 @@ export function PosterCard({
             style={styles.favoriteBadge}
             hitSlop={8}
             onPress={() => onToggleFavorite(item)}
+            accessibilityRole="button"
+            accessibilityLabel={item.userData.favorite ? '取消收藏' : '收藏'}
           >
-            <Text style={[styles.favoriteIcon, { color: t.accent }]}>{item.userData.favorite ? '♥' : '♡'}</Text>
+            <AppIcon
+              name={item.userData.favorite ? 'heart' : 'heartOutline'}
+              size={14}
+              color={t.accent}
+            />
           </Pressable>
         )}
         {progressPercent !== undefined && progressPercent > 0 && (
@@ -126,7 +133,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
-  watchedIcon: { color: '#FFFFFF', fontSize: 12, lineHeight: 14, fontWeight: '700' },
   /** 收藏角标按钮（04 §4.4，左上角，不与已看角标重叠） */
   favoriteBadge: {
     position: 'absolute',
@@ -139,7 +145,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.35)',
   },
-  favoriteIcon: { fontSize: 14, lineHeight: 16 },
   /** 取消收藏淡化置灰（不移除卡片，避免服务端分页索引跳动，04 §4.4） */
   dimmed: { opacity: 0.4 },
   progressTrack: {

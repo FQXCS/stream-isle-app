@@ -1,9 +1,9 @@
 /**
  * 库页排序菜单（参考稿：库名居中、右上角排序）：
- * 导航栏右上角按钮（三条递减横线图标）+ 页内下拉面板，默认列出视频类 SORT_OPTIONS 十三项，
+ * 导航栏右上角按钮（排序图标）+ 页内下拉面板，默认列出视频类 SORT_OPTIONS 十三项，
  * 调用方可传 optionList 按当前页面/条目类型收窄（书库/文件夹/照片/音频各自的可用字段）。
- * 选中项显示「✓」并跟随升降序箭头
- * （↓ 降序 / ↑ 升序；随机排序无方向，不显示箭头）。项数多于可视高度时面板内滚动。
+ * 选中项显示对勾并跟随升降序箭头
+ * （降序 / 升序；随机排序无方向，不显示箭头）。项数多于可视高度时面板内滚动。
  * 面板为页内浮层（非 Modal）：覆盖筛选条与海报墙，点击空白处或系统返回键关闭。
  */
 import { useEffect } from 'react';
@@ -20,6 +20,7 @@ import {
 import type { SortByEnum } from '@/adapter/model';
 import { SORT_OPTIONS, type SortOption } from '@/constant/browse';
 import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { AppIcon } from '@/component/AppIcon';
 import { useTheme } from '@/component/useTheme';
 
 interface SortMenuButtonProps {
@@ -27,7 +28,7 @@ interface SortMenuButtonProps {
   onPress: () => void;
 }
 
-/** 导航栏右上角排序按钮：三条左对齐、长度递减的横线（参考稿图标） */
+/** 导航栏右上角排序按钮（图标库 sort-variant） */
 export function SortMenuButton({ onPress }: SortMenuButtonProps) {
   const t = useTheme();
   const styles = createStyles(t);
@@ -39,11 +40,7 @@ export function SortMenuButton({ onPress }: SortMenuButtonProps) {
       accessibilityRole="button"
       accessibilityLabel="排序"
     >
-      <View style={styles.bars}>
-        <View style={[styles.bar, styles.barLong]} />
-        <View style={[styles.bar, styles.barMid]} />
-        <View style={[styles.bar, styles.barShort]} />
-      </View>
+      <AppIcon name="sort" size={22} color={t.textPrimary} />
     </Pressable>
   );
 }
@@ -101,14 +98,16 @@ export function SortMenu({
                 style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
                 onPress={() => onSelect(option.value)}
               >
-                <Text style={[styles.check, active && styles.activeText]}>
-                  {active ? '✓' : ''}
-                </Text>
+                <View style={styles.checkSlot}>
+                  {active && <AppIcon name="check" size={14} color={t.accent} />}
+                </View>
                 <Text style={[styles.label, active && styles.activeText]}>{option.label}</Text>
                 {active && option.defaultOrder !== null && (
-                  <Text style={[styles.arrow, styles.activeText]}>
-                    {sortOrder === 'DESC' ? '↓' : '↑'}
-                  </Text>
+                  <AppIcon
+                    name={sortOrder === 'DESC' ? 'arrowDown' : 'arrowUp'}
+                    size={14}
+                    color={t.accent}
+                  />
                 )}
               </Pressable>
             );
@@ -123,11 +122,6 @@ const createStyles = (t: ThemeTokens) =>
   StyleSheet.create({
     button: { paddingHorizontal: SPACING.xs, paddingVertical: SPACING.xs },
     pressed: { opacity: 0.6 },
-    bars: { gap: 3 },
-    bar: { height: 3, borderRadius: 1.5, backgroundColor: t.textPrimary },
-    barLong: { width: 20 },
-    barMid: { width: 14 },
-    barShort: { width: 8 },
     backdrop: {
       position: 'absolute',
       top: 0,
@@ -160,8 +154,7 @@ const createStyles = (t: ThemeTokens) =>
       gap: SPACING.s,
     },
     rowPressed: { backgroundColor: t.surface },
-    check: { width: 18, color: t.accent, fontSize: FONT_SIZE.body },
+    checkSlot: { width: 18, alignItems: 'flex-start' },
     label: { color: t.textPrimary, fontSize: FONT_SIZE.body },
-    arrow: { color: t.accent, fontSize: FONT_SIZE.body },
     activeText: { color: t.accent },
   });

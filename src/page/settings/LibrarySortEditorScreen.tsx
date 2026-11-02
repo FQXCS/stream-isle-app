@@ -7,6 +7,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { LibraryTypeEnum, ServerFlavor } from '@/adapter/model';
 import type { SortOption } from '@/constant/browse';
+import { AppIcon } from '@/component/AppIcon';
 import { DragHandle } from '@/component/DragHandle';
 import { EmptyView } from '@/component/EmptyView';
 import { SelectableRow } from '@/component/SelectableRow';
@@ -61,6 +62,16 @@ export function LibrarySortEditorScreen() {
     .filter((value) => !enabledValues.has(value))
     .map((value) => SORT_OPTION_META[value]);
   const atMin = enabledOptions.length <= 1;
+  const directionMark = (option: SortOption) =>
+    option.defaultOrder === null ? (
+      <Text style={styles.direction}>—</Text>
+    ) : (
+      <AppIcon
+        name={option.defaultOrder === 'DESC' ? 'arrowDown' : 'arrowUp'}
+        size={14}
+        color={t.textSecondary}
+      />
+    );
 
   return (
     <View style={styles.container}>
@@ -76,9 +87,11 @@ export function LibrarySortEditorScreen() {
           )
         }
         header={
-          <Text style={styles.sectionTitle}>
-            已启用（{enabledOptions.length} 项）· 长按 ≡ 拖动排序
-          </Text>
+          <View style={styles.hintRow}>
+            <Text style={styles.hintText}>已启用（{enabledOptions.length} 项）· 长按</Text>
+            <AppIcon name="dragHandle" size={12} color={t.textSecondary} />
+            <Text style={styles.hintText}>拖动排序</Text>
+          </View>
         }
         renderItem={(option, drag) => (
           <View style={styles.rowCard}>
@@ -88,7 +101,7 @@ export function LibrarySortEditorScreen() {
               checked
               disabled={atMin}
               description={atMin ? '至少保留 1 个' : undefined}
-              trailing={<Text style={styles.direction}>{directionOf(option)}</Text>}
+              trailing={directionMark(option)}
               onToggle={() => actions.toggleSort(flavor, libraryType, tab.id, option.value)}
             />
           </View>
@@ -105,7 +118,7 @@ export function LibrarySortEditorScreen() {
                       label={option.label}
                       checked={false}
                       divider={index < disabledOptions.length - 1}
-                      trailing={<Text style={styles.direction}>{directionOf(option)}</Text>}
+                      trailing={directionMark(option)}
                       onToggle={() =>
                         actions.toggleSort(flavor, libraryType, tab.id, option.value)
                       }
@@ -127,13 +140,6 @@ export function LibrarySortEditorScreen() {
   );
 }
 
-function directionOf(option: SortOption): string {
-  if (option.defaultOrder === null) {
-    return '—';
-  }
-  return option.defaultOrder === 'DESC' ? '↓' : '↑';
-}
-
 const createStyles = (t: ThemeTokens) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: t.bg },
@@ -145,6 +151,15 @@ const createStyles = (t: ThemeTokens) =>
       marginTop: SPACING.s,
       marginBottom: SPACING.xs,
     },
+    hintRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+      paddingHorizontal: SPACING.s,
+      marginTop: SPACING.s,
+      marginBottom: SPACING.xs,
+    },
+    hintText: { color: t.textSecondary, fontSize: FONT_SIZE.body - 1 },
     card: {
       backgroundColor: t.surface,
       borderRadius: POSTER_RADIUS,

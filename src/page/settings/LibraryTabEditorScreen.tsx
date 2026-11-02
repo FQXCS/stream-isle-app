@@ -6,6 +6,7 @@ import { useRoute } from '@react-navigation/native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { LibraryTypeEnum, ServerFlavor } from '@/adapter/model';
+import { AppIcon } from '@/component/AppIcon';
 import { DragHandle } from '@/component/DragHandle';
 import { SelectableRow } from '@/component/SelectableRow';
 import { SortableSettingsList } from '@/component/SortableSettingsList';
@@ -48,9 +49,13 @@ export function LibraryTabEditorScreen() {
           )
         }
         header={
-          <Text style={styles.sectionTitle}>
-            已启用（{enabledTabs.length}/{MAX_LIBRARY_TABS}）· 长按 ≡ 拖动排序
-          </Text>
+          <View style={styles.hintRow}>
+            <Text style={styles.hintText}>
+              已启用（{enabledTabs.length}/{MAX_LIBRARY_TABS}）· 长按
+            </Text>
+            <AppIcon name="dragHandle" size={12} color={t.textSecondary} />
+            <Text style={styles.hintText}>拖动排序</Text>
+          </View>
         }
         renderItem={(tab, drag) => (
           <View style={styles.rowCard}>
@@ -107,6 +112,15 @@ const createStyles = (t: ThemeTokens) =>
       marginTop: SPACING.s,
       marginBottom: SPACING.xs,
     },
+    hintRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+      paddingHorizontal: SPACING.s,
+      marginTop: SPACING.s,
+      marginBottom: SPACING.xs,
+    },
+    hintText: { color: t.textSecondary, fontSize: FONT_SIZE.body - 1 },
     card: {
       backgroundColor: t.surface,
       borderRadius: POSTER_RADIUS,

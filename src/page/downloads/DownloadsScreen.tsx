@@ -11,6 +11,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 
+import { AppIcon } from '@/component/AppIcon';
 import { EmptyView } from '@/component/EmptyView';
 import { useTheme } from '@/component/useTheme';
 import { FONT_SIZE, POSTER_RADIUS, SPACING } from '@/constant/theme';
@@ -157,7 +158,7 @@ export function DownloadsScreen() {
                   <Image source={{ uri: item.posterFileUri }} style={styles.poster} contentFit="cover" recyclingKey={item.itemId} />
                 ) : (
                   <View style={[styles.poster, styles.posterFallback, { backgroundColor: t.surfaceElevated }]}>
-                    <Text style={{ color: t.textTertiary }}>🎞</Text>
+                    <AppIcon name="trailer" size={20} color={t.textTertiary} />
                   </View>
                 )}
                 <View style={styles.info}>

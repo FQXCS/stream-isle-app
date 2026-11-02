@@ -13,6 +13,7 @@ import ImageViewing from 'react-native-image-viewing';
 import { Alert, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import type { PhotoItem } from '@/adapter/model';
+import { AppIcon } from '@/component/AppIcon';
 import { showToast } from '@/component/Toast';
 import { PHOTO_PAGE_SIZE, PHOTO_VIEWER_PRELOAD_REMAINING } from '@/constant/photo';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
@@ -182,8 +183,8 @@ function HeaderComponent({
 }) {
   return (
     <View style={styles.header}>
-      <Pressable hitSlop={8} onPress={onClose}>
-        <Text style={styles.closeText}>✕</Text>
+      <Pressable hitSlop={8} onPress={onClose} accessibilityLabel="关闭">
+        <AppIcon name="close" size={16} color={COLORS.textPrimary} />
       </Pressable>
       <View style={styles.headerCenter}>
         <Text style={styles.fileName} numberOfLines={1}>
@@ -246,7 +247,6 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.s,
   },
   headerCenter: { flex: 1, gap: 2 },
-  closeText: { color: COLORS.textPrimary, fontSize: FONT_SIZE.title },
   fileName: { color: COLORS.textPrimary, fontSize: FONT_SIZE.body },
   takenAt: { color: COLORS.textSecondary, fontSize: FONT_SIZE.body },
   originalBadge: { color: COLORS.accent, fontSize: FONT_SIZE.body },

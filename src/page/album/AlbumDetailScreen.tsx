@@ -13,6 +13,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { AlbumDetailModel, ArtistDetailModel, AudioItem } from '@/adapter/model';
+import { AppIcon } from '@/component/AppIcon';
 import { EmptyView } from '@/component/EmptyView';
 import { ErrorView } from '@/component/ErrorView';
 import { LoadingView } from '@/component/LoadingView';
@@ -82,7 +83,8 @@ function ActionRow({
   return (
     <View style={styles.actionRow}>
       <Pressable style={styles.primaryButton} onPress={handlePlayAll}>
-        <Text style={styles.primaryButtonText}>▶ 播放全部</Text>
+        <AppIcon name="play" size={16} color="#FFFFFF" />
+        <Text style={styles.primaryButtonText}>播放全部</Text>
       </Pressable>
       <Pressable style={styles.secondaryButton} onPress={handlePlayShuffled}>
         <Text style={styles.secondaryButtonText}>随机播放</Text>
@@ -171,7 +173,7 @@ function AlbumPlaylistBody({ kind, itemId }: { kind: 'album' | 'playlist'; itemI
           <Image source={{ uri: detail.coverImageUrl }} style={styles.cover} contentFit="cover" transition={200} />
         ) : (
           <View style={[styles.cover, styles.coverFallback]}>
-            <Text style={styles.coverFallbackText}>♪</Text>
+            <AppIcon name="audio" size={32} color={t.textSecondary} />
           </View>
         )}
         <View style={styles.headerText}>
@@ -259,7 +261,7 @@ function ArtistDetailBody({ artistId }: { artistId: string }) {
           <Image source={{ uri: detail.avatarImageUrl }} style={styles.avatar} contentFit="cover" transition={200} />
         ) : (
           <View style={[styles.avatar, styles.coverFallback]}>
-            <Text style={styles.coverFallbackText}>♪</Text>
+            <AppIcon name="audio" size={32} color={t.textSecondary} />
           </View>
         )}
         <Text style={styles.title}>{detail.name}</Text>
@@ -291,7 +293,7 @@ function ArtistDetailBody({ artistId }: { artistId: string }) {
                   />
                 ) : (
                   <View style={[styles.albumCover, styles.coverFallback]}>
-                    <Text style={styles.coverFallbackText}>♪</Text>
+                    <AppIcon name="audio" size={32} color={t.textSecondary} />
                   </View>
                 )}
                 <Text style={styles.albumName} numberOfLines={1}>
@@ -335,7 +337,6 @@ const createStyles = (t: ThemeTokens) =>
     backgroundColor: t.surface,
   },
   coverFallback: { alignItems: 'center', justifyContent: 'center' },
-  coverFallbackText: { color: t.textSecondary, fontSize: 32 },
   title: { color: t.textPrimary, fontSize: FONT_SIZE.header, fontWeight: '600' },
   meta: { color: t.textSecondary, fontSize: FONT_SIZE.body },
   actionRow: {
@@ -346,7 +347,10 @@ const createStyles = (t: ThemeTokens) =>
   },
   primaryButton: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
     backgroundColor: t.accent,
     borderRadius: 8,
     paddingVertical: SPACING.s,

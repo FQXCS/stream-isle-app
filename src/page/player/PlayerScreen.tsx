@@ -32,6 +32,7 @@ import NetInfo from '@react-native-community/netinfo';
 import * as ScreenOrientation from 'expo-screen-orientation';
 
 import type { AudioTrack, PlaybackSession, SubtitleTrack } from '@/adapter/model';
+import { AppIcon } from '@/component/AppIcon';
 import PlaybackGestures from '../../../modules/expo-playback-gestures';
 import type { BitrateTierKey } from '@/constant/bitrate';
 import {
@@ -778,8 +779,9 @@ export function PlayerScreen() {
       {/* 锁屏态：单击呼出解锁按钮（02 §4.12「锁屏时单击仅显示解锁按钮」），数秒无操作自动隐藏 */}
       {isLocked && unlockVisible && (
         <View style={styles.lockBar} pointerEvents="box-none">
-          <Pressable style={styles.unlockButton} onPress={toggleLock}>
-            <Text style={styles.unlockText}>🔓 解锁</Text>
+          <Pressable style={styles.unlockButton} onPress={toggleLock} accessibilityLabel="解锁">
+            <AppIcon name="unlock" size={16} color={COLORS.textPrimary} />
+            <Text style={styles.unlockText}>解锁</Text>
           </Pressable>
         </View>
       )}
@@ -865,6 +867,9 @@ const styles = StyleSheet.create({
     borderRadius: COLORS.posterRadius,
     paddingHorizontal: SPACING.m,
     paddingVertical: SPACING.s,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
   },
   unlockText: { color: COLORS.textPrimary, fontSize: FONT_SIZE.body },
   centerLayer: {

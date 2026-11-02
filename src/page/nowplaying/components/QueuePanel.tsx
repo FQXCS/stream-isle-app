@@ -9,6 +9,7 @@ import DraggableFlatList, { type DragEndParams } from 'react-native-draggable-fl
 import { useFocusEffect } from '@react-navigation/native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { AppIcon } from '@/component/AppIcon';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
 import { audioService, type AudioQueueEntry } from '@/service/AudioService';
 import { usePlayerStore } from '@/store/playerStore';
@@ -95,8 +96,9 @@ export function QueuePanel() {
                   onPress={() => {
                     void audioService.removeFromQueue(index).then(() => void reload());
                   }}
+                  accessibilityLabel="从队列移除"
                 >
-                  <Text style={styles.removeText}>✕</Text>
+                  <AppIcon name="close" size={16} color={COLORS.textSecondary} />
                 </Pressable>
               }
             />
@@ -117,5 +119,4 @@ const styles = StyleSheet.create({
   },
   headerText: { color: COLORS.textPrimary, fontSize: FONT_SIZE.title, fontWeight: '600' },
   removeButton: { paddingHorizontal: SPACING.s, paddingVertical: SPACING.s },
-  removeText: { color: COLORS.textSecondary, fontSize: FONT_SIZE.title },
 });

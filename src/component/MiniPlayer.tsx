@@ -10,6 +10,7 @@ import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { AppIcon } from '@/component/AppIcon';
 import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { MINI_PLAYER_HIDDEN_ROUTES, ROUTES } from '@/constant/navigation';
@@ -83,7 +84,7 @@ export function MiniPlayer() {
           />
         ) : (
           <View style={[styles.cover, styles.coverFallback]}>
-            <Text style={styles.fallbackText}>♪</Text>
+            <AppIcon name="audio" size={16} color={t.textSecondary} />
           </View>
         )}
         <View style={styles.center}>
@@ -102,8 +103,9 @@ export function MiniPlayer() {
           onPress={() => {
             void audioService.togglePlayPause();
           }}
+          accessibilityLabel={isPlaying ? '暂停' : '播放'}
         >
-          <Text style={styles.controlText}>{isPlaying ? '⏸' : '▶'}</Text>
+          <AppIcon name={isPlaying ? 'pause' : 'play'} size={20} color={t.textPrimary} />
         </Pressable>
         <Pressable
           hitSlop={8}
@@ -111,8 +113,9 @@ export function MiniPlayer() {
           onPress={() => {
             void audioService.next();
           }}
+          accessibilityLabel="下一首"
         >
-          <Text style={styles.controlText}>⏭</Text>
+          <AppIcon name="skipNext" size={20} color={t.textPrimary} />
         </Pressable>
       </Pressable>
     </View>
@@ -137,10 +140,8 @@ const createStyles = (t: ThemeTokens) =>
   pressed: { opacity: 0.85 },
   cover: { width: 44, height: 44, borderRadius: 6, backgroundColor: t.bg },
   coverFallback: { alignItems: 'center', justifyContent: 'center' },
-  fallbackText: { color: t.textSecondary, fontSize: FONT_SIZE.title },
   center: { flex: 1, gap: 2 },
   name: { color: t.textPrimary, fontSize: FONT_SIZE.body },
   artist: { color: t.textSecondary, fontSize: FONT_SIZE.body },
   control: { paddingHorizontal: SPACING.s },
-  controlText: { color: t.textPrimary, fontSize: 20 },
 });

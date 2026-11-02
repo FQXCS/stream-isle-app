@@ -111,9 +111,6 @@ function metaTextOf(detail: MediaDetail): string {
   if (detail.officialRating !== undefined) {
     legacyParts.push(detail.officialRating);
   }
-  if (detail.communityRating !== undefined) {
-    legacyParts.push(`★ ${detail.communityRating.toFixed(1)}`);
-  }
   if (detail.runtimeMs !== undefined) {
     legacyParts.push(formatClock(detail.runtimeMs));
   }
@@ -538,6 +535,8 @@ export function ItemDetailScreen() {
     : null;
   // M6：下载入口仅电影/集级开放（仅可直连条目，服务端 startDownload 判定，设计文档 §7.7）
   const selectedSeasonNumber = selectedSeason?.indexNumber ?? 0;
+  // 评分仅非媒体流条目展示（与 metaTextOf 原口径一致），改由 HeroHeader 以图标 + 数字渲染
+  const metaRating = !isMediaFlowType(detail.type) ? detail.communityRating : undefined;
   const baseMetaText = metaTextOf(detail);
   const metaText =
     bookSizeText === undefined
@@ -558,6 +557,7 @@ export function ItemDetailScreen() {
         <HeroHeader
           detail={detail}
           metaText={metaText}
+          rating={metaRating}
           onBack={() => navigation.goBack()}
           onMore={handleOpenMore}
         />
@@ -760,7 +760,11 @@ function SeasonPicker({
         onPress={onToggle}
       >
         <Text style={[styles.pickerText, { color: t.textPrimary }]}>{label}</Text>
-        <Text style={[styles.pickerArrow, { color: t.textSecondary }]}>{open ? '▲' : '▼'}</Text>
+        <AppIcon
+          name={open ? 'chevronUp' : 'chevronDown'}
+          size={14}
+          color={t.textSecondary}
+        />
       </Pressable>
       {open && (
         <View style={[styles.pickerPanel, { backgroundColor: t.surfaceElevated }]}>
@@ -830,7 +834,6 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   pickerText: { fontSize: FONT_SIZE.body },
-  pickerArrow: { fontSize: FONT_SIZE.body },
   pickerPanel: {
     position: 'absolute',
     top: 44,

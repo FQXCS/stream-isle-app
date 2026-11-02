@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 
 import type { SearchResultGroup } from '@/adapter/model';
+import { AppIcon } from '@/component/AppIcon';
 import { EmptyView } from '@/component/EmptyView';
 import { ErrorView } from '@/component/ErrorView';
 import { LoadingView } from '@/component/LoadingView';
@@ -118,8 +119,13 @@ export function SearchScreen() {
         {loading ? (
           <ActivityIndicator style={styles.inputTail} color={t.accent} size="small" />
         ) : input !== '' ? (
-          <Pressable style={styles.inputTail} onPress={() => setInput('')} hitSlop={8}>
-            <Text style={styles.clearText}>✕</Text>
+          <Pressable
+            style={styles.inputTail}
+            onPress={() => setInput('')}
+            hitSlop={8}
+            accessibilityLabel="清除搜索"
+          >
+            <AppIcon name="close" size={16} color={t.textSecondary} />
           </Pressable>
         ) : null}
       </View>
@@ -166,7 +172,6 @@ const createStyles = (t: ThemeTokens) =>
     paddingRight: 40,
   },
   inputTail: { position: 'absolute', right: SPACING.l },
-  clearText: { color: t.textSecondary, fontSize: FONT_SIZE.title },
   resultContent: { paddingBottom: SPACING.xl },
   section: { gap: SPACING.m, marginBottom: SPACING.l },
   sectionTitle: { color: t.textPrimary, fontSize: FONT_SIZE.title, fontWeight: '700' },

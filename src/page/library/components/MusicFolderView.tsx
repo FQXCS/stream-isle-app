@@ -10,6 +10,7 @@ import { FlashList } from '@shopify/flash-list';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AudioItem, MediaLibraryItem, SortByEnum } from '@/adapter/model';
+import { AppIcon, type AppIconName } from '@/component/AppIcon';
 import { EmptyView } from '@/component/EmptyView';
 import { ErrorView } from '@/component/ErrorView';
 import { useMiniPlayerPadding } from '@/component/MiniPlayer';
@@ -163,7 +164,11 @@ export function MusicFolderView({ folderId, onOpenFolder, sortBy, sortOrder }: M
           return <SongRow song={toAudioItem(item)} onPress={() => handlePressSong(toAudioItem(item))} />;
         }
         const isFolder = item.type === 'Folder';
-        const rowIcon = isFolder ? '📁' : item.type === 'Playlist' ? '≡' : '♪';
+        const rowIcon: AppIconName = isFolder
+          ? 'folder'
+          : item.type === 'Playlist'
+            ? 'playlist'
+            : 'audio';
         const rowSubtext = isFolder
           ? item.childCount !== undefined
             ? `${item.childCount} 项`
@@ -174,14 +179,16 @@ export function MusicFolderView({ folderId, onOpenFolder, sortBy, sortOrder }: M
             style={({ pressed }) => [styles.row, pressed && styles.pressed]}
             onPress={() => handlePressEntry(item)}
           >
-            <Text style={styles.rowIcon}>{rowIcon}</Text>
+            <View style={styles.rowIconBox}>
+              <AppIcon name={rowIcon} size={20} color={t.textSecondary} />
+            </View>
             <View style={styles.rowCenter}>
               <Text style={styles.rowName} numberOfLines={1}>
                 {item.name}
               </Text>
               {rowSubtext !== undefined && <Text style={styles.rowSubtext}>{rowSubtext}</Text>}
             </View>
-            <Text style={styles.chevron}>›</Text>
+            <AppIcon name="chevronRight" size={16} color={t.textTertiary} />
           </Pressable>
         );
       }}
@@ -211,10 +218,9 @@ const createStyles = (t: ThemeTokens) =>
       paddingHorizontal: SPACING.m,
     },
     pressed: { opacity: 0.7 },
-    rowIcon: { fontSize: FONT_SIZE.header, width: 32, textAlign: 'center' },
+    rowIconBox: { width: 32, alignItems: 'center' },
     rowCenter: { flex: 1, gap: 2 },
     rowName: { color: t.textPrimary, fontSize: FONT_SIZE.body },
     rowSubtext: { color: t.textSecondary, fontSize: FONT_SIZE.body },
-    chevron: { color: t.textTertiary, fontSize: FONT_SIZE.title },
     footer: { paddingVertical: SPACING.l },
   });
