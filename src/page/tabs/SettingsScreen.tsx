@@ -17,6 +17,7 @@ import {
   SUBTITLE_LANG_OPTION_LIST,
   type SubtitleLangOption,
 } from '@/constant/subtitle';
+import { SERVER_FLAVOR_OPTIONS } from '@/constant/server';
 import { FONT_SIZE, POSTER_RADIUS, SPACING } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import type { ThemeModeEnum } from '@/constant/theme';
@@ -103,6 +104,20 @@ export function SettingsScreen() {
           showArrow
           onPress={() => navigation.navigate(ROUTES.MEDIA_TYPE_SETTINGS)}
         />
+      </View>
+      {/* 库页配置入口：服务器类型直接列在设置页，进入后配置 Tab 分类/排序项 */}
+      <View style={[styles.card, { backgroundColor: t.surface }]}>
+        <Text style={[styles.groupTitle, { color: t.textPrimary }]}>同类型服务器配置</Text>
+        {SERVER_FLAVOR_OPTIONS.map((option) => (
+          <SettingRow
+            key={option.value}
+            label={option.label}
+            showArrow
+            onPress={() =>
+              navigation.navigate(ROUTES.LIBRARY_DISPLAY_SETTINGS, { flavor: option.value })
+            }
+          />
+        ))}
       </View>
       {/* M6 下载与历史入口（06 §4.4.5 设置页入口行） */}
       <View style={[styles.card, { backgroundColor: t.surface }]}>

@@ -14,8 +14,16 @@ const LIBRARY_ICON_MAP: Record<LibraryTypeEnum, string> = {
   MOVIE: '🎬',
   TVSHOW: '📺',
   MUSIC: '🎵',
+  AUDIOBOOK: '🎧',
+  MUSICVIDEO: '🎤',
   PHOTO: '📷',
   BOOK: '📚',
+  BOXSET: '📦',
+  PLAYLIST: '📝',
+  GAME: '🎮',
+  LIVETV: '📡',
+  CHANNEL: '📻',
+  TRAILER: '🎞️',
   MIXED: '📁',
 };
 

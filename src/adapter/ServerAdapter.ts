@@ -7,6 +7,7 @@
 import type {
   AuthResult,
   AudioItem,
+  EntitySummary,
   EpisodeItem,
   HistoryEntry,
   HistoryQuery,
@@ -152,7 +153,8 @@ export interface ServerAdapter {
     userId: string,
     libraryId: string,
     page: number,
-    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' },
+    filters?: readonly ('IsPlayed' | 'IsUnplayed' | 'IsFavorite')[]
   ): Promise<Paged<AudioItem>>;
 
   /** 专辑曲目（专辑数量级小，不翻页；曲序 = ParentIndexNumber,IndexNumber,SortName 多键排序） */
@@ -182,6 +184,85 @@ export interface ServerAdapter {
     widths: { gridMaxWidth: number; viewerMaxWidth: number },
     sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
   ): Promise<Paged<PhotoItem>>;
+
+  // —— M8：库页 Tab 扩展（推荐/实体/LiveTV/插件频道/通用歌单）——
+
+  /** GET /Users/{uid}/Suggestions（Jellyfin 可能 404，服务层回退最新添加） */
+  getSuggestions(
+    userId: string,
+    parentId: string,
+    kinds: readonly MediaItemTypeEnum[],
+    limit: number
+  ): Promise<MediaLibraryItem[]>;
+
+  /** GET /Genres | /MusicGenres | /GameGenres（按 kinds 选择端点） */
+  getGenres(
+    userId: string,
+    parentId: string,
+    kinds: readonly MediaItemTypeEnum[],
+    startIndex?: number,
+    limit?: number
+  ): Promise<Paged<EntitySummary>>;
+
+  /** GET /Tags（Emby 返回 {Items}，Jellyfin 可能返回 string[]） */
+  getTags(
+    userId: string,
+    parentId: string,
+    startIndex?: number,
+    limit?: number
+  ): Promise<Paged<EntitySummary>>;
+
+  /** GET /Studios */
+  getStudios(
+    userId: string,
+    parentId: string,
+    startIndex?: number,
+    limit?: number
+  ): Promise<Paged<EntitySummary>>;
+
+  /** GET /LiveTv/Channels */
+  getLiveTvChannels(
+    userId: string,
+    startIndex: number,
+    limit: number,
+    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+  ): Promise<Paged<MediaLibraryItem>>;
+
+  /** GET /LiveTv/Programs */
+  getLiveTvPrograms(
+    userId: string,
+    startIndex: number,
+    limit: number,
+    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+  ): Promise<Paged<MediaLibraryItem>>;
+
+  /** GET /LiveTv/Recordings */
+  getLiveTvRecordings(
+    userId: string,
+    startIndex: number,
+    limit: number,
+    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+  ): Promise<Paged<MediaLibraryItem>>;
+
+  /** GET /LiveTv/Timers（响应可能是数组或 {Items}） */
+  getLiveTvTimers(userId: string): Promise<MediaLibraryItem[]>;
+
+  /** GET /LiveTv/SeriesTimers（响应可能是数组或 {Items}） */
+  getLiveTvSeriesTimers(userId: string): Promise<MediaLibraryItem[]>;
+
+  /** GET /Channels（Emby 插件频道；Jellyfin 可能不存在） */
+  getPluginChannels(userId: string): Promise<EntitySummary[]>;
+
+  /** GET /Channels/{id}/Items */
+  getPluginChannelItems(
+    userId: string,
+    channelId: string,
+    startIndex: number,
+    limit: number
+  ): Promise<Paged<MediaLibraryItem>>;
+
+  /** GET /Playlists/{id}/Items（通用条目翻译，供视频歌单详情） */
+  getPlaylistEntries(userId: string, playlistId: string): Promise<MediaLibraryItem[]>;
 
   /**
    * 带 token 的完整图片 URL（expo-image 直接加载、不经 ApiClient）。

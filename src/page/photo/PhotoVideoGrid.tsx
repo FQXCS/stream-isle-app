@@ -1,10 +1,8 @@
 /**
- * 照片库「视频」段（家庭视频/照片混合库）：库内 Video 条目的三列网格 + 服务端分页。
- * 点封面进入条目详情页（与视频库一致：详情页可播放、收藏、查看音视频信息）；长按卡片弹出操作菜单。
+ * 通用视频网格（家庭视频库/条目列表共用）：三列网格 + 服务端分页，
+ * 点封面进入调用方指定目标，长按弹出操作菜单（标记已看/收藏/删除）。
  */
 import { useCallback, useState } from 'react';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { FlashList } from '@shopify/flash-list';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
@@ -15,36 +13,27 @@ import { ErrorView } from '@/component/ErrorView';
 import { ItemActionMenu } from '@/component/ItemActionMenu';
 import { useMiniPlayerPadding } from '@/component/MiniPlayer';
 import { GRID_COLUMNS } from '@/constant/browse';
-import { ROUTES } from '@/constant/navigation';
 import { SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { AppError } from '@/infra/error';
-import { fetchVideoPage } from '@/service/BrowseService';
-import type { LibrarySortState } from '@/store/libraryViewStore';
 import { usePagedLoad } from '@/page/library/components/usePagedLoad';
 import { WallGridCell } from '@/page/library/components/WallGridCell';
-import type { RootStackParamList } from '@/page/navigation/types';
-
-type PhotoNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface PhotoVideoGridProps {
-  libraryId: string;
-  sort: LibrarySortState;
+  loadPage: (page: number) => Promise<{ items: MediaLibraryItem[]; total: number }>;
+  onPressItem: (item: MediaLibraryItem) => void;
+  emptyTitle?: string;
 }
 
-export function PhotoVideoGrid({ libraryId, sort }: PhotoVideoGridProps) {
+export function PhotoVideoGrid({
+  loadPage,
+  onPressItem,
+  emptyTitle = '暂无视频',
+}: PhotoVideoGridProps) {
   const t = useTheme();
   const styles = createStyles(t);
-  const navigation = useNavigation<PhotoNavigationProp>();
   const miniPlayerPadding = useMiniPlayerPadding();
-  const state = usePagedLoad<MediaLibraryItem>(
-    useCallback(
-      (page) => fetchVideoPage(libraryId, page, sort),
-      // 排序变化 → 重新拉取（sortBy/sortOrder 为原始值，避免对象引用抖动）
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      [libraryId, sort.sortBy, sort.sortOrder]
-    )
-  );
+  const state = usePagedLoad<MediaLibraryItem>(loadPage);
   const { patchItem, removeItem } = state;
   /** 长按菜单：目标条目 + 锚点（null=关闭） */
   const [longPressItem, setLongPressItem] = useState<MediaLibraryItem | null>(null);
@@ -99,7 +88,7 @@ export function PhotoVideoGrid({ libraryId, sort }: PhotoVideoGridProps) {
     );
   }
   if (state.itemList.length === 0) {
-    return <EmptyView title="暂无视频" />;
+    return <EmptyView title={emptyTitle} />;
   }
   return (
     <>
@@ -111,7 +100,7 @@ export function PhotoVideoGrid({ libraryId, sort }: PhotoVideoGridProps) {
           <WallGridCell
             item={item}
             dimmed={false}
-            onPress={() => navigation.navigate(ROUTES.ITEM, { itemId: item.id })}
+            onPress={() => onPressItem(item)}
             onLongPress={handleLongPressCell}
           />
         )}
@@ -122,7 +111,10 @@ export function PhotoVideoGrid({ libraryId, sort }: PhotoVideoGridProps) {
             <ActivityIndicator style={styles.footer} color={t.accent} />
           ) : null
         }
-        contentContainerStyle={[styles.gridContent, { paddingBottom: SPACING.xl + miniPlayerPadding }]}
+        contentContainerStyle={[
+          styles.gridContent,
+          { paddingBottom: SPACING.xl + miniPlayerPadding },
+        ]}
       />
       <ItemActionMenu
         item={longPressItem}
@@ -139,7 +131,6 @@ export function PhotoVideoGrid({ libraryId, sort }: PhotoVideoGridProps) {
 const createStyles = (t: ThemeTokens) =>
   StyleSheet.create({
     loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: t.bg },
-    gridContent: { paddingHorizontal: SPACING.s },
-    gridCell: { flex: 1, paddingHorizontal: SPACING.xs, paddingBottom: SPACING.m },
+    gridContent: { paddingHorizontal: SPACING.s, paddingBottom: SPACING.xl },
     footer: { paddingVertical: SPACING.l },
   });

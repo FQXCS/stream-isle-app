@@ -6,6 +6,7 @@
 import type {
   AudioItem,
   HistoryEntry,
+  ItemFilterEnum,
   ItemQuery,
   MediaLibrary,
   MediaLibraryItem,
@@ -30,15 +31,18 @@ export async function fetchLibraries(): Promise<MediaLibrary[]> {
   }
   const adapter = getActiveAdapter();
   const libraries = await adapter.getUserViews(active.userId);
-  // 逐库补数量（并发；collectionType 传入供数量口径判定）
+  // 逐库补数量（并发）；单库失败（LIVETV/CHANNEL 等端点可能 404）不影响整个库列表
   await Promise.all(
     libraries.map(async (library) => {
-      const count = await adapter.getLibraryItemCount(
-        active.userId,
-        library.id,
-        library.collectionType
-      );
-      library.itemCount = count;
+      try {
+        library.itemCount = await adapter.getLibraryItemCount(
+          active.userId,
+          library.id,
+          library.collectionType
+        );
+      } catch {
+        library.itemCount = undefined;
+      }
     })
   );
   return libraries;
@@ -63,13 +67,48 @@ export function fetchMusicArtists(
   return getActiveAdapter().getMusicArtists(requireUserId(), libraryId, page, sort);
 }
 
-/** 全部歌曲区（排序由音乐库菜单传入；缺省 SortName 升序） */
+/** 全部歌曲区（排序由音乐库菜单传入；缺省 SortName 升序；filters 供已看/未看 Tab） */
 export function fetchAllSongs(
   libraryId: string,
   page: number,
-  sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+  sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' },
+  filters?: readonly ItemFilterEnum[]
 ): Promise<Paged<AudioItem>> {
-  return getActiveAdapter().getAllSongs(requireUserId(), libraryId, page, sort);
+  return getActiveAdapter().getAllSongs(requireUserId(), libraryId, page, sort, filters);
+}
+
+/** 专辑区：IncludeItemTypes=MusicAlbum，服务端分页（排序由库页菜单传入） */
+export function fetchAlbumPage(
+  libraryId: string,
+  page: number,
+  sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+): Promise<Paged<MediaLibraryItem>> {
+  return fetchWallPage({
+    userId: requireUserId(),
+    parentId: libraryId,
+    kinds: ['MusicAlbum'],
+    sortBy: sort?.sortBy ?? 'SORT_NAME',
+    sortOrder: sort?.sortOrder ?? 'ASC',
+    startIndex: page * PAGE_SIZE,
+    limit: PAGE_SIZE,
+  });
+}
+
+/** 相册网格分页：IncludeItemTypes=PhotoAlbum，服务端分页（排序由库页菜单传入） */
+export function fetchPhotoAlbumPage(
+  libraryId: string,
+  page: number,
+  sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+): Promise<Paged<MediaLibraryItem>> {
+  return fetchWallPage({
+    userId: requireUserId(),
+    parentId: libraryId,
+    kinds: ['PhotoAlbum'],
+    sortBy: sort?.sortBy ?? 'SORT_NAME',
+    sortOrder: sort?.sortOrder ?? 'ASC',
+    startIndex: page * PAGE_SIZE,
+    limit: PAGE_SIZE,
+  });
 }
 
 /**
@@ -119,12 +158,14 @@ export function fetchFolderPreview(
 export function fetchVideoPage(
   libraryId: string,
   page: number,
-  sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+  sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' },
+  filters?: readonly ItemFilterEnum[]
 ): Promise<Paged<MediaLibraryItem>> {
   return fetchWallPage({
     userId: requireUserId(),
     parentId: libraryId,
     kinds: ['Video'],
+    filters: filters !== undefined ? [...filters] : undefined,
     sortBy: sort?.sortBy ?? 'SORT_NAME',
     sortOrder: sort?.sortOrder ?? 'ASC',
     startIndex: page * PAGE_SIZE,

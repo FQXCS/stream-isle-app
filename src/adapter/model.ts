@@ -10,9 +10,23 @@ import type { DecoderCapabilities } from '@/adapter/DeviceProfileBuilder';
 export type ServerFlavor = 'JELLYFIN' | 'EMBY';
 
 /** 库类型（库卡片图标/布局归并用；由 CollectionType 经 COLLECTION_TYPE_MAP 翻译） */
-export type LibraryTypeEnum = 'MOVIE' | 'TVSHOW' | 'MUSIC' | 'PHOTO' | 'BOOK' | 'MIXED';
+export type LibraryTypeEnum =
+  | 'MOVIE'
+  | 'TVSHOW'
+  | 'MUSIC'
+  | 'AUDIOBOOK'
+  | 'MUSICVIDEO'
+  | 'PHOTO'
+  | 'BOOK'
+  | 'BOXSET'
+  | 'PLAYLIST'
+  | 'GAME'
+  | 'LIVETV'
+  | 'CHANNEL'
+  | 'TRAILER'
+  | 'MIXED';
 
-/** 条目类型（服务器 Item Type 直译，含 M5 扩展值，全集唯一） */
+/** 条目类型（服务器 Item Type 直译，含 M5/M8 扩展值，全集唯一） */
 export type MediaItemTypeEnum =
   | 'Movie'
   | 'Series'
@@ -27,11 +41,27 @@ export type MediaItemTypeEnum =
   | 'Photo' // M5 照片
   | 'Video' // 家庭视频/照片混合库（homevideos）的视频条目
   | 'Book' // 图书库（books）条目，M7 起仅列表浏览不提供阅读器
-  | 'Folder'; // 文件夹浏览（Items?Recursive=false 的子目录）
+  | 'Folder' // 文件夹浏览（Items?Recursive=false 的子目录）
+  | 'Trailer'
+  | 'MusicVideo'
+  | 'BoxSet'
+  | 'Game'
+  | 'GameSystem'
+  | 'Channel'
+  | 'Program'
+  | 'TvChannel'
+  | 'Recording'
+  | 'Timer'
+  | 'SeriesTimer'
+  | 'Genre'
+  | 'Studio';
+
+/** 服务器 Filters 原值（不传即全部；IsPlayed/IsUnplayed 供已看/未看 Tab） */
+export type ItemFilterEnum = 'IsPlayed' | 'IsUnplayed' | 'IsFavorite';
 
 /**
- * 排序字段（服务器 SortBy 词表，客户端自有枚举，参数映射见 BaseAdapter）。
- * 库页排序菜单按参考稿补齐十三个字段（含文件大小/文件格式/随机）。
+ * 排序字段（服务器 SortBy 词表，客户端自有枚举，参数映射见 sortCatalog）。
+ * 现有 15 项保持原值（libraryViewStore 旧快照可继续读取），新增项对应 docs/09 的菜单字段。
  */
 export type SortByEnum =
   | 'SORT_NAME'
@@ -49,7 +79,26 @@ export type SortByEnum =
   | 'RANDOM'
   // 音频专有排序（音乐库菜单；Emby 音乐排序词表）
   | 'ALBUM'
-  | 'ALBUM_ARTIST';
+  | 'ALBUM_ARTIST'
+  // docs/09 补齐的菜单字段
+  | 'NAME'
+  | 'ARTIST'
+  | 'COMPOSER'
+  | 'DIRECTOR'
+  | 'TOTAL_BITRATE'
+  | 'RESOLUTION'
+  | 'FRAMERATE'
+  | 'VIDEO_CODEC'
+  | 'SERIES_SORT_NAME'
+  | 'LAST_CONTENT_ADDED'
+  | 'LAST_CONTENT_PREMIERE_DATE'
+  | 'SERIES_DATE_PLAYED'
+  | 'NUMBER'
+  | 'CHANNEL_NUMBER'
+  | 'START_DATE'
+  | 'DATE_MODIFIED'
+  | 'PRODUCTION_YEAR'
+  | 'IS_FAVORITE';
 
 /** 图片类型（与 URL 段同形 /Images/{type}，调用字面量直接兼容） */
 export type ImageTypeEnum = 'Primary' | 'Backdrop' | 'Thumb' | 'Logo' | 'Banner' | 'Profile';
@@ -107,7 +156,21 @@ export interface MediaLibraryItem {
   runtimeMs?: number;
   /** 子项数量（文件夹/相册的 Fields=ChildCount；无该字段时不产出） */
   childCount?: number;
+  /** LiveTV：频道号/频道 id/节目时间窗/状态（普通条目为 undefined） */
+  channelNumber?: string;
+  channelId?: string;
+  startMs?: number;
+  endMs?: number;
+  status?: string;
   userData: UserItemData;
+}
+
+/** 实体列表条目（Genres/Tags/Studios 等非播放实体） */
+export interface EntitySummary {
+  id: string;
+  name: string;
+  imageUrl?: string;
+  childCount?: number;
 }
 
 /** 媒体库（库列表卡片） */
@@ -136,7 +199,15 @@ export interface ItemQuery {
   sortBy?: SortByEnum;
   sortOrder?: 'ASC' | 'DESC';
   /** 服务器查询参数 Filters 原值；不传即全部 */
-  filters?: ('IsPlayed' | 'IsUnplayed' | 'IsFavorite')[];
+  filters?: ItemFilterEnum[];
+  /** 类型/标签/工作室过滤（实体列表 Tab 下钻） */
+  genreIds?: string[];
+  tagFilters?: { id: string; name: string }[];
+  studioIds?: string[];
+  /** 插件频道节目（→ /Channels/{id}/Items） */
+  channelId?: string;
+  /** 播放列表条目（→ /Playlists/{id}/Items） */
+  playlistId?: string;
   /** 是否递归（缺省 true=整库；文件夹浏览传 false，只列当前层子项与子目录） */
   recursive?: boolean;
   /** 服务端分页，步长 PAGE_SIZE=40 */

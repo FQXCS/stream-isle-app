@@ -21,6 +21,14 @@ export const ROUTES = {
   HISTORY: 'History',
   DOWNLOADS: 'Downloads',
   MEDIA_TYPE_SETTINGS: 'MediaTypeSettings',
+  LIBRARY_DISPLAY_SETTINGS: 'LibraryDisplaySettings',
+  LIBRARY_TAB_SETTINGS: 'LibraryTabSettings',
+  LIBRARY_TAB_EDITOR: 'LibraryTabEditor',
+  LIBRARY_SORT_SETTINGS: 'LibrarySortSettings',
+  LIBRARY_SORT_TABS: 'LibrarySortTabs',
+  LIBRARY_SORT_EDITOR: 'LibrarySortEditor',
+  ITEM_LIST: 'ItemList',
+  PLAYLIST_DETAIL: 'PlaylistDetail',
   BOOK_READER: 'BookReader',
 } as const;
 

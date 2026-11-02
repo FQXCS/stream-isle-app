@@ -47,26 +47,34 @@ describe('listItems query → URL 参数映射全表', () => {
     expect(api.request.mock.calls[0][0].url).toContain('IncludeItemTypes=Movie%2CSeries');
   });
 
-  it('sortBy 映射：十三项排序字段（库页排序菜单全集）', async () => {
+  it('sortBy 映射：Emby 复合字段链（含 SortName 兜底）', async () => {
     const cases: [ItemQuery['sortBy'], string][] = [
       ['SORT_NAME', 'SortBy=SortName'],
-      ['DATE_CREATED', 'SortBy=DateCreated'],
-      ['PREMIERE_DATE', 'SortBy=PremiereDate'],
-      ['COMMUNITY_RATING', 'SortBy=CommunityRating'],
-      ['CRITIC_RATING', 'SortBy=CriticRating'],
-      ['OFFICIAL_RATING', 'SortBy=OfficialRating'],
-      ['PLAY_COUNT', 'SortBy=PlayCount'],
-      ['DATE_PLAYED', 'SortBy=DatePlayed'],
-      ['FILENAME', 'SortBy=Filename'],
-      ['RUNTIME', 'SortBy=Runtime'],
-      ['FILE_SIZE', 'SortBy=Size'],
-      ['CONTAINER', 'SortBy=Container'],
+      ['DATE_CREATED', 'SortBy=DateCreated%2CSortName'],
+      ['PREMIERE_DATE', 'SortBy=ProductionYear%2CPremiereDate%2CSortName'],
+      ['COMMUNITY_RATING', 'SortBy=CommunityRating%2CSortName'],
+      ['CRITIC_RATING', 'SortBy=CriticRating%2CSortName'],
+      ['OFFICIAL_RATING', 'SortBy=OfficialRating%2CSortName'],
+      ['PLAY_COUNT', 'SortBy=PlayCount%2CSortName'],
+      ['DATE_PLAYED', 'SortBy=DatePlayed%2CSortName'],
+      ['FILENAME', 'SortBy=IsFolder%2CFilename'],
+      ['RUNTIME', 'SortBy=Runtime%2CSortName'],
+      ['FILE_SIZE', 'SortBy=Size%2CSortName'],
+      ['CONTAINER', 'SortBy=Container%2CSortName'],
       ['RANDOM', 'SortBy=Random'],
     ];
     for (const [sortBy, expected] of cases) {
       const { adapter, api } = makeAdapter('EMBY');
       await adapter.listItems({ ...BASE_QUERY, sortBy });
       expect(api.request.mock.calls[0][0].url).toContain(expected);
+    }
+  });
+
+  it('sortBy 映射：Jellyfin 不支持的字段回退 SortName', async () => {
+    for (const sortBy of ['FILENAME', 'FILE_SIZE', 'CONTAINER'] as const) {
+      const { adapter, api } = makeAdapter('JELLYFIN');
+      await adapter.listItems({ ...BASE_QUERY, sortBy });
+      expect(api.request.mock.calls[0][0].url).toContain('SortBy=SortName');
     }
   });
 
@@ -181,20 +189,25 @@ describe('listItems query → URL 参数映射全表', () => {
     expect(page.items[0].childCount).toBe(24);
   });
 
-  it('响应翻译：Type 词表外（如 Channel）或缺失的条目直接跳过，不编造默认类型', async () => {
+  it('响应翻译：Type 词表外或缺失的条目直接跳过，新扩展类型保留', async () => {
     const { adapter } = makeAdapter('EMBY', {
       Items: [
         { Id: 'ok1', Type: 'Series', Name: '正常条目' },
         { Id: 'channel1', Type: 'Channel', Name: '频道' },
+        { Id: 'trailer1', Type: 'Trailer', Name: '预告' },
+        { Id: 'boxset1', Type: 'BoxSet', Name: '合集' },
+        { Id: 'unknown1', Type: 'UnknownWidget', Name: '未知' },
         { Id: 'noType', Name: '缺 Type' },
       ],
-      TotalRecordCount: 3,
+      TotalRecordCount: 6,
       StartIndex: 0,
     });
     const page = await adapter.listItems(BASE_QUERY);
-    // 仅词表内条目进入统一模型
-    expect(page.items.map((item) => item.id)).toEqual(['ok1']);
+    expect(page.items.map((item) => item.id)).toEqual(['ok1', 'channel1', 'trailer1', 'boxset1']);
     expect(page.items[0].type).toBe('Series');
+    expect(page.items[1].type).toBe('Channel');
+    expect(page.items[2].type).toBe('Trailer');
+    expect(page.items[3].type).toBe('BoxSet');
   });
 
   it('响应翻译：Book 条目进入统一模型（books 库海报墙可列）', async () => {
@@ -225,7 +238,7 @@ describe('getLibraryItemCount（Limit=0 数量请求构造）', () => {
 
   it('MIXED 库（未知 CollectionType）：IncludeItemTypes=Movie,Series', async () => {
     const { adapter, api } = makeAdapter('EMBY', { TotalRecordCount: 7 });
-    await adapter.getLibraryItemCount('u1', 'lib1', 'playlists');
+    await adapter.getLibraryItemCount('u1', 'lib1', 'unknown-collection');
     expect(api.request.mock.calls[0][0].url).toContain('IncludeItemTypes=Movie%2CSeries');
   });
 
@@ -245,5 +258,25 @@ describe('getLibraryItemCount（Limit=0 数量请求构造）', () => {
     const { adapter: a2, api: api2 } = makeAdapter('EMBY', { TotalRecordCount: 939 });
     await a2.getLibraryItemCount('u1', 'lib1', 'photos');
     expect(api2.request.mock.calls[0][0].url).toContain('IncludeItemTypes=PhotoAlbum');
+  });
+
+  it('新增库类型计数口径：audiobooks/musicvideos/boxsets/playlists/games/livetv/channels/trailers', async () => {
+    const cases: [string, string][] = [
+      ['audiobooks', 'MusicAlbum'],
+      ['musicvideos', 'MusicVideo'],
+      ['boxsets', 'BoxSet'],
+      ['playlists', 'Playlist'],
+      ['games', 'Game'],
+      ['livetv', 'TvChannel'],
+      ['channels', 'Channel'],
+      ['trailers', 'Trailer'],
+    ];
+    for (const [collectionType, includeItemTypes] of cases) {
+      const { adapter, api } = makeAdapter('EMBY', { TotalRecordCount: 1 });
+      await adapter.getLibraryItemCount('u1', 'lib1', collectionType);
+      expect(api.request.mock.calls[0][0].url).toContain(
+        `IncludeItemTypes=${includeItemTypes}`
+      );
+    }
   });
 });

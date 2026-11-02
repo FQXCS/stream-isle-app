@@ -28,6 +28,31 @@ export function librarySortKeyOf(serverId: string, libraryId: string): string {
   return `${serverId}:${libraryId}`;
 }
 
+/** Tab 级排序持久化键：服务器 + 库 + Tab（旧键仍作为缺省回退） */
+export function libraryTabSortKeyOf(
+  serverId: string,
+  libraryId: string,
+  tabId: string
+): string {
+  return `${serverId}:${libraryId}:${tabId}`;
+}
+
+/**
+ * 读取某库某 Tab 的排序：优先 Tab 级新键，缺失回退旧的库级键
+ * （升级后用户上次排序不丢；写入一律新键）。
+ */
+export function savedLibrarySortOf(
+  sortByKey: Record<string, LibrarySortState>,
+  serverId: string,
+  libraryId: string,
+  tabId: string
+): LibrarySortState | undefined {
+  return (
+    sortByKey[libraryTabSortKeyOf(serverId, libraryId, tabId)] ??
+    sortByKey[librarySortKeyOf(serverId, libraryId)]
+  );
+}
+
 interface LibraryViewActions {
   /** 写入某库的排序（页面切换排序时调用，随 persist 落盘） */
   setLibrarySort(key: string, sort: LibrarySortState): void;

@@ -31,6 +31,7 @@ import { PROBE_TIMEOUT_MS } from '@/constant/api';
 import { MIN_EMBY_VERSION, MIN_JELLYFIN_VERSION } from '@/constant/server';
 import { SIMILAR_LIMIT } from '@/constant/playback';
 import { DEFAULT_BITRATE_TIER, BITRATE_TIER_MAP } from '@/constant/bitrate';
+import { SORT_CHAIN } from '@/constant/sortCatalog';
 import { apiClient, type ApiClient } from '@/infra/api/ApiClient';
 import { AppError } from '@/infra/error';
 import { getDeviceId } from '@/infra/deviceId';
@@ -40,10 +41,12 @@ import type {
   AudioStreamInfo,
   AudioTrack,
   AuthResult,
+  EntitySummary,
   EpisodeItem,
   HistoryEntry,
   HistoryQuery,
   ImageTypeEnum,
+  ItemFilterEnum,
   ItemQuery,
   LibraryTypeEnum,
   LyricLine,
@@ -94,30 +97,13 @@ export interface AdapterDeps {
 }
 
 /**
- * SortBy 枚举 → 服务器参数映射（§4.6.3 参数名映射表）。
- * FILENAME / FILE_SIZE / CONTAINER 为 Emby 专有排序列（分别对应 Filename / Size / Container，
- * 已用 Emby 4.10 实测可排序；非 Emby 词表内的值会 500）。Jellyfin 的 ItemSortBy 无这三个值，
- * 其逗号分隔绑定器按「忽略无法解析的值」处理（CommaDelimitedCollectionModelBinder），
- * 故不会报错，仅退回服务器默认顺序。
+ * SortBy 枚举 → 服务器 SortBy 字段链（双端差异见 constant/sortCatalog）。
+ * 旧的 SORTBY_PARAM_MAP 已由 SORT_CHAIN 取代：Emby 使用带兜底的复合链，
+ * Jellyfin 不支持的字段（Filename/Size/Container 等）回退 SortName。
  */
-const SORTBY_PARAM_MAP: Record<SortByEnum, string> = {
-  SORT_NAME: 'SortName',
-  DATE_CREATED: 'DateCreated',
-  PREMIERE_DATE: 'PremiereDate',
-  COMMUNITY_RATING: 'CommunityRating',
-  CRITIC_RATING: 'CriticRating',
-  OFFICIAL_RATING: 'OfficialRating',
-  PLAY_COUNT: 'PlayCount',
-  DATE_PLAYED: 'DatePlayed',
-  FILENAME: 'Filename',
-  RUNTIME: 'Runtime',
-  FILE_SIZE: 'Size',
-  CONTAINER: 'Container',
-  RANDOM: 'Random',
-  // 音频专有排序（音乐库菜单）
-  ALBUM: 'Album',
-  ALBUM_ARTIST: 'AlbumArtist',
-};
+function sortParamOf(flavor: ServerFlavor, sortBy: SortByEnum): string {
+  return (SORT_CHAIN[flavor][sortBy] ?? ['SortName']).join(',');
+}
 
 /** 排序方向 → 服务器参数映射 */
 const SORT_ORDER_PARAM_MAP: Record<string, string> = {
@@ -192,6 +178,13 @@ interface ServerItemResponse {
   /** 照片拍摄日期：DateCreated 优先、PremiereDate 兜底（→ ms） */
   DateCreated?: string;
   PremiereDate?: string;
+  /** M8：LiveTV / 插件频道条目字段 */
+  ChannelNumber?: string;
+  ChannelId?: string;
+  ChannelName?: string;
+  StartDate?: string;
+  EndDate?: string;
+  Status?: string;
 }
 
 /** 详情响应原始形态（getItemDetail；Fields 覆盖 MediaDetail 全部字段，02 §4.3） */
@@ -285,6 +278,30 @@ interface ItemsResponse {
   StartIndex?: number;
 }
 
+/** 非播放实体（Genres/Tags/Studios/Channels）原始形态 */
+interface EntityResponse {
+  Id?: string;
+  Name?: string;
+  ImageTags?: { Primary?: string };
+  PrimaryImageTag?: string;
+  ChildCount?: number;
+}
+
+interface EntityItemsResponse {
+  Items?: EntityResponse[];
+  TotalRecordCount?: number;
+}
+
+/** 数组或 { Items } 两种响应形态（LiveTV Timers 等端点存在差异） */
+function itemsOf<T>(
+  response: { Items?: T[]; TotalRecordCount?: number } | T[]
+): { items: T[]; total: number } {
+  if (Array.isArray(response)) {
+    return { items: response, total: response.length };
+  }
+  return { items: response.Items ?? [], total: response.TotalRecordCount ?? 0 };
+}
+
 /** 从服务器条目翻译统一模型 UserData（getUserViews / listItems 共用） */
 function translateUserData(item: ServerItemResponse): UserItemData {
   const raw = item.UserData;
@@ -324,6 +341,36 @@ function seasonNumberOrder(indexNumber: number): number {
  * Folder 仅在文件夹浏览（Items?Recursive=false）时纳入：其余列表（搜索/照片/季集等）
  * 仍按词表外跳过，避免目录条目混入可点开的条目列表。
  */
+/** 统一模型允许的条目类型（Type 词表外/缺失的条目直接跳过；Folder 是否放行由调用场景决定） */
+const VALID_ITEM_TYPES: ReadonlySet<string> = new Set<MediaItemTypeEnum>([
+  'Movie',
+  'Series',
+  'Season',
+  'Episode',
+  'Person',
+  'MusicAlbum',
+  'MusicArtist',
+  'Audio',
+  'Playlist',
+  'PhotoAlbum',
+  'Photo',
+  'Video',
+  'Book',
+  'Trailer',
+  'MusicVideo',
+  'BoxSet',
+  'Game',
+  'GameSystem',
+  'Channel',
+  'Program',
+  'TvChannel',
+  'Recording',
+  'Timer',
+  'SeriesTimer',
+  'Genre',
+  'Studio',
+]);
+
 function translateItemType(
   raw: string | undefined,
   allowFolder = false
@@ -334,22 +381,7 @@ function translateItemType(
   if (raw === 'Folder') {
     return allowFolder ? 'Folder' : undefined;
   }
-  const VALID_TYPES: ReadonlySet<string> = new Set<MediaItemTypeEnum>([
-    'Movie',
-    'Series',
-    'Season',
-    'Episode',
-    'Person',
-    'MusicAlbum',
-    'MusicArtist',
-    'Audio',
-    'Playlist',
-    'PhotoAlbum',
-    'Photo',
-    'Video',
-    'Book',
-  ]);
-  return VALID_TYPES.has(raw) ? (raw as MediaItemTypeEnum) : undefined;
+  return VALID_ITEM_TYPES.has(raw) ? (raw as MediaItemTypeEnum) : undefined;
 }
 
 /** 服务器 Person.Type（小写化）→ PersonRef.kind 映射（02 §4.2） */
@@ -610,6 +642,23 @@ export abstract class BaseAdapter implements ServerAdapter {
     return params.toString();
   }
 
+  /** 标签过滤参数名：Emby 用 TagIds（id），Jellyfin 用 Tags（名称） */
+  protected tagQueryKey(): 'TagIds' | 'Tags' {
+    return this.flavor === 'EMBY' ? 'TagIds' : 'Tags';
+  }
+
+  /** 标签过滤值（按 tagQueryKey 选择 id 或 name；空数组返回 undefined） */
+  protected tagQueryValue(
+    tagFilters: ItemQuery['tagFilters']
+  ): string | undefined {
+    if (tagFilters === undefined || tagFilters.length === 0) {
+      return undefined;
+    }
+    return tagFilters
+      .map((tag) => (this.tagQueryKey() === 'TagIds' ? tag.id : tag.name))
+      .join(',');
+  }
+
   // —— M1 六个方法 ——
 
   /**
@@ -744,15 +793,24 @@ export abstract class BaseAdapter implements ServerAdapter {
    */
   async listItems(query: ItemQuery): Promise<Paged<MediaLibraryItem>> {
     const sortBy = query.sortBy ?? 'SORT_NAME';
+    const isChannelItems = query.channelId !== undefined;
+    const endpoint = isChannelItems
+      ? `/Channels/${query.channelId}/Items`
+      : `/Users/${query.userId}/Items`;
     const data = await this.api.request<ItemsResponse>({
       method: 'GET',
       url: this.urlOf(
-        `/Users/${query.userId}/Items?${this.buildQuery({
+        `${endpoint}?${this.buildQuery({
+          // /Users/{uid}/Items 的 userId 在路径中；插件频道端点需显式 UserId
+          UserId: isChannelItems ? query.userId : undefined,
           ParentId: query.parentId,
           IncludeItemTypes: query.kinds?.join(','),
-          SortBy: SORTBY_PARAM_MAP[sortBy],
+          SortBy: sortParamOf(this.flavor, sortBy),
           SortOrder: query.sortOrder ? SORT_ORDER_PARAM_MAP[query.sortOrder] : undefined,
           Filters: query.filters?.length ? query.filters.join(',') : undefined,
+          GenreIds: query.genreIds?.length ? query.genreIds.join(',') : undefined,
+          StudioIds: query.studioIds?.length ? query.studioIds.join(',') : undefined,
+          [this.tagQueryKey()]: this.tagQueryValue(query.tagFilters),
           StartIndex: String(query.startIndex),
           Limit: String(query.limit),
           Recursive: query.recursive === false ? 'false' : 'true',
@@ -1340,7 +1398,7 @@ export abstract class BaseAdapter implements ServerAdapter {
           ParentId: libraryId,
           IncludeItemTypes: 'MusicArtist',
           Recursive: 'true',
-          SortBy: SORTBY_PARAM_MAP[sort?.sortBy ?? 'SORT_NAME'],
+          SortBy: sortParamOf(this.flavor, sort?.sortBy ?? 'SORT_NAME'),
           SortOrder: SORT_ORDER_PARAM_MAP[sort?.sortOrder ?? 'ASC'],
           Fields: 'PrimaryImageAspectRatio,ChildCount',
           StartIndex: String(this.startIndexOfPage(page)),
@@ -1400,7 +1458,8 @@ export abstract class BaseAdapter implements ServerAdapter {
     userId: string,
     libraryId: string,
     page: number,
-    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' },
+    filters?: readonly ItemFilterEnum[]
   ): Promise<Paged<AudioItem>> {
     const data = await this.api.request<ItemsResponse>({
       method: 'GET',
@@ -1409,8 +1468,9 @@ export abstract class BaseAdapter implements ServerAdapter {
           ParentId: libraryId,
           IncludeItemTypes: 'Audio',
           Recursive: 'true',
-          SortBy: SORTBY_PARAM_MAP[sort?.sortBy ?? 'SORT_NAME'],
+          SortBy: sortParamOf(this.flavor, sort?.sortBy ?? 'SORT_NAME'),
           SortOrder: SORT_ORDER_PARAM_MAP[sort?.sortOrder ?? 'ASC'],
+          Filters: filters?.length ? filters.join(',') : undefined,
           Fields: 'PrimaryImageAspectRatio,ChildCount',
           StartIndex: String(this.startIndexOfPage(page)),
           Limit: String(PAGE_SIZE),
@@ -1586,7 +1646,7 @@ export abstract class BaseAdapter implements ServerAdapter {
           ParentId: parentId,
           IncludeItemTypes: 'Photo',
           Recursive: 'true',
-          SortBy: SORTBY_PARAM_MAP[sort?.sortBy ?? 'SORT_NAME'],
+          SortBy: sortParamOf(this.flavor, sort?.sortBy ?? 'SORT_NAME'),
           SortOrder: SORT_ORDER_PARAM_MAP[sort?.sortOrder ?? 'ASC'],
           Fields: 'PrimaryImageAspectRatio,Path',
           // 照片分页步长 = 照片页大小 60（与 Limit 一致，避免页间重叠）
@@ -1624,6 +1684,352 @@ export abstract class BaseAdapter implements ServerAdapter {
       total: data.TotalRecordCount ?? 0,
       startIndex: data.StartIndex ?? this.startIndexOfPage(page),
     };
+  }
+
+  // —— M8：库页 Tab 扩展（推荐/实体/LiveTV/插件频道/通用歌单）——
+
+  /** 实体条目 → 统一实体摘要（Genres/Tags/Studios/Channels） */
+  private translateEntity(item: EntityResponse): EntitySummary | null {
+    const id = item.Id ?? item.Name ?? '';
+    const name = item.Name ?? id;
+    if (id === '' || name === '') {
+      return null;
+    }
+    const tag = item.ImageTags?.Primary ?? item.PrimaryImageTag;
+    return {
+      id,
+      name,
+      imageUrl:
+        tag !== undefined
+          ? this.buildImageUrl(item.Id ?? id, 'Primary', POSTER_MAX_WIDTH, tag)
+          : undefined,
+      childCount: item.ChildCount,
+    };
+  }
+
+  /** LiveTV/插件频道条目 → 统一模型（填充频道号/时间窗/状态） */
+  private translateLiveItem(
+    item: ServerItemResponse,
+    type: 'TvChannel' | 'Program' | 'Recording' | 'Timer' | 'SeriesTimer'
+  ): MediaLibraryItem | null {
+    const id = item.Id ?? '';
+    if (id === '') {
+      return null;
+    }
+    const tag = item.ImageTags?.Primary ?? item.PrimaryImageTag;
+    const imageId = item.PrimaryImageItemId ?? id;
+    return {
+      id,
+      type,
+      name: item.Name ?? '',
+      subtext: item.ChannelName ?? item.Status,
+      productionYear: item.ProductionYear,
+      runtimeMs: item.RunTimeTicks !== undefined ? ticksToMs(item.RunTimeTicks) : undefined,
+      posterImageUrl:
+        tag !== undefined
+          ? this.buildImageUrl(imageId, 'Primary', POSTER_MAX_WIDTH, tag)
+          : undefined,
+      channelNumber: item.ChannelNumber,
+      channelId: item.ChannelId ?? (type === 'TvChannel' ? id : undefined),
+      startMs: isoToMs(item.StartDate),
+      endMs: isoToMs(item.EndDate),
+      status: item.Status,
+      userData: translateUserData(item),
+    };
+  }
+
+  /** 类型 → 实体列表端点（音乐/游戏使用专用 Genres 端点） */
+  private genreEndpointOf(kinds: readonly MediaItemTypeEnum[]): string {
+    if (kinds.some((kind) => kind === 'Game' || kind === 'GameSystem')) {
+      return '/GameGenres';
+    }
+    if (
+      kinds.some((kind) => kind === 'MusicAlbum' || kind === 'Audio' || kind === 'MusicArtist')
+    ) {
+      return '/MusicGenres';
+    }
+    return '/Genres';
+  }
+
+  async getSuggestions(
+    userId: string,
+    parentId: string,
+    kinds: readonly MediaItemTypeEnum[],
+    limit: number
+  ): Promise<MediaLibraryItem[]> {
+    const data = await this.api.request<ItemsResponse>({
+      method: 'GET',
+      url: this.urlOf(
+        `/Users/${userId}/Suggestions?${this.buildQuery({
+          ParentId: parentId,
+          IncludeItemTypes: kinds.length > 0 ? kinds.join(',') : undefined,
+          Limit: String(limit),
+          Fields: 'PrimaryImageAspectRatio,UserData,ChildCount',
+          ImageTypeLimit: '1',
+        })}`
+      ),
+      headers: this.buildHeaders(this.token),
+    });
+    return (data.Items ?? []).flatMap((item) => {
+      const translated = this.translateListItem(item);
+      return translated === null ? [] : [translated];
+    });
+  }
+
+  async getGenres(
+    userId: string,
+    parentId: string,
+    kinds: readonly MediaItemTypeEnum[],
+    startIndex = 0,
+    limit = PAGE_SIZE
+  ): Promise<Paged<EntitySummary>> {
+    const data = await this.api.request<EntityItemsResponse>({
+      method: 'GET',
+      url: this.urlOf(
+        `${this.genreEndpointOf(kinds)}?${this.buildQuery({
+          UserId: userId,
+          ParentId: parentId,
+          IncludeItemTypes: kinds.length > 0 ? kinds.join(',') : undefined,
+          SortBy: 'SortName',
+          SortOrder: 'Ascending',
+          StartIndex: String(startIndex),
+          Limit: String(limit),
+          Fields: 'PrimaryImageAspectRatio,ChildCount',
+          ImageTypeLimit: '1',
+        })}`
+      ),
+      headers: this.buildHeaders(this.token),
+    });
+    return {
+      items: (data.Items ?? []).flatMap((item) => {
+        const translated = this.translateEntity(item);
+        return translated === null ? [] : [translated];
+      }),
+      total: data.TotalRecordCount ?? 0,
+      startIndex,
+    };
+  }
+
+  async getTags(
+    userId: string,
+    parentId: string,
+    startIndex = 0,
+    limit = PAGE_SIZE
+  ): Promise<Paged<EntitySummary>> {
+    const data = await this.api.request<EntityItemsResponse | string[]>({
+      method: 'GET',
+      url: this.urlOf(
+        `/Tags?${this.buildQuery({
+          UserId: userId,
+          ParentId: parentId,
+          SortBy: 'SortName',
+          SortOrder: 'Ascending',
+          StartIndex: String(startIndex),
+          Limit: String(limit),
+        })}`
+      ),
+      headers: this.buildHeaders(this.token),
+    });
+    const rawItems: EntityResponse[] = Array.isArray(data)
+      ? data.map((name) => ({ Id: name, Name: name }))
+      : (data.Items ?? []);
+    const items = rawItems.flatMap((item) => {
+      const translated = this.translateEntity(item);
+      return translated === null ? [] : [translated];
+    });
+    return {
+      items,
+      total: Array.isArray(data) ? data.length : (data.TotalRecordCount ?? items.length),
+      startIndex,
+    };
+  }
+
+  async getStudios(
+    userId: string,
+    parentId: string,
+    startIndex = 0,
+    limit = PAGE_SIZE
+  ): Promise<Paged<EntitySummary>> {
+    const data = await this.api.request<EntityItemsResponse>({
+      method: 'GET',
+      url: this.urlOf(
+        `/Studios?${this.buildQuery({
+          UserId: userId,
+          ParentId: parentId,
+          SortBy: 'SortName',
+          SortOrder: 'Ascending',
+          StartIndex: String(startIndex),
+          Limit: String(limit),
+          Fields: 'PrimaryImageAspectRatio,ChildCount',
+          ImageTypeLimit: '1',
+        })}`
+      ),
+      headers: this.buildHeaders(this.token),
+    });
+    return {
+      items: (data.Items ?? []).flatMap((item) => {
+        const translated = this.translateEntity(item);
+        return translated === null ? [] : [translated];
+      }),
+      total: data.TotalRecordCount ?? 0,
+      startIndex,
+    };
+  }
+
+  async getLiveTvChannels(
+    userId: string,
+    startIndex: number,
+    limit: number,
+    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+  ): Promise<Paged<MediaLibraryItem>> {
+    const data = await this.api.request<ItemsResponse>({
+      method: 'GET',
+      url: this.urlOf(
+        `/LiveTv/Channels?${this.buildQuery({
+          UserId: userId,
+          SortBy: sortParamOf(this.flavor, sort?.sortBy ?? 'SORT_NAME'),
+          SortOrder: SORT_ORDER_PARAM_MAP[sort?.sortOrder ?? 'ASC'],
+          StartIndex: String(startIndex),
+          Limit: String(limit),
+          Fields: 'PrimaryImageAspectRatio,UserData',
+          ImageTypeLimit: '1',
+        })}`
+      ),
+      headers: this.buildHeaders(this.token),
+    });
+    return {
+      items: (data.Items ?? []).flatMap((item) => {
+        const translated = this.translateLiveItem(item, 'TvChannel');
+        return translated === null ? [] : [translated];
+      }),
+      total: data.TotalRecordCount ?? 0,
+      startIndex,
+    };
+  }
+
+  async getLiveTvPrograms(
+    userId: string,
+    startIndex: number,
+    limit: number,
+    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+  ): Promise<Paged<MediaLibraryItem>> {
+    const data = await this.api.request<ItemsResponse>({
+      method: 'GET',
+      url: this.urlOf(
+        `/LiveTv/Programs?${this.buildQuery({
+          UserId: userId,
+          SortBy: sortParamOf(this.flavor, sort?.sortBy ?? 'START_DATE'),
+          SortOrder: SORT_ORDER_PARAM_MAP[sort?.sortOrder ?? 'ASC'],
+          StartIndex: String(startIndex),
+          Limit: String(limit),
+          Fields: 'PrimaryImageAspectRatio,UserData',
+          ImageTypeLimit: '1',
+        })}`
+      ),
+      headers: this.buildHeaders(this.token),
+    });
+    return {
+      items: (data.Items ?? []).flatMap((item) => {
+        const translated = this.translateLiveItem(item, 'Program');
+        return translated === null ? [] : [translated];
+      }),
+      total: data.TotalRecordCount ?? 0,
+      startIndex,
+    };
+  }
+
+  async getLiveTvRecordings(
+    userId: string,
+    startIndex: number,
+    limit: number,
+    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+  ): Promise<Paged<MediaLibraryItem>> {
+    const data = await this.api.request<ItemsResponse>({
+      method: 'GET',
+      url: this.urlOf(
+        `/LiveTv/Recordings?${this.buildQuery({
+          UserId: userId,
+          SortBy: sortParamOf(this.flavor, sort?.sortBy ?? 'DATE_CREATED'),
+          SortOrder: SORT_ORDER_PARAM_MAP[sort?.sortOrder ?? 'DESC'],
+          StartIndex: String(startIndex),
+          Limit: String(limit),
+          Fields: 'PrimaryImageAspectRatio,UserData',
+          ImageTypeLimit: '1',
+        })}`
+      ),
+      headers: this.buildHeaders(this.token),
+    });
+    return {
+      items: (data.Items ?? []).flatMap((item) => {
+        const translated = this.translateLiveItem(item, 'Recording');
+        return translated === null ? [] : [translated];
+      }),
+      total: data.TotalRecordCount ?? 0,
+      startIndex,
+    };
+  }
+
+  async getLiveTvTimers(userId: string): Promise<MediaLibraryItem[]> {
+    const data = await this.api.request<ItemsResponse | ServerItemResponse[]>({
+      method: 'GET',
+      url: this.urlOf(`/LiveTv/Timers?${this.buildQuery({ UserId: userId })}`),
+      headers: this.buildHeaders(this.token),
+    });
+    return itemsOf<ServerItemResponse>(data).items.flatMap((item) => {
+      const translated = this.translateLiveItem(item, 'Timer');
+      return translated === null ? [] : [translated];
+    });
+  }
+
+  async getLiveTvSeriesTimers(userId: string): Promise<MediaLibraryItem[]> {
+    const data = await this.api.request<ItemsResponse | ServerItemResponse[]>({
+      method: 'GET',
+      url: this.urlOf(`/LiveTv/SeriesTimers?${this.buildQuery({ UserId: userId })}`),
+      headers: this.buildHeaders(this.token),
+    });
+    return itemsOf<ServerItemResponse>(data).items.flatMap((item) => {
+      const translated = this.translateLiveItem(item, 'SeriesTimer');
+      return translated === null ? [] : [translated];
+    });
+  }
+
+  async getPluginChannels(userId: string): Promise<EntitySummary[]> {
+    const data = await this.api.request<EntityItemsResponse | EntityResponse[]>({
+      method: 'GET',
+      url: this.urlOf(`/Channels?${this.buildQuery({ UserId: userId })}`),
+      headers: this.buildHeaders(this.token),
+    });
+    return itemsOf<EntityResponse>(data).items.flatMap((item) => {
+      const translated = this.translateEntity(item);
+      return translated === null ? [] : [translated];
+    });
+  }
+
+  async getPluginChannelItems(
+    userId: string,
+    channelId: string,
+    startIndex: number,
+    limit: number
+  ): Promise<Paged<MediaLibraryItem>> {
+    return this.listItems({ userId, channelId, startIndex, limit, recursive: true });
+  }
+
+  async getPlaylistEntries(userId: string, playlistId: string): Promise<MediaLibraryItem[]> {
+    const data = await this.api.request<ItemsResponse>({
+      method: 'GET',
+      url: this.urlOf(
+        `/Playlists/${playlistId}/Items?${this.buildQuery({
+          UserId: userId,
+          Fields: 'PrimaryImageAspectRatio,UserData,ChildCount',
+          ImageTypeLimit: '1',
+        })}`
+      ),
+      headers: this.buildHeaders(this.token),
+    });
+    return (data.Items ?? []).flatMap((item) => {
+      const translated = this.translateListItem(item);
+      return translated === null ? [] : [translated];
+    });
   }
 
   // —— M2/M3：播放决策与上报（共享实现；设计 §6.1 差异表未列为两端差异）——

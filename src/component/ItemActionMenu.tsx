@@ -22,7 +22,13 @@ type ItemActionNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 /** 长按菜单「播放/下载」可用的单文件条目类型 */
 function isPlayableItem(item: MediaLibraryItem): boolean {
-  return item.type === 'Movie' || item.type === 'Episode' || item.type === 'Video';
+  return (
+    item.type === 'Movie' ||
+    item.type === 'Episode' ||
+    item.type === 'Video' ||
+    item.type === 'Trailer' ||
+    item.type === 'MusicVideo'
+  );
 }
 
 /** 操作失败 Toast（文案取 ERROR_MESSAGE_MAP 唯一出处） */

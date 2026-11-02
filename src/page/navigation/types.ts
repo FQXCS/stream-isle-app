@@ -2,8 +2,29 @@
  * 导航参数类型（M1 文档 §4.9；M2 增量 Item/Person/Player，02 §4.5 路由表；
  * M5 增量 AlbumDetail/NowPlaying/PhotoViewer，05 §4.15）。
  */
-import type { MediaLibrary, PlaybackSession, PhotoItem, ServerInfo } from '@/adapter/model';
+import type {
+  ItemFilterEnum,
+  LibraryTypeEnum,
+  MediaLibrary,
+  MediaItemTypeEnum,
+  PlaybackSession,
+  PhotoItem,
+  ServerFlavor,
+  ServerInfo,
+} from '@/adapter/model';
 import type { ROUTES } from '@/constant/navigation';
+
+/** 通用条目列表路由参数（合集子项/类型/标签/工作室过滤/插件频道节目） */
+export interface ItemListParams {
+  title: string;
+  parentId?: string;
+  kinds?: MediaItemTypeEnum[];
+  filters?: ItemFilterEnum[];
+  genreIds?: string[];
+  tagFilters?: { id: string; name: string }[];
+  studioIds?: string[];
+  channelId?: string;
+}
 
 /** RootStack（native-stack）参数表 */
 export type RootStackParamList = {
@@ -39,6 +60,26 @@ export type RootStackParamList = {
   [ROUTES.DOWNLOADS]: undefined;
   /** 收录类型设置二级页：继续观看/观看历史分别多选 */
   [ROUTES.MEDIA_TYPE_SETTINGS]: undefined;
+  /** 库页配置：指定服务器类型后显示 Tab 分类/排序项入口 */
+  [ROUTES.LIBRARY_DISPLAY_SETTINGS]: { flavor: ServerFlavor };
+  /** 库页 Tab 分类配置（指定 flavor 后进入库类型列表） */
+  [ROUTES.LIBRARY_TAB_SETTINGS]: { flavor: ServerFlavor };
+  /** 某库类型的 Tab 编辑器（拖动排序） */
+  [ROUTES.LIBRARY_TAB_EDITOR]: { flavor: ServerFlavor; libraryType: LibraryTypeEnum };
+  /** 库页排序项配置（指定 flavor 后进入库类型列表） */
+  [ROUTES.LIBRARY_SORT_SETTINGS]: { flavor: ServerFlavor };
+  /** 某库类型的 Tab 列表（选择后进入排序编辑器） */
+  [ROUTES.LIBRARY_SORT_TABS]: { flavor: ServerFlavor; libraryType: LibraryTypeEnum };
+  /** 单 Tab 排序编辑器（拖动排序） */
+  [ROUTES.LIBRARY_SORT_EDITOR]: {
+    flavor: ServerFlavor;
+    libraryType: LibraryTypeEnum;
+    tabId: string;
+  };
+  /** 通用条目列表（合集子项/类型/标签/工作室过滤/插件频道节目） */
+  [ROUTES.ITEM_LIST]: ItemListParams;
+  /** 通用歌单详情（视频/混合歌单） */
+  [ROUTES.PLAYLIST_DETAIL]: { playlistId: string; title?: string };
   /** M7：图书阅读器（Book 详情页进入；仅元数据传参，文件缓存与断点由阅读器页内经服务读取） */
   [ROUTES.BOOK_READER]: { itemId: string; name: string };
 };

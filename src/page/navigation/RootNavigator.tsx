@@ -17,6 +17,7 @@ import { useEffect, useMemo } from 'react';
 import { StyleSheet, ToastAndroid, View } from 'react-native';
 
 import { ROUTES } from '@/constant/navigation';
+import { LIBRARY_TYPE_LABELS, TAB_CATALOG } from '@/constant/libraryTabs';
 import { errorMessageOf } from '@/infra/error';
 import { apiEvents } from '@/infra/api/apiEvents';
 import { MiniPlayer } from '@/component/MiniPlayer';
@@ -24,11 +25,19 @@ import { SharedPosterOverlay } from '@/component/SharedPosterOverlay';
 import { ToastHost } from '@/component/Toast';
 import { useResolvedScheme, useTheme } from '@/component/useTheme';
 import { AlbumDetailScreen } from '@/page/album/AlbumDetailScreen';
+import { PlaylistDetailScreen } from '@/page/album/PlaylistDetailScreen';
 import { BookReaderScreen } from '@/page/reader/BookReaderScreen';
 import { DownloadsScreen } from '@/page/downloads/DownloadsScreen';
 import { HistoryScreen } from '@/page/history/HistoryScreen';
 import { ItemDetailScreen } from '@/page/item/ItemDetailScreen';
+import { ItemListScreen } from '@/page/library/ItemListScreen';
 import { LibraryScreen } from '@/page/library/LibraryScreen';
+import { LibraryDisplaySettingsScreen } from '@/page/settings/LibraryDisplaySettingsScreen';
+import { LibrarySortEditorScreen } from '@/page/settings/LibrarySortEditorScreen';
+import { LibrarySortSettingsScreen } from '@/page/settings/LibrarySortSettingsScreen';
+import { LibrarySortTabsScreen } from '@/page/settings/LibrarySortTabsScreen';
+import { LibraryTabEditorScreen } from '@/page/settings/LibraryTabEditorScreen';
+import { LibraryTabSettingsScreen } from '@/page/settings/LibraryTabSettingsScreen';
 import { MediaTypeSettingsScreen } from '@/page/settings/MediaTypeSettingsScreen';
 import { navigationRef } from '@/page/navigation/navigationRef';
 import type { RootStackParamList, TabsParamList } from '@/page/navigation/types';
@@ -197,6 +206,83 @@ export function RootNavigator() {
               name={ROUTES.MEDIA_TYPE_SETTINGS}
               component={MediaTypeSettingsScreen}
               options={{ title: '收录类型', headerBackTitle: '返回' }}
+            />
+            {/* 库页配置：根设置页已选服务器类型，这里配置 Tab 分类/排序项 */}
+            <RootStack.Screen
+              name={ROUTES.LIBRARY_DISPLAY_SETTINGS}
+              component={LibraryDisplaySettingsScreen}
+              options={({ route }) => ({
+                title: `库页配置 · ${route.params.flavor === 'JELLYFIN' ? 'Jellyfin' : 'Emby'}`,
+                headerBackTitle: '返回',
+              })}
+            />
+            {/* 库页 Tab 分类配置：指定 flavor → 库类型列表 */}
+            <RootStack.Screen
+              name={ROUTES.LIBRARY_TAB_SETTINGS}
+              component={LibraryTabSettingsScreen}
+              options={{ title: 'Tab 分类', headerBackTitle: '返回', animation: 'slide_from_right' }}
+            />
+            {/* 某库类型的 Tab 编辑器：原生 push 动画 + 动态标题 */}
+            <RootStack.Screen
+              name={ROUTES.LIBRARY_TAB_EDITOR}
+              component={LibraryTabEditorScreen}
+              options={({ route }) => ({
+                title: `Tab 分类 · ${LIBRARY_TYPE_LABELS[route.params.libraryType]}`,
+                headerBackTitle: '返回',
+                animation: 'slide_from_right',
+              })}
+            />
+            {/* 库页排序项配置：指定 flavor → 库类型列表 */}
+            <RootStack.Screen
+              name={ROUTES.LIBRARY_SORT_SETTINGS}
+              component={LibrarySortSettingsScreen}
+              options={{ title: '排序项', headerBackTitle: '返回', animation: 'slide_from_right' }}
+            />
+            {/* 某库类型的 Tab 列表：原生 push 动画 + 动态标题 */}
+            <RootStack.Screen
+              name={ROUTES.LIBRARY_SORT_TABS}
+              component={LibrarySortTabsScreen}
+              options={({ route }) => ({
+                title: `排序项 · ${LIBRARY_TYPE_LABELS[route.params.libraryType]}`,
+                headerBackTitle: '返回',
+                animation: 'slide_from_right',
+              })}
+            />
+            {/* 单 Tab 排序编辑器：原生 push 动画 + 动态标题 */}
+            <RootStack.Screen
+              name={ROUTES.LIBRARY_SORT_EDITOR}
+              component={LibrarySortEditorScreen}
+              options={({ route }) => {
+                const tab = TAB_CATALOG[route.params.libraryType].find(
+                  (item) => item.id === route.params.tabId
+                );
+                return {
+                  title:
+                    tab === undefined
+                      ? '排序项'
+                      : `排序项 · ${LIBRARY_TYPE_LABELS[route.params.libraryType]} · ${tab.label}`,
+                  headerBackTitle: '返回',
+                  animation: 'slide_from_right',
+                };
+              }}
+            />
+            {/* 通用条目列表：合集子项/类型/标签/工作室过滤/游戏系统/插件频道节目 */}
+            <RootStack.Screen
+              name={ROUTES.ITEM_LIST}
+              component={ItemListScreen}
+              options={({ route }) => ({
+                title: route.params.title,
+                headerBackTitle: '返回',
+              })}
+            />
+            {/* 通用歌单详情（视频/混合歌单） */}
+            <RootStack.Screen
+              name={ROUTES.PLAYLIST_DETAIL}
+              component={PlaylistDetailScreen}
+              options={({ route }) => ({
+                title: route.params.title ?? '播放列表',
+                headerBackTitle: '返回',
+              })}
             />
             {/* M7：图书阅读器（WebView+PDF.js 全屏沉浸） */}
             <RootStack.Screen

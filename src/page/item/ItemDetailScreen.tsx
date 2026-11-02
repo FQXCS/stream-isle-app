@@ -67,9 +67,15 @@ function toastError(err: unknown): void {
   showToast(errorMessageOf(code), 'error');
 }
 
-/** 单文件可播类型（电影/集/家庭视频）；剧集与图书走各自的元数据口径 */
+/** 单文件可播类型（电影/集/家庭视频/预告片/音乐视频）；剧集与图书走各自的元数据口径 */
 function isMediaFlowType(type: MediaItemTypeEnum): boolean {
-  return type === 'Movie' || type === 'Episode' || type === 'Video';
+  return (
+    type === 'Movie' ||
+    type === 'Episode' ||
+    type === 'Video' ||
+    type === 'Trailer' ||
+    type === 'MusicVideo'
+  );
 }
 
 /**
@@ -516,9 +522,13 @@ export function ItemDetailScreen() {
   // Book 主按钮为「阅读」（M7）：不发 PlaybackInfo（Emby 对 Book 必 500，Book 未实现
   // IHasMediaSources），也不开放下载；Movie/Episode 走播放链路
   const isBook = detail.type === 'Book';
-  // Movie/Episode 走播放链路；家庭视频库（homevideos）的 Video 条目同样可播
+  // Movie/Episode/Video/Trailer/MusicVideo 走播放链路；家庭视频库的 Video 条目同样可播
   const isPlayable =
-    detail.type === 'Movie' || detail.type === 'Episode' || detail.type === 'Video';
+    detail.type === 'Movie' ||
+    detail.type === 'Episode' ||
+    detail.type === 'Video' ||
+    detail.type === 'Trailer' ||
+    detail.type === 'MusicVideo';
   const selectedSeason = seasons.find((season) => season.id === selectedSeasonId) ?? null;
   const resumeMs = getResumePositionMs(toResumeSource(detail));
   // Series 无媒体流（对 Series id 发 PlaybackInfo 必然空 MediaSources → PLAYBACK_UNSUPPORTED），

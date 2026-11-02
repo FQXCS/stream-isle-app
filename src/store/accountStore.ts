@@ -276,3 +276,14 @@ export function getActiveAccount(): ServerAccount {
   }
   return server;
 }
+
+/** 活跃服务器 flavor（UI 用；无活跃账号时回退 EMBY，实际受路由守卫保护） */
+export function useActiveServerFlavor(): ServerFlavor {
+  return useAccountStore((state) => {
+    const active = state.active;
+    if (active === null) {
+      return 'EMBY';
+    }
+    return state.servers.find((item) => item.serverId === active.serverId)?.flavor ?? 'EMBY';
+  });
+}

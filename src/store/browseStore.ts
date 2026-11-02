@@ -35,24 +35,51 @@ export function normalizeFilters(filters?: ItemQuery['filters']): string {
   return filters && filters.length > 0 ? [...filters].sort().join(',') : '';
 }
 
+/** 字符串 id 列表规范化：排序去重后 join(",") */
+export function normalizeIdList(idList?: string[]): string {
+  return idList && idList.length > 0 ? Array.from(new Set(idList)).sort().join(',') : '';
+}
+
+/** 标签过滤规范化：按 id 排序去重，id=name 成对保留 */
+export function normalizeTagFilters(tagFilters?: ItemQuery['tagFilters']): string {
+  if (tagFilters === undefined || tagFilters.length === 0) {
+    return '';
+  }
+  const unique = new Map(tagFilters.map((tag) => [tag.id, tag.name]));
+  return Array.from(unique.keys())
+    .sort()
+    .map((id) => `${id}=${unique.get(id) ?? ''}`)
+    .join(',');
+}
+
 /**
- * 海报墙缓存键（§4.8）：[serverId, userId, libraryId, normalizeKinds(kinds), sortBy,
- * sortOrder, normalizeFilters(filters)].join("|")，字段顺序固定。
+ * 海报墙缓存键（§4.8）：[serverId, userId, libraryId, tabId, normalizeKinds(kinds), sortBy,
+ * sortOrder, normalizeFilters(filters), normalizeIdList(genreIds),
+ * normalizeTagFilters(tagFilters), normalizeIdList(studioIds)].join("|")，字段顺序固定。
+ * tabId 使同一库不同 Tab 的相同查询互不串缓存；新增过滤维度也必须入键。
  */
 export function wallKeyOf(
   serverId: string,
   userId: string,
   libraryId: string,
-  query: Pick<ItemQuery, 'kinds' | 'sortBy' | 'sortOrder' | 'filters'>
+  query: Pick<
+    ItemQuery,
+    'kinds' | 'sortBy' | 'sortOrder' | 'filters' | 'genreIds' | 'tagFilters' | 'studioIds'
+  >,
+  tabId = ''
 ): string {
   return [
     serverId,
     userId,
     libraryId,
+    tabId,
     normalizeKinds(query.kinds),
     query.sortBy ?? 'SORT_NAME',
     query.sortOrder ?? '',
     normalizeFilters(query.filters),
+    normalizeIdList(query.genreIds),
+    normalizeTagFilters(query.tagFilters),
+    normalizeIdList(query.studioIds),
   ].join('|');
 }
 

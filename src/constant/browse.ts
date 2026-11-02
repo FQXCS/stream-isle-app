@@ -214,16 +214,23 @@ export function libraryViewOptionsOf(type: LibraryTypeEnum): readonly LibraryVie
  * 服务器 CollectionType → 客户端库类型。
  * homevideos 归 PHOTO：Emby/Jellyfin 该类型库普遍为照片+视频混合（家庭影集），
  * 视频墙口径（Movie,Series）对其恒为空，照片相册布局才可消费其内容；
- * 其余（playlists、livetv、空值等）仍归 MIXED，进入后按视频库展示
- * （IncludeItemTypes=Movie,Series），库内无此类条目时自然呈现空态——不为低频类型单独建布局。
+ * 其余未映射值（folders、mixed、空值等）仍归 MIXED，进入后按视频库展示。
  */
 export const COLLECTION_TYPE_MAP: Record<string, LibraryTypeEnum> = {
   movies: 'MOVIE',
   tvshows: 'TVSHOW',
   music: 'MUSIC',
+  audiobooks: 'AUDIOBOOK',
+  musicvideos: 'MUSICVIDEO',
   photos: 'PHOTO',
   homevideos: 'PHOTO',
   books: 'BOOK',
+  boxsets: 'BOXSET',
+  playlists: 'PLAYLIST',
+  games: 'GAME',
+  livetv: 'LIVETV',
+  channels: 'CHANNEL',
+  trailers: 'TRAILER',
 };
 
 /** MIXED 库海报墙的条目类型（chips「全部」= Movie,Series） */
@@ -235,12 +242,21 @@ export const MIXED_LIBRARY_KINDS = ['Movie', 'Series'] as const;
  * MUSIC 由 MusicAlbum 改为 Audio——音乐库以「全部歌曲」为内容主体，
  * 按专辑计数会显示成个位数（如 asmr 库 5 专辑 vs 3361 首歌），与库页观感不符。
  * PHOTO 维持 PhotoAlbum（相册是照片库的顶层浏览单位）。
+ * 新增库类型按主内容类型计数；LIVETV/CHANNEL 失败由 fetchLibraries 容错。
  */
 export const INCLUDE_ITEM_TYPES_BY_LIBRARY: Record<LibraryTypeEnum, string> = {
   MOVIE: 'Movie',
   TVSHOW: 'Series',
   MUSIC: 'Audio',
+  AUDIOBOOK: 'MusicAlbum',
+  MUSICVIDEO: 'MusicVideo',
   PHOTO: 'PhotoAlbum',
   BOOK: 'Book',
+  BOXSET: 'BoxSet',
+  PLAYLIST: 'Playlist',
+  GAME: 'Game',
+  LIVETV: 'TvChannel',
+  CHANNEL: 'Channel',
+  TRAILER: 'Trailer',
   MIXED: MIXED_LIBRARY_KINDS.join(','),
 };
