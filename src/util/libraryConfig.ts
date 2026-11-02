@@ -73,6 +73,51 @@ export function resolveDefaultTabId(tabList: readonly TabSpec[]): TabId | undefi
   return tabList.find((tab) => tab.defaultSelected)?.id ?? tabList[0]?.id;
 }
 
+/** 库的主内容 Tab（文件夹/收藏/已看/未看排序跟随它）：优先默认选中 Tab，否则首个可排序 Tab */
+export function primarySortTabOf(
+  flavor: ServerFlavor,
+  libraryType: LibraryTypeEnum
+): TabSpec | undefined {
+  const tabList = tabsOfFlavor(libraryType, flavor);
+  const defaultTab = tabList.find((tab) => tab.defaultSelected);
+  if (defaultTab !== undefined && defaultTab.sortSet !== 'none') {
+    return defaultTab;
+  }
+  return tabList.find((tab) => tab.sortSet !== 'none');
+}
+
+/** 筛选视图（收藏/已看/未看）与文件夹一样跟随本库主内容 Tab 排序 */
+const PRIMARY_SORT_VIEW_IDS: ReadonlySet<TabId> = new Set(['favorite', 'played', 'unplayed']);
+
+export function usesPrimarySortConfig(tab: TabSpec): boolean {
+  return tab.source === 'folder' || PRIMARY_SORT_VIEW_IDS.has(tab.id);
+}
+
+export interface ResolvePrimarySortOptionsInput {
+  flavor: ServerFlavor;
+  libraryType: LibraryTypeEnum;
+  sortOverrides?: Record<string, SortByEnum[]>;
+}
+
+/**
+ * 内容视图的排序选项：文件夹（含多级）与收藏/已看/未看统一复用本库主内容 Tab
+ * 的排序配置，不再使用各自的 Tab 配置；选中排序仍按当前视图独立记忆。
+ */
+export function resolvePrimarySortOptions(
+  input: ResolvePrimarySortOptionsInput
+): readonly SortOption[] {
+  const tab = primarySortTabOf(input.flavor, input.libraryType);
+  if (tab === undefined) {
+    return [];
+  }
+  return resolveTabSortOptions({
+    flavor: input.flavor,
+    libraryType: input.libraryType,
+    tab,
+    sortOverrides: input.sortOverrides,
+  });
+}
+
 export interface ResolveTabSortOptionsInput {
   flavor: ServerFlavor;
   libraryType: LibraryTypeEnum;

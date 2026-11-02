@@ -18,6 +18,7 @@ import { ROUTES } from '@/constant/navigation';
 import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { useLibraryDisplayStore } from '@/store/libraryDisplayStore';
+import { usesPrimarySortConfig } from '@/util/libraryConfig';
 
 type SettingsNavigation = NativeStackNavigationProp<RootStackParamList>;
 
@@ -59,8 +60,12 @@ function LibraryTypeList({ flavor, sortListByTabScope, onSelect }: LibraryTypeLi
       <View style={styles.card}>
         {visibleTypes.map((libraryType) => {
           const tabs = tabsOfFlavor(libraryType, flavor);
-          const sortableCount = tabs.filter((tab) => tab.sortSet !== 'none').length;
-          const customized = tabs.some(
+          // 文件夹/收藏/已看/未看跟随主内容 Tab 排序，不计入可独立配置的 Tab
+          const sortableTabs = tabs.filter(
+            (tab) => !usesPrimarySortConfig(tab) && tab.sortSet !== 'none'
+          );
+          const sortableCount = sortableTabs.length;
+          const customized = sortableTabs.some(
             (tab) =>
               sortListByTabScope[`${flavor}:${libraryType}:${tab.id}`] !== undefined
           );

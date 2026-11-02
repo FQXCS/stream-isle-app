@@ -1,7 +1,8 @@
 /**
  * 库内容页（M8 目录驱动）：按活跃服务器 flavor + 用户配置解析有效 Tab 列表，
  * SegmentedControl 按用户顺序渲染；每 Tab 独立排序记忆（libraryViewStore Tab 键），
- * 排序项按 Tab 配置顺序渲染。MUSIC/PHOTO/新库类型统一走 TabContent 渲染器。
+ * 排序项按 Tab 配置顺序渲染（文件夹/收藏/已看/未看例外：跟随本库主内容 Tab 的排序配置）。
+ * MUSIC/PHOTO/新库类型统一走 TabContent 渲染器。
  */
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -27,8 +28,10 @@ import {
 } from '@/store/libraryViewStore';
 import {
   resolveDefaultTabId,
+  resolvePrimarySortOptions,
   resolveTabList,
   resolveTabSortOptions,
+  usesPrimarySortConfig,
 } from '@/util/libraryConfig';
 
 type LibraryNavigation = NativeStackNavigationProp<RootStackParamList>;
@@ -76,12 +79,18 @@ function LibraryBody({ library }: { library: MediaLibrary }) {
     () =>
       activeTab === undefined
         ? []
-        : resolveTabSortOptions({
-            flavor,
-            libraryType: library.type,
-            tab: activeTab,
-            sortOverrides: sortListByTabScope,
-          }),
+        : usesPrimarySortConfig(activeTab)
+          ? resolvePrimarySortOptions({
+              flavor,
+              libraryType: library.type,
+              sortOverrides: sortListByTabScope,
+            })
+          : resolveTabSortOptions({
+              flavor,
+              libraryType: library.type,
+              tab: activeTab,
+              sortOverrides: sortListByTabScope,
+            }),
     [flavor, library.type, activeTab, sortListByTabScope]
   );
   const savedSort =

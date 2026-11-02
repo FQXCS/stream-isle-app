@@ -11,6 +11,7 @@ import type {
   PhotoItem,
   ServerFlavor,
   ServerInfo,
+  SortByEnum,
 } from '@/adapter/model';
 import type { ROUTES } from '@/constant/navigation';
 
@@ -80,6 +81,17 @@ export type RootStackParamList = {
   [ROUTES.ITEM_LIST]: ItemListParams;
   /** 通用歌单详情（视频/混合歌单） */
   [ROUTES.PLAYLIST_DETAIL]: { playlistId: string; title?: string };
+  /** 库内文件夹/相册下钻（原生 push 动画，标题为文件夹名；不含库页 Tab 栏） */
+  [ROUTES.LIBRARY_FOLDER]: {
+    libraryId: string;
+    libraryType: LibraryTypeEnum;
+    folderId: string;
+    folderName: string;
+    tabId: string;
+    sortBy: SortByEnum;
+    sortOrder: 'ASC' | 'DESC';
+    kind: 'folder' | 'album';
+  };
   /** M7：图书阅读器（Book 详情页进入；仅元数据传参，文件缓存与断点由阅读器页内经服务读取） */
   [ROUTES.BOOK_READER]: { itemId: string; name: string };
 };

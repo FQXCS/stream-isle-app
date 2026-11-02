@@ -13,7 +13,11 @@ import { ROUTES } from '@/constant/navigation';
 import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { useLibraryDisplayStore } from '@/store/libraryDisplayStore';
-import { resolveTabSortOptions } from '@/util/libraryConfig';
+import {
+  primarySortTabOf,
+  resolveTabSortOptions,
+  usesPrimarySortConfig,
+} from '@/util/libraryConfig';
 
 type SettingsNavigation = NativeStackNavigationProp<RootStackParamList>;
 
@@ -30,6 +34,7 @@ export function LibrarySortTabsScreen() {
   const { flavor, libraryType } = route.params;
   const sortListByTabScope = useLibraryDisplayStore((state) => state.sortListByTabScope);
   const tabList = tabsOfFlavor(libraryType, flavor);
+  const primaryTab = primarySortTabOf(flavor, libraryType);
 
   return (
     <View style={styles.container}>
@@ -37,6 +42,18 @@ export function LibrarySortTabsScreen() {
         <Text style={styles.sectionTitle}>Tab</Text>
         <View style={styles.card}>
           {tabList.map((tab) => {
+            // 文件夹与收藏/已看/未看跟随本库主内容 Tab，不再单独配置
+            if (usesPrimarySortConfig(tab)) {
+              return (
+                <SettingRow
+                  key={tab.id}
+                  label={tab.label}
+                  value={
+                    primaryTab === undefined ? '不支持排序' : `跟随「${primaryTab.label}」`
+                  }
+                />
+              );
+            }
             if (tab.sortSet === 'none') {
               return <SettingRow key={tab.id} label={tab.label} value="不支持排序" />;
             }

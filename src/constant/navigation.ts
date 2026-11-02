@@ -29,6 +29,7 @@ export const ROUTES = {
   LIBRARY_SORT_EDITOR: 'LibrarySortEditor',
   ITEM_LIST: 'ItemList',
   PLAYLIST_DETAIL: 'PlaylistDetail',
+  LIBRARY_FOLDER: 'LibraryFolder',
   BOOK_READER: 'BookReader',
 } as const;
 

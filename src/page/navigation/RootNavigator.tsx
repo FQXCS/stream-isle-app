@@ -32,6 +32,7 @@ import { DownloadsScreen } from '@/page/downloads/DownloadsScreen';
 import { HistoryScreen } from '@/page/history/HistoryScreen';
 import { ItemDetailScreen } from '@/page/item/ItemDetailScreen';
 import { ItemListScreen } from '@/page/library/ItemListScreen';
+import { LibraryFolderScreen } from '@/page/library/LibraryFolderScreen';
 import { LibraryScreen } from '@/page/library/LibraryScreen';
 import { LibraryDisplaySettingsScreen } from '@/page/settings/LibraryDisplaySettingsScreen';
 import { LibrarySortEditorScreen } from '@/page/settings/LibrarySortEditorScreen';
@@ -173,6 +174,17 @@ export function RootNavigator() {
                 title: route.params.library.name,
                 headerTitleAlign: 'center',
                 headerBackTitle: '返回',
+              })}
+            />
+            {/* 库内文件夹/相册下钻：原生 push 滑动转场，标题为目录名（不含库页 Tab 栏） */}
+            <RootStack.Screen
+              name={ROUTES.LIBRARY_FOLDER}
+              component={LibraryFolderScreen}
+              options={({ route }) => ({
+                title: route.params.folderName,
+                headerTitleAlign: 'center',
+                headerBackTitle: '返回',
+                animation: 'slide_from_right',
               })}
             />
             {/* M2 详情页：Hero 自绘头部，隐藏系统导航栏 */}

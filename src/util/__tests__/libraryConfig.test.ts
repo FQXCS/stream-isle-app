@@ -3,15 +3,18 @@
  * Tab 上限 5；排序按 flavor 过滤不支持字段。
  */
 import type { LibraryTypeEnum } from '@/adapter/model';
-import { SORT_OPTIONS } from '@/constant/browse';
+import { PHOTO_SORT_OPTIONS, SORT_OPTIONS } from '@/constant/browse';
 import { TAB_CATALOG, type TabId, type TabSpec } from '@/constant/libraryTabs';
 import { SORT_SETS } from '@/constant/sortCatalog';
 import {
+  primarySortTabOf,
   resolveDefaultTabId,
+  resolvePrimarySortOptions,
   resolveTabList,
   resolveTabSortOptions,
   tabScopeKeyOf,
   tabSortScopeKeyOf,
+  usesPrimarySortConfig,
 } from '@/util/libraryConfig';
 
 function tabOf(libraryType: LibraryTypeEnum, tabId: TabId): TabSpec {
@@ -172,20 +175,12 @@ describe('resolveTabSortOptions', () => {
     expect(withSeriesDatePlayed).toEqual(['SERIES_DATE_PLAYED']);
   });
 
-  it('文件夹排序：Emby 有文件名，Jellyfin 没有', () => {
+  it('文件夹排序跟随主内容 Tab：Emby 有文件名，Jellyfin 没有', () => {
     const embyValues = valuesOf(
-      resolveTabSortOptions({
-        flavor: 'EMBY',
-        libraryType: 'MOVIE',
-        tab: tabOf('MOVIE', 'folder'),
-      })
+      resolvePrimarySortOptions({ flavor: 'EMBY', libraryType: 'MOVIE' })
     );
     const jellyfinValues = valuesOf(
-      resolveTabSortOptions({
-        flavor: 'JELLYFIN',
-        libraryType: 'MOVIE',
-        tab: tabOf('MOVIE', 'folder'),
-      })
+      resolvePrimarySortOptions({ flavor: 'JELLYFIN', libraryType: 'MOVIE' })
     );
     expect(embyValues).toContain('FILENAME');
     expect(jellyfinValues).not.toContain('FILENAME');
@@ -204,6 +199,59 @@ describe('resolveTabSortOptions', () => {
     expect(SORT_SETS.videoFull.available).toEqual(
       expect.arrayContaining(['DIRECTOR', 'RESOLUTION', 'FRAMERATE'])
     );
+  });
+});
+
+describe('resolvePrimarySortOptions', () => {
+  it('主内容 Tab：电影=影片、照片=图片、音乐=歌曲；无可排序 Tab 返回 undefined', () => {
+    expect(primarySortTabOf('EMBY', 'MOVIE')?.id).toBe('all');
+    expect(primarySortTabOf('EMBY', 'PHOTO')?.id).toBe('photo');
+    expect(primarySortTabOf('EMBY', 'MUSIC')?.id).toBe('song');
+    expect(primarySortTabOf('EMBY', 'AUDIOBOOK')?.id).toBe('album');
+    expect(primarySortTabOf('JELLYFIN', 'TVSHOW')?.id).toBe('all');
+    expect(primarySortTabOf('EMBY', 'CHANNEL')).toBeUndefined();
+  });
+
+  it('跟随视图 = 文件夹 + 收藏/已看/未看，其余 Tab 用自身配置', () => {
+    expect(usesPrimarySortConfig(tabOf('MOVIE', 'folder'))).toBe(true);
+    expect(usesPrimarySortConfig(tabOf('MOVIE', 'favorite'))).toBe(true);
+    expect(usesPrimarySortConfig(tabOf('MOVIE', 'played'))).toBe(true);
+    expect(usesPrimarySortConfig(tabOf('MOVIE', 'unplayed'))).toBe(true);
+    expect(usesPrimarySortConfig(tabOf('MOVIE', 'all'))).toBe(false);
+    expect(usesPrimarySortConfig(tabOf('MOVIE', 'trailer'))).toBe(false);
+    expect(usesPrimarySortConfig(tabOf('MOVIE', 'collection'))).toBe(false);
+  });
+
+  it('文件夹/筛选视图菜单 = 主内容 Tab 的排序配置（照片库不再局限文件夹 4 项）', () => {
+    expect(
+      valuesOf(resolvePrimarySortOptions({ flavor: 'EMBY', libraryType: 'PHOTO' }))
+    ).toEqual(valuesOf(PHOTO_SORT_OPTIONS));
+    expect(
+      valuesOf(resolvePrimarySortOptions({ flavor: 'EMBY', libraryType: 'MOVIE' }))
+    ).toEqual(valuesOf(SORT_OPTIONS));
+  });
+
+  it('主内容 Tab 的配置覆盖生效，视图自身旧键被忽略', () => {
+    const values = valuesOf(
+      resolvePrimarySortOptions({
+        flavor: 'EMBY',
+        libraryType: 'MOVIE',
+        sortOverrides: {
+          'EMBY:MOVIE:all': ['RANDOM', 'SORT_NAME'],
+          'EMBY:MOVIE:folder': ['FILENAME'],
+          'EMBY:MOVIE:favorite': ['DATE_CREATED'],
+        },
+      })
+    );
+    expect(values).toEqual(['RANDOM', 'SORT_NAME']);
+  });
+
+  it('按 flavor 过滤不支持字段；无主内容排序 Tab 时返回空', () => {
+    const jellyfinPhoto = valuesOf(
+      resolvePrimarySortOptions({ flavor: 'JELLYFIN', libraryType: 'PHOTO' })
+    );
+    expect(jellyfinPhoto).not.toContain('CONTAINER');
+    expect(resolvePrimarySortOptions({ flavor: 'EMBY', libraryType: 'CHANNEL' })).toEqual([]);
   });
 });
 
