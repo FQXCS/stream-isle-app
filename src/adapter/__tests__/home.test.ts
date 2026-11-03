@@ -3,7 +3,7 @@
  * 端点与参数构造；getNextUp 翻译为 EpisodeItem（含 seriesId，供自动连播匹配，04 §4.4）。
  */
 import { JellyfinAdapter } from '@/adapter/JellyfinAdapter';
-import { HOME_ROW_LIMIT } from '@/constant/browse';
+import { HOME_ROW_LIMIT, LIBRARY_ROW_LIMIT } from '@/constant/browse';
 import type { ApiClient } from '@/infra/api/ApiClient';
 
 function makeAdapter(responses: unknown[]): { adapter: JellyfinAdapter; api: { request: jest.Mock } } {
@@ -41,6 +41,32 @@ describe('adapter 首页三区（04 §3 认领补齐）', () => {
     expect(req.url).toContain('SortBy=DateCreated');
     expect(req.url).toContain('SortOrder=Descending');
     expect(req.url).toContain(`Limit=${HOME_ROW_LIMIT}`);
+  });
+
+  it('getLatest：limit 透传（媒体库融合页每库行 20 条）', async () => {
+    const { adapter, api } = makeAdapter([{ Items: [], TotalRecordCount: 0 }]);
+    await adapter.getLatest('u1', 'lib1', LIBRARY_ROW_LIMIT);
+    const req = api.request.mock.calls[0][0];
+    expect(req.url).toContain(`Limit=${LIBRARY_ROW_LIMIT}`);
+  });
+
+  it('getLatestByTypes：按库类型取条目类型（剧集库取单集，16:9 剧照口径）', async () => {
+    const { adapter, api } = makeAdapter([{ Items: [], TotalRecordCount: 0 }]);
+    await adapter.getLatestByTypes('u1', 'lib2', 'Episode', LIBRARY_ROW_LIMIT);
+    const req = api.request.mock.calls[0][0];
+    expect(req.url).toContain('/Users/u1/Items?');
+    expect(req.url).toContain('ParentId=lib2');
+    expect(req.url).toContain('IncludeItemTypes=Episode');
+    expect(req.url).toContain('SortBy=DateCreated');
+    expect(req.url).toContain(`Limit=${LIBRARY_ROW_LIMIT}`);
+  });
+
+  it('getLatestByTypes：Filters 透传（默认 Tab 带收藏/未看筛选时）', async () => {
+    const { adapter, api } = makeAdapter([{ Items: [], TotalRecordCount: 0 }]);
+    await adapter.getLatestByTypes('u1', 'lib1', 'Movie', LIBRARY_ROW_LIMIT, ['IsFavorite']);
+    const req = api.request.mock.calls[0][0];
+    expect(req.url).toContain('Filters=IsFavorite');
+    expect(req.url).toContain(`Limit=${LIBRARY_ROW_LIMIT}`);
   });
 
   it('getNextUp：GET /Shows/NextUp，翻译含 seriesId（自动连播匹配依赖，04 §4.4）', async () => {

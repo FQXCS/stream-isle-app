@@ -11,6 +11,11 @@ export type AppIconName =
   // 导航 / 通用
   | 'back'
   | 'more'
+  | 'plus'
+  | 'edit'
+  | 'eye'
+  | 'eyeOff'
+  | 'routes'
   | 'close'
   | 'check'
   | 'radioChecked'
@@ -31,6 +36,7 @@ export type AppIconName =
   | 'home'
   | 'library'
   | 'search'
+  | 'server'
   | 'settings'
   // 播放控制 / 手势
   | 'play'
@@ -78,6 +84,11 @@ const ICON_GLYPH_MAP: Record<AppIconName, MciName> = {
   more: 'dots-horizontal',
   close: 'close',
   check: 'check',
+  plus: 'plus',
+  edit: 'pencil',
+  eye: 'eye',
+  eyeOff: 'eye-off',
+  routes: 'swap-horizontal',
   radioChecked: 'radiobox-marked',
   radioUnchecked: 'radiobox-blank',
   chevronRight: 'chevron-right',
@@ -95,6 +106,7 @@ const ICON_GLYPH_MAP: Record<AppIconName, MciName> = {
   home: 'home',
   library: 'library',
   search: 'magnify',
+  server: 'server',
   settings: 'cog',
   play: 'play',
   pause: 'pause',

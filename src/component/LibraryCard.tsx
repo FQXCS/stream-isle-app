@@ -10,8 +10,8 @@ import { AppIcon, type AppIconName } from '@/component/AppIcon';
 import { POSTER_RADIUS, FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 
-/** 库类型 → 图标（服务器无库图时的占位） */
-const LIBRARY_ICON_MAP: Record<LibraryTypeEnum, AppIconName> = {
+/** 库类型 → 图标（服务器无库图时的占位；LibraryTile 复用同一映射） */
+export const LIBRARY_ICON_MAP: Record<LibraryTypeEnum, AppIconName> = {
   MOVIE: 'movie',
   TVSHOW: 'tv',
   MUSIC: 'audio',

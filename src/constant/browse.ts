@@ -9,6 +9,15 @@ export const PAGE_SIZE = 40;
 /** 首页三区横向卡片行长度（继续观看/下一集/最新添加共用，04 §3） */
 export const HOME_ROW_LIMIT = 12;
 
+/** 媒体库融合页「我的媒体」下方每库横向行长度（每库最新添加前 20 条） */
+export const LIBRARY_ROW_LIMIT = 20;
+
+/** 融合页卡片统一高度：各分区（继续观看/下一集/最近添加/我的媒体/每库行）卡片同高 */
+export const MEDIA_CARD_HEIGHT = 130;
+
+/** 融合页 16:9 大卡宽度（继续观看与「我的媒体」共用，高宽比 16:9；高度 = MEDIA_CARD_HEIGHT） */
+export const MEDIA_WIDE_CARD_WIDTH = Math.round((MEDIA_CARD_HEIGHT * 16) / 9);
+
 /**
  * 继续观看可选类型（设置页二级页多选）：仅视频类会记录服务端播放断点，
  * 图书/照片没有 PlaybackPositionTicks，选了也不会出现。

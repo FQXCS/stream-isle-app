@@ -9,6 +9,7 @@ import { SORT_SETS } from '@/constant/sortCatalog';
 import {
   primarySortTabOf,
   resolveDefaultTabId,
+  resolveLibraryLatestQuery,
   resolvePrimarySortOptions,
   resolveTabList,
   resolveTabSortOptions,
@@ -265,5 +266,58 @@ describe('scope key helpers', () => {
   it('Tab/排序 scope key 格式固定', () => {
     expect(tabScopeKeyOf('EMBY', 'MOVIE')).toBe('EMBY:MOVIE');
     expect(tabSortScopeKeyOf('JELLYFIN', 'TVSHOW', 'all')).toBe('JELLYFIN:TVSHOW:all');
+  });
+});
+
+describe('resolveLibraryLatestQuery（融合页每库行 Top20 的 Tab 条件）', () => {
+  it('默认 Tab 决定条目类型：电影 Movie / 剧集 Series / 音乐 Audio / 照片 Photo', () => {
+    expect(
+      resolveLibraryLatestQuery({ flavor: 'EMBY', libraryType: 'MOVIE' })?.includeItemTypes
+    ).toBe('Movie');
+    expect(
+      resolveLibraryLatestQuery({ flavor: 'EMBY', libraryType: 'TVSHOW' })?.includeItemTypes
+    ).toBe('Series');
+    expect(
+      resolveLibraryLatestQuery({ flavor: 'EMBY', libraryType: 'MUSIC' })?.includeItemTypes
+    ).toBe('Audio');
+    expect(
+      resolveLibraryLatestQuery({ flavor: 'EMBY', libraryType: 'PHOTO' })?.includeItemTypes
+    ).toBe('Photo');
+    expect(
+      resolveLibraryLatestQuery({ flavor: 'EMBY', libraryType: 'BOOK' })?.includeItemTypes
+    ).toBe('Book');
+  });
+
+  it('默认 Tab 可被设置页覆盖：剧集启用「集」并设为默认后取 Episode', () => {
+    const query = resolveLibraryLatestQuery({
+      flavor: 'EMBY',
+      libraryType: 'TVSHOW',
+      tabOverrides: { 'EMBY:TVSHOW': ['episode', 'all'] },
+      preferredTabByScope: { 'EMBY:TVSHOW': 'episode' },
+    });
+    expect(query?.includeItemTypes).toBe('Episode');
+  });
+
+  it('默认 Tab 带筛选时透传 Filters（收藏）', () => {
+    const query = resolveLibraryLatestQuery({
+      flavor: 'EMBY',
+      libraryType: 'MOVIE',
+      preferredTabByScope: { 'EMBY:MOVIE': 'favorite' },
+    });
+    expect(query).toEqual({ includeItemTypes: 'Movie', filters: ['IsFavorite'] });
+  });
+
+  it('无条目类型的默认 Tab（直播/频道）不展示该行', () => {
+    expect(resolveLibraryLatestQuery({ flavor: 'EMBY', libraryType: 'LIVETV' })).toBeNull();
+    expect(resolveLibraryLatestQuery({ flavor: 'EMBY', libraryType: 'CHANNEL' })).toBeNull();
+  });
+
+  it('文件夹默认 Tab 不回退到别的类型（宁可不显示）', () => {
+    const query = resolveLibraryLatestQuery({
+      flavor: 'EMBY',
+      libraryType: 'MOVIE',
+      preferredTabByScope: { 'EMBY:MOVIE': 'folder' },
+    });
+    expect(query).toBeNull();
   });
 });

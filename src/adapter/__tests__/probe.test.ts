@@ -3,6 +3,7 @@
  */
 import { EmbyAdapter } from '@/adapter/EmbyAdapter';
 import { JellyfinAdapter } from '@/adapter/JellyfinAdapter';
+import { PROBE_TIMEOUT_MS } from '@/constant/api';
 import type { ApiClient } from '@/infra/api/ApiClient';
 
 /** 注入 api 的 adapter 构造 */
@@ -90,6 +91,8 @@ describe('probe flavor 判定（ProductName）', () => {
     const req = api.request.mock.calls[0][0];
     expect(req.url).toBe('http://srv/System/Info/Public');
     expect(req.headers?.Authorization).toContain('MediaBrowser Client=');
-    expect(req.timeoutMs).toBe(10000);
+    expect(req.timeoutMs).toBe(PROBE_TIMEOUT_MS);
+    // 添加服务器连通测试上限 5s（2026-11 用户要求）
+    expect(PROBE_TIMEOUT_MS).toBe(5000);
   });
 });

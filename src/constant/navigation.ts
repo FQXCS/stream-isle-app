@@ -7,11 +7,22 @@ export const ROUTES = {
   ONBOARDING_CONNECT: 'OnboardingConnect',
   ONBOARDING_LOGIN: 'OnboardingLogin',
   TABS: 'Tabs',
-  TAB_HOME: 'Tabs.Home',
   TAB_LIBRARIES: 'Tabs.Libraries',
-  TAB_SEARCH: 'Tabs.Search',
+  TAB_MEDIA_SERVER: 'Tabs.MediaServer',
   TAB_SETTINGS: 'Tabs.Settings',
+  /** 搜索页（媒体库页头部入口进入，原底部 Tab 移出） */
+  SEARCH: 'Search',
+  /** 添加 / 编辑服务器表单（影视服务器页 + 号、卡片菜单「编辑」） */
+  SERVER_ADD: 'ServerAdd',
+  /** 服务器排序（影视服务器页「⋯ → 排序」） */
+  SERVER_SORT: 'ServerSort',
+  /** 线路管理（备用线路列表） */
+  SERVER_ROUTES: 'ServerRoutes',
+  /** 添加 / 编辑备用线路 */
+  SERVER_ROUTE_EDIT: 'ServerRouteEdit',
   LIBRARY: 'Library',
+  /** 全部媒体库列表（融合页「我的媒体 · 查看全部」） */
+  LIBRARY_LIST: 'LibraryList',
   ITEM: 'Item',
   PERSON: 'Person',
   PLAYER: 'Player',

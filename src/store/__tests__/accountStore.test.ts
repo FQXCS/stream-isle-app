@@ -274,3 +274,69 @@ describe('accountStore.removeServer（04 §4.7 级联清理）', () => {
     expect(useAccountStore.getState().active).toEqual({ serverId: 'srv2', userId: 'u2' });
   });
 });
+
+describe('accountStore 线路（备用线路 / 故障转移）', () => {
+  beforeEach(() => {
+    useAccountStore.setState({ servers: [], active: null });
+    mmkv.clearAll();
+  });
+
+  it('新建服务器自带一条默认线路（主线路）', () => {
+    useAccountStore.getState().actions.upsertServer(serverInfoOf('srv1'));
+    const server = useAccountStore.getState().servers[0];
+    expect(server.routes).toEqual([
+      { id: 'primary', name: '默认线路', baseUrl: 'http://srv1:8096' },
+    ]);
+    expect(server.activeRouteId).toBe('primary');
+    expect(server.lastUsedAt).toEqual(expect.any(Number));
+  });
+
+  it('upsertRoute 追加备用线路；setActiveRoute 切换 baseUrl', () => {
+    const actions = useAccountStore.getState().actions;
+    actions.upsertServer(serverInfoOf('srv1'));
+    actions.upsertRoute('srv1', { id: 'backup', name: '备用', baseUrl: 'http://10.0.0.2:8096' });
+    expect(useAccountStore.getState().servers[0].routes).toHaveLength(2);
+
+    actions.setActiveRoute('srv1', 'backup');
+    const server = useAccountStore.getState().servers[0];
+    expect(server.activeRouteId).toBe('backup');
+    expect(server.baseUrl).toBe('http://10.0.0.2:8096');
+  });
+
+  it('advanceActiveRoute 循环切到下一条并返回新地址（单线路返回 null）', () => {
+    const actions = useAccountStore.getState().actions;
+    actions.upsertServer(serverInfoOf('srv1'));
+    expect(actions.advanceActiveRoute('srv1')).toBeNull();
+
+    actions.upsertRoute('srv1', { id: 'backup', name: '备用', baseUrl: 'http://10.0.0.2:8096' });
+    expect(actions.advanceActiveRoute('srv1')).toBe('http://10.0.0.2:8096');
+    expect(useAccountStore.getState().servers[0].baseUrl).toBe('http://10.0.0.2:8096');
+    // 再切一次回到主线路
+    expect(actions.advanceActiveRoute('srv1')).toBe('http://srv1:8096');
+  });
+
+  it('removeRoute 删除当前线路回退首条；最后一条不可删', () => {
+    const actions = useAccountStore.getState().actions;
+    actions.upsertServer(serverInfoOf('srv1'));
+    actions.upsertRoute('srv1', { id: 'backup', name: '备用', baseUrl: 'http://10.0.0.2:8096' });
+    actions.setActiveRoute('srv1', 'backup');
+    actions.removeRoute('srv1', 'backup');
+    const server = useAccountStore.getState().servers[0];
+    expect(server.routes).toHaveLength(1);
+    expect(server.activeRouteId).toBe('primary');
+    expect(server.baseUrl).toBe('http://srv1:8096');
+
+    actions.removeRoute('srv1', 'primary');
+    expect(useAccountStore.getState().servers[0].routes).toHaveLength(1);
+  });
+
+  it('隐私服务器标记与统计缓存写入', () => {
+    const actions = useAccountStore.getState().actions;
+    actions.upsertServer(serverInfoOf('srv1'));
+    actions.setServerPrivate('srv1', true);
+    actions.setServerStats('srv1', { movieCount: 12, seriesCount: 3, refreshedAt: 1 });
+    const server = useAccountStore.getState().servers[0];
+    expect(server.private).toBe(true);
+    expect(server.stats).toEqual({ movieCount: 12, seriesCount: 3, refreshedAt: 1 });
+  });
+});

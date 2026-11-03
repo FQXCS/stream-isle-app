@@ -1,8 +1,10 @@
 /**
  * 首页服务（04 文档 §3 认领补齐）：三区数据一次拉齐（继续观看/下一集/最新添加），
- * 复用 adapter 既有 getResume/getNextUp/getLatest 具名封装。
+ * 复用 adapter 既有 getResume/getNextUp/getLatest 具名封装；
+ * 媒体库融合页另加「每库最新添加行」批量拉取（单库失败按空行处理）。
  */
-import type { MediaLibraryItem } from '@/adapter/model';
+import type { ItemFilterEnum, MediaLibraryItem } from '@/adapter/model';
+import { LIBRARY_ROW_LIMIT } from '@/constant/browse';
 import { getActiveAdapter } from '@/service/adapterProvider';
 import { useAccountStore } from '@/store/accountStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -15,6 +17,15 @@ export interface HomeSections {
   nextUpList: MediaLibraryItem[];
   /** 最新添加（电影/剧集按入库时间倒序） */
   latestList: MediaLibraryItem[];
+}
+
+/** 每库行「最新添加」查询项（条件由默认 Tab 解析，见 resolveLibraryLatestQuery） */
+export interface LibraryLatestQueryItem {
+  libraryId: string;
+  /** 服务器 IncludeItemTypes 原值 */
+  includeItemTypes: string;
+  /** 服务器 Filters 原值 */
+  filters?: readonly ItemFilterEnum[];
 }
 
 /** 取活跃 userId（UI 路由守卫保证有活跃账号；缺席位属时序编程错误，直接断言抛出） */
@@ -42,6 +53,39 @@ export class HomeService {
       adapter.getLatest(userId),
     ]);
     return { resumeList, nextUpList, latestList };
+  }
+
+  /**
+   * 每库「最新添加」行（融合页「我的媒体」下方，每库前 LIBRARY_ROW_LIMIT 条）：
+   * 查询条件由调用方按库的默认 Tab 解析（条目类型 + 筛选，见 resolveLibraryLatestQuery）；
+   * 并发拉取，单库失败按空行处理（隐藏该行，不阻塞整页）。
+   */
+  async loadLibraryLatest(
+    queryList: readonly LibraryLatestQueryItem[]
+  ): Promise<Record<string, MediaLibraryItem[]>> {
+    const adapter = getActiveAdapter();
+    const userId = requireUserId();
+    const entryList = await Promise.all(
+      queryList.map(async ({ libraryId, includeItemTypes, filters }): Promise<
+        [string, MediaLibraryItem[]]
+      > => {
+        try {
+          return [
+            libraryId,
+            await adapter.getLatestByTypes(
+              userId,
+              libraryId,
+              includeItemTypes,
+              LIBRARY_ROW_LIMIT,
+              filters
+            ),
+          ];
+        } catch {
+          return [libraryId, []];
+        }
+      })
+    );
+    return Object.fromEntries(entryList);
   }
 }
 

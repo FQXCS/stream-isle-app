@@ -52,6 +52,31 @@ export function formatChannels(channels: number | undefined): string | undefined
 }
 
 /**
+ * 毫秒时间戳 → 相对时间（影视服务器卡片「1天前」口径）：
+ * 1 分钟内「刚刚」、1 小时内「N分钟前」、24 小时内「N小时前」、30 天内「N天前」，
+ * 更早回退 YYYY-MM-DD；无效值返回空串（调用方不展示）。
+ */
+export function formatRelativeTime(ms: number | undefined): string {
+  if (ms === undefined || !Number.isFinite(ms)) {
+    return '';
+  }
+  const diff = Date.now() - ms;
+  if (diff < 60_000) {
+    return '刚刚';
+  }
+  if (diff < 3_600_000) {
+    return `${Math.floor(diff / 60_000)}分钟前`;
+  }
+  if (diff < 86_400_000) {
+    return `${Math.floor(diff / 3_600_000)}小时前`;
+  }
+  if (diff < 30 * 86_400_000) {
+    return `${Math.floor(diff / 86_400_000)}天前`;
+  }
+  return formatDate(ms);
+}
+
+/**
  * 毫秒时间戳 → "YYYY-MM-DD"（M5 文档 §4.1 增量：照片查看器信息条「拍摄日期」）。
  * 无效值（NaN/负数等无法构造日期）回退空串，调用方按缺省不展示处理。
  */

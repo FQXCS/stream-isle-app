@@ -1177,20 +1177,43 @@ export abstract class BaseAdapter implements ServerAdapter {
   }
 
   /**
-   * 最新添加：GET /Users/{uid}/Items?SortBy=DateCreated&SortOrder=Descending
-   * &IncludeItemTypes=Movie,Series&Recursive=true（parentId 传入时限定库）。
+   * 最新添加（首页「最近添加」行，电影/剧集）：GET /Users/{uid}/Items
+   * ?SortBy=DateCreated&SortOrder=Descending&IncludeItemTypes=Movie,Series&Recursive=true
+   * （parentId 传入时限定库；limit 缺省首页行长度）。
+   * 媒体库融合页每库行按库类型取不同类型，见 getLatestByTypes。
    */
-  async getLatest(userId: string, parentId?: string): Promise<MediaLibraryItem[]> {
+  async getLatest(
+    userId: string,
+    parentId?: string,
+    limit: number = HOME_ROW_LIMIT
+  ): Promise<MediaLibraryItem[]> {
+    return this.getLatestByTypes(userId, parentId, 'Movie,Series', limit);
+  }
+
+  /**
+   * 指定条目类型的最新添加（媒体库融合页每库行）：GET /Users/{uid}/Items
+   * ?ParentId=…&IncludeItemTypes=…&Filters=…&SortBy=DateCreated&SortOrder=Descending&Limit=…
+   * 类型与筛选来自库的默认 Tab（resolveLibraryLatestQuery）；类型决定卡片图幅：
+   * 单集/家庭视频为 16:9 剧照、电影/剧集为 2:3 海报、专辑为 1:1 封面。
+   */
+  async getLatestByTypes(
+    userId: string,
+    parentId: string | undefined,
+    includeItemTypes: string,
+    limit: number,
+    filters?: readonly ItemFilterEnum[]
+  ): Promise<MediaLibraryItem[]> {
     const data = await this.api.request<ItemsResponse>({
       method: 'GET',
       url: this.urlOf(
         `/Users/${userId}/Items?${this.buildQuery({
           ParentId: parentId,
-          IncludeItemTypes: 'Movie,Series',
+          IncludeItemTypes: includeItemTypes,
+          Filters: filters !== undefined && filters.length > 0 ? filters.join(',') : undefined,
           Recursive: 'true',
           SortBy: 'DateCreated',
           SortOrder: 'Descending',
-          Limit: String(HOME_ROW_LIMIT),
+          Limit: String(limit),
           Fields: 'PrimaryImageAspectRatio',
           ImageTypeLimit: '1',
         })}`

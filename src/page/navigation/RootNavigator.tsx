@@ -1,8 +1,10 @@
 /**
- * 根导航器（M1 文档 §4.9）：导航树 + 登录态导航 gate（zustand 响应式）。
+ * 根导航器（M9 免登录体系）：导航树按「媒体库配置」组织，未登录也可进入 App。
  * RootStack（native-stack）
- * ├─ OnboardingStack 组：OnboardingConnect → OnboardingLogin（登录前只挂此组）
- * ├─ Tabs（bottom-tabs）：Tabs.Home · Tabs.Libraries · Tabs.Search · Tabs.Settings
+ * ├─ Tabs（bottom-tabs）：Tabs.Libraries · Tabs.MediaServer · Tabs.Settings
+ * │  （搜索不再是 Tab：Search 页面由媒体库页头部搜索按钮推入）
+ * ├─ 免登录：ServerAdd（添加/编辑服务器）、ServerRoutes、ServerRouteEdit
+ * ├─ 登录页：OnboardingLogin（同服务器多账号 / 401 重登；modal）
  * └─ Library / Item / Person / Player（M2+）→ M5 追加 AlbumDetail / NowPlaying / PhotoViewer
  *    → M6 追加 History / Downloads（设计文档 §10.2 已预留，06 §4.10 注册）
  * 根布局浮层：MiniPlayer（全局迷你播放条，NavigationContainer 同级，M5 §4.10）+
@@ -13,7 +15,7 @@
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, ToastAndroid, View } from 'react-native';
 
 import { ROUTES } from '@/constant/navigation';
@@ -33,6 +35,7 @@ import { HistoryScreen } from '@/page/history/HistoryScreen';
 import { ItemDetailScreen } from '@/page/item/ItemDetailScreen';
 import { ItemListScreen } from '@/page/library/ItemListScreen';
 import { LibraryFolderScreen } from '@/page/library/LibraryFolderScreen';
+import { LibraryListScreen } from '@/page/library/LibraryListScreen';
 import { LibraryScreen } from '@/page/library/LibraryScreen';
 import { LibraryDisplaySettingsScreen } from '@/page/settings/LibraryDisplaySettingsScreen';
 import { LibrarySortEditorScreen } from '@/page/settings/LibrarySortEditorScreen';
@@ -48,29 +51,26 @@ import { PersonScreen } from '@/page/person/PersonScreen';
 import { PlayerScreen } from '@/page/player/PlayerScreen';
 import { OnboardingConnectScreen } from '@/page/onboarding/OnboardingConnectScreen';
 import { OnboardingLoginScreen } from '@/page/onboarding/OnboardingLoginScreen';
+import { AddServerScreen } from '@/page/server/AddServerScreen';
+import { ServerRouteEditScreen } from '@/page/server/ServerRouteEditScreen';
+import { ServerRoutesScreen } from '@/page/server/ServerRoutesScreen';
+import { ServerSortScreen } from '@/page/server/ServerSortScreen';
 import { PhotoViewerScreen } from '@/page/photo/PhotoViewerScreen';
 import { AudioPermissionGuide } from '@/page/root/AudioPermissionGuide';
-import { HomeScreen } from '@/page/tabs/HomeScreen';
 import { LibrariesScreen } from '@/page/tabs/LibrariesScreen';
+import { MediaServerScreen } from '@/page/tabs/MediaServerScreen';
 import { SearchScreen } from '@/page/tabs/SearchScreen';
 import { SettingsScreen } from '@/page/tabs/SettingsScreen';
 import { useAccountStore } from '@/store/accountStore';
+import { reloginWithStoredCredential } from '@/service/AuthService';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator<TabsParamList>();
 
-/** 底部四 Tab 容器（首页/搜索 M1 占位，媒体库/设置可用） */
+/** 底部三 Tab 容器（媒体库融合页/媒体服务器/设置；搜索改由媒体库页头部入口进入） */
 function TabsNavigator() {
   return (
     <Tabs.Navigator screenOptions={{ headerShown: false }}>
-      <Tabs.Screen
-        name={ROUTES.TAB_HOME}
-        component={HomeScreen}
-        options={{
-          title: '首页',
-          tabBarIcon: ({ color, size }) => <AppIcon name="home" size={size} color={color} />,
-        }}
-      />
       <Tabs.Screen
         name={ROUTES.TAB_LIBRARIES}
         component={LibrariesScreen}
@@ -80,11 +80,11 @@ function TabsNavigator() {
         }}
       />
       <Tabs.Screen
-        name={ROUTES.TAB_SEARCH}
-        component={SearchScreen}
+        name={ROUTES.TAB_MEDIA_SERVER}
+        component={MediaServerScreen}
         options={{
-          title: '搜索',
-          tabBarIcon: ({ color, size }) => <AppIcon name="search" size={size} color={color} />,
+          title: '影视服务器',
+          tabBarIcon: ({ color, size }) => <AppIcon name="server" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -103,9 +103,6 @@ function TabsNavigator() {
 export function RootNavigator() {
   // gate 条件：hydrated && active 存在 → Tabs；否则 Onboarding（§4.9，zustand 响应式）
   const hydrated = useAccountStore((state) => state.hydrated);
-  const active = useAccountStore((state) => state.active);
-  // 401 重登路径：携带 serverId 进入 OnboardingLogin（§4.10 重登链路；瞬态存于 accountStore）
-  const reloginServerId = useAccountStore((state) => state.reloginServerId);
   // M6 主题：NavigationContainer theme 由 token 映射（深/浅两套，06 §4.6.1）
   const t = useTheme();
   const scheme = useResolvedScheme();
@@ -124,47 +121,63 @@ export function RootNavigator() {
     [scheme, t]
   );
 
-  // 订阅 401 全局登出事件：expireActiveUser（幂等，04 §4.2 终态链路）→ gate 自动切回登录栈
+  // 订阅 401 全局登出事件（免登录体系）：先尝试用加密留存的账号密码自动重登；
+  // 失败才清活跃账号并弹登录页（密码已在服务端修改 / 未保存密码时）
+  const reloginRef = useRef(false);
   useEffect(() => {
     const unsubscribe = apiEvents.on('UNAUTHORIZED', () => {
-      const serverId = useAccountStore.getState().active?.serverId ?? null;
-      useAccountStore.getState().actions.expireActiveUser();
-      // 并发 401 幂等：第二次事件读到的 active 已被第一次置空，不再提示也不覆盖
-      // 先到事件留下的服务器上下文（验收「经 serverId 恢复」依赖它，04 §4.2 提示唯一性）
-      if (serverId !== null) {
-        // 提示文案取 ERROR_MESSAGE_MAP 唯一出处（「登录已失效，请重新输入密码」）
-        ToastAndroid.show(errorMessageOf('UNAUTHORIZED'), ToastAndroid.SHORT);
+      const state = useAccountStore.getState();
+      const serverId = state.active?.serverId ?? null;
+      const userId = state.active?.userId ?? null;
+      state.actions.expireActiveUser();
+      if (serverId === null || userId === null) {
+        return;
       }
+      ToastAndroid.show(errorMessageOf('UNAUTHORIZED'), ToastAndroid.SHORT);
+      if (reloginRef.current) {
+        return;
+      }
+      reloginRef.current = true;
+      void (async () => {
+        const relogged = await reloginWithStoredCredential(serverId, userId);
+        reloginRef.current = false;
+        if (!relogged && navigationRef.isReady()) {
+          navigationRef.navigate(ROUTES.ONBOARDING_LOGIN, { serverId });
+        }
+      })();
     });
     return unsubscribe;
   }, []);
 
-  // rehydrate 未完成不渲染导航（gate 依赖 hydrated，避免误闪登录页）
+  // rehydrate 未完成不渲染导航（避免闪空态）
   if (!hydrated) {
     return null;
   }
 
-  const authed = active !== null;
   return (
     <>
       <NavigationContainer ref={navigationRef} theme={navigationTheme}>
-      <RootStack.Navigator
-        // 登录态切换即整体重建导航栈，initialRouteName 随 gate 走（§4.9：无需命令式跳转兜底）
-        key={authed ? 'authed' : 'guest'}
-        initialRouteName={
-          authed
-            ? ROUTES.TABS
-            : reloginServerId
-              ? ROUTES.ONBOARDING_LOGIN
-              : ROUTES.ONBOARDING_CONNECT
-        }
-      >
-        {authed ? (
-          <>
+        <RootStack.Navigator
+          initialRouteName={ROUTES.TABS}
+          // 全局顶部导航样式：标题居中（Android 默认左对齐）
+          screenOptions={{ headerTitleAlign: 'center' }}
+        >
+          <RootStack.Screen
+            name={ROUTES.TABS}
+            component={TabsNavigator}
+            options={{ headerShown: false }}
+          />
+            {/* 搜索页：媒体库页头部搜索按钮进入（原生返回，底部不再占 Tab） */}
             <RootStack.Screen
-              name={ROUTES.TABS}
-              component={TabsNavigator}
-              options={{ headerShown: false }}
+              name={ROUTES.SEARCH}
+              component={SearchScreen}
+              options={{ title: '搜索', headerBackTitle: '返回' }}
+            />
+            {/* 全部媒体库列表：融合页「我的媒体 · 查看全部」入口，沿用库卡片列表样式 */}
+            <RootStack.Screen
+              name={ROUTES.LIBRARY_LIST}
+              component={LibraryListScreen}
+              options={{ title: '媒体库', headerBackTitle: '返回' }}
             />
             {/* 库页：库名居中标题（参考稿），右上角排序按钮由 LibraryScreen setOptions 注入 */}
             <RootStack.Screen
@@ -323,35 +336,39 @@ export function RootNavigator() {
               component={BookReaderScreen}
               options={{ headerShown: false }}
             />
-            {/* M4 设置页「添加用户/添加服务器」入口（04 §4.5）：复用 Onboarding 两屏，
-                modal 呈现；登录成功后由页面就地 pop 返回设置页 */}
+            {/* 免登录体系：添加 / 编辑服务器表单（影视服务器页入口）、线路管理 */}
             <RootStack.Screen
-              name={ROUTES.ONBOARDING_CONNECT}
-              component={OnboardingConnectScreen}
-              options={{ presentation: 'modal', headerBackTitle: '返回' }}
-            />
-            <RootStack.Screen
-              name={ROUTES.ONBOARDING_LOGIN}
-              component={OnboardingLoginScreen}
-              options={{ presentation: 'modal', headerBackTitle: '返回' }}
-            />
-          </>
-        ) : (
-          <>
-            <RootStack.Screen
-              name={ROUTES.ONBOARDING_CONNECT}
-              component={OnboardingConnectScreen}
-              options={{ headerShown: false }}
-            />
-            <RootStack.Screen
-              name={ROUTES.ONBOARDING_LOGIN}
-              component={OnboardingLoginScreen}
-              initialParams={reloginServerId ? { serverId: reloginServerId } : undefined}
+              name={ROUTES.SERVER_ADD}
+              component={AddServerScreen}
               options={{ headerBackTitle: '返回' }}
             />
-          </>
-        )}
-      </RootStack.Navigator>
+            <RootStack.Screen
+              name={ROUTES.SERVER_ROUTES}
+              component={ServerRoutesScreen}
+              options={{ headerBackTitle: '返回' }}
+            />
+            <RootStack.Screen
+              name={ROUTES.SERVER_SORT}
+              component={ServerSortScreen}
+              options={{ headerBackTitle: '返回' }}
+            />
+            <RootStack.Screen
+              name={ROUTES.SERVER_ROUTE_EDIT}
+              component={ServerRouteEditScreen}
+              options={{ headerBackTitle: '返回' }}
+            />
+            {/* 登录页：同服务器多账号 / 401 重登（modal 呈现，成功后原地 pop） */}
+            <RootStack.Screen
+              name={ROUTES.ONBOARDING_CONNECT}
+              component={OnboardingConnectScreen}
+              options={{ presentation: 'modal', headerBackTitle: '返回' }}
+            />
+            <RootStack.Screen
+              name={ROUTES.ONBOARDING_LOGIN}
+              component={OnboardingLoginScreen}
+              options={{ presentation: 'modal', headerBackTitle: '返回' }}
+            />
+        </RootStack.Navigator>
       </NavigationContainer>
       {/* M5：全局迷你播放条（根布局浮层，四 Tab 与库/详情页上方常驻，05 §4.10） */}
       <View style={styles.overlay} pointerEvents="box-none">

@@ -33,6 +33,18 @@ export type RootStackParamList = {
   /** Connect 正常流程带 serverInfo；401 重登路径带 serverId */
   [ROUTES.ONBOARDING_LOGIN]: { serverInfo?: ServerInfo; serverId?: string } | undefined;
   [ROUTES.TABS]: undefined;
+  /** 搜索页：媒体库页头部搜索按钮进入（原生返回） */
+  [ROUTES.SEARCH]: undefined;
+  /** 添加服务器（mode=add，可选 flavor 预选）/ 编辑服务器（mode=edit） */
+  [ROUTES.SERVER_ADD]: { mode: 'add'; flavor?: ServerFlavor } | { mode: 'edit'; serverId: string };
+  /** 服务器排序（拖动调整卡片顺序） */
+  [ROUTES.SERVER_SORT]: undefined;
+  /** 线路管理：某服务器的全部线路 */
+  [ROUTES.SERVER_ROUTES]: { serverId: string };
+  /** 添加 / 编辑备用线路 */
+  [ROUTES.SERVER_ROUTE_EDIT]: { serverId: string; routeId?: string };
+  /** 全部媒体库列表：融合页「我的媒体 · 查看全部」入口 */
+  [ROUTES.LIBRARY_LIST]: undefined;
   /** 海报墙页：库对象必传（M1 文档 §4.10） */
   [ROUTES.LIBRARY]: { library: MediaLibrary };
   /** 详情页：电影/剧集；Season/Episode 不进本页（季切换在页内、点集直接播，02 §4.5） */
@@ -96,10 +108,9 @@ export type RootStackParamList = {
   [ROUTES.BOOK_READER]: { itemId: string; name: string };
 };
 
-/** 底部四 Tab 参数表 */
+/** 底部三 Tab 参数表（媒体库融合页 / 媒体服务器 / 设置） */
 export type TabsParamList = {
-  [ROUTES.TAB_HOME]: undefined;
   [ROUTES.TAB_LIBRARIES]: undefined;
-  [ROUTES.TAB_SEARCH]: undefined;
+  [ROUTES.TAB_MEDIA_SERVER]: undefined;
   [ROUTES.TAB_SETTINGS]: undefined;
 };

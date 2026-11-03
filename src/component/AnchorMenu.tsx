@@ -21,7 +21,8 @@ export interface AnchorRect {
 export interface AnchorMenuItem {
   key: string;
   label: string;
-  icon: AppIconName;
+  /** 右侧图标（可选：纯文字菜单项不传） */
+  icon?: AppIconName;
   /** danger 用于删除等破坏性动作（红色文案/图标） */
   tone?: 'danger';
   disabled?: boolean;
@@ -87,8 +88,11 @@ export function AnchorMenu({ anchor, itemList, onClose }: AnchorMenuProps) {
                   item.disabled && styles.disabled,
                 ]}
               >
-                <Text style={[styles.itemLabel, { color }]}>{item.label}</Text>
-                <AppIcon name={item.icon} size={20} color={color} />
+                {/* 单行省略：服务器名等超长文案不换行，避免撑破菜单行高 */}
+                <Text style={[styles.itemLabel, { color }]} numberOfLines={1}>
+                  {item.label}
+                </Text>
+                {item.icon !== undefined && <AppIcon name={item.icon} size={20} color={color} />}
               </Pressable>
             );
           })}
@@ -124,7 +128,7 @@ const createStyles = (t: ThemeTokens) =>
       gap: SPACING.m,
     },
     itemDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.separator },
-    itemLabel: { fontSize: FONT_SIZE.title - 1 },
+    itemLabel: { flexShrink: 1, fontSize: FONT_SIZE.title - 1 },
     pressed: { opacity: 0.6 },
     disabled: { opacity: 0.4 },
   });

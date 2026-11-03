@@ -12,6 +12,7 @@ import type {
   HistoryEntry,
   HistoryQuery,
   ImageTypeEnum,
+  ItemFilterEnum,
   ItemQuery,
   LyricLine,
   MediaDetail,
@@ -70,7 +71,20 @@ export interface ServerAdapter {
   /** 首页继续观看：类型由设置页多选（默认 Movie,Episode,Video） */
   getResume(userId: string, includeItemTypes: readonly MediaItemTypeEnum[]): Promise<MediaLibraryItem[]>;
 
-  getLatest(userId: string, parentId?: string): Promise<MediaLibraryItem[]>;
+  /** 最新添加（parentId 限定库；limit 缺省首页行长度，媒体库融合页每库行传 20） */
+  getLatest(userId: string, parentId?: string, limit?: number): Promise<MediaLibraryItem[]>;
+
+  /**
+   * 指定条目类型的最新添加（媒体库融合页每库行）：类型与筛选来自该库默认 Tab
+   * （见 resolveLibraryLatestQuery）；类型组合由 Tab 配置决定。
+   */
+  getLatestByTypes(
+    userId: string,
+    parentId: string | undefined,
+    includeItemTypes: string,
+    limit: number,
+    filters?: readonly ItemFilterEnum[]
+  ): Promise<MediaLibraryItem[]>;
 
   getSimilar(userId: string, itemId: string): Promise<MediaLibraryItem[]>;
 

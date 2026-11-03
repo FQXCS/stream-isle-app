@@ -18,5 +18,9 @@ export const LIBRARY_DISPLAY_STORE_KEY = 'library-display-store';
  * 注意：SecureStore 仅允许字母数字与 . - _，不能用冒号分隔（否则 setItemAsync 直接抛错） */
 export const TOKEN_KEY_PREFIX = 'token_';
 
+/** secure-store key 前缀：账号密码加密存储；完整键规范 `credential_{serverId}_{userId}`
+ * （系统级加密，仅登录换 Token / 自动重登时解密使用，不写 MMKV） */
+export const CREDENTIAL_KEY_PREFIX = 'credential_';
+
 /** MMKV 兜底 deviceId 的存储键（expo-application getAndroidId 异常时使用） */
 export const DEVICE_ID_FALLBACK_KEY = 'device-id-fallback';

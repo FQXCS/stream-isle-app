@@ -15,15 +15,22 @@ import type { RootStackParamList } from '@/page/navigation/types';
 /** 横向卡片宽度（PosterCard 以 flex:1 适配父容器，与 SimilarRow 同宽） */
 const CARD_WIDTH = 110;
 
+/** 海报宽高比（未传 aspectRatioOf 时的缺省图幅） */
+const POSTER_ASPECT_RATIO = 2 / 3;
+
 interface PosterRowProps {
   itemList: MediaLibraryItem[];
   /** 点卡回调（缺省默认导航到详情页：搜索结果与首页均直达 Item） */
   onPressItem?: (item: MediaLibraryItem) => void;
+  /** 卡片宽高比（缺省 2:3 海报；融合页每库行按条目类型传入 16:9 / 1:1） */
+  aspectRatioOf?: (item: MediaLibraryItem) => number;
+  /** 固定卡片高度：设置后宽度按图幅自适应（混排行高度一致），未设置时用固定宽度 */
+  cardHeight?: number;
 }
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-export function PosterRow({ itemList, onPressItem }: PosterRowProps) {
+export function PosterRow({ itemList, onPressItem, aspectRatioOf, cardHeight }: PosterRowProps) {
   const navigation = useNavigation<NavigationProp>();
   if (itemList.length === 0) {
     return null;
@@ -33,19 +40,26 @@ export function PosterRow({ itemList, onPressItem }: PosterRowProps) {
       horizontal
       data={itemList}
       keyExtractor={(item) => item.id}
-      renderItem={({ item }) => (
-        <Pressable
-          onPress={() =>
-            onPressItem !== undefined
-              ? onPressItem(item)
-              : navigation.navigate(ROUTES.ITEM, { itemId: item.id })
-          }
-        >
-          <View style={styles.cardBox}>
-            <PosterCard item={item} />
-          </View>
-        </Pressable>
-      )}
+      renderItem={({ item }) => {
+        const aspectRatio = aspectRatioOf?.(item) ?? POSTER_ASPECT_RATIO;
+        return (
+          <Pressable
+            onPress={() =>
+              onPressItem !== undefined
+                ? onPressItem(item)
+                : navigation.navigate(ROUTES.ITEM, { itemId: item.id })
+            }
+          >
+            <View
+              style={
+                cardHeight !== undefined ? { width: cardHeight * aspectRatio } : styles.cardBox
+              }
+            >
+              <PosterCard item={item} aspectRatio={aspectRatio} />
+            </View>
+          </Pressable>
+        );
+      }}
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.rowContent}
     />

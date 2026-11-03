@@ -14,6 +14,7 @@ import { AppIcon } from '@/component/AppIcon';
 import { FONT_SIZE, POSTER_RADIUS, SPACING } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { useTransitionStore } from '@/store/transitionStore';
+import { mediaIconOf } from '@/util/mediaCard';
 
 interface PosterCardProps {
   item: MediaLibraryItem;
@@ -23,6 +24,8 @@ interface PosterCardProps {
   onToggleFavorite?: (item: MediaLibraryItem) => void;
   /** 副标题覆盖（图书卡片惰性采集到文件大小后替换年份副标题） */
   subtextOverride?: string;
+  /** 图幅宽高比（缺省 2:3 海报；融合页每库行按条目类型传入 16:9 / 1:1） */
+  aspectRatio?: number;
 }
 
 export function PosterCard({
@@ -30,6 +33,7 @@ export function PosterCard({
   dimmed = false,
   onToggleFavorite,
   subtextOverride,
+  aspectRatio = 2 / 3,
 }: PosterCardProps) {
   const t = useTheme();
   const posterBoxRef = useRef<ComponentRef<typeof View> | null>(null);
@@ -52,7 +56,10 @@ export function PosterCard({
         });
       }}
     >
-      <View ref={posterBoxRef} style={[styles.posterBox, { backgroundColor: t.surface }]}>
+      <View
+        ref={posterBoxRef}
+        style={[styles.posterBox, { backgroundColor: t.surface, aspectRatio }]}
+      >
         {item.posterImageUrl !== undefined ? (
           <Image
             source={{ uri: item.posterImageUrl }}
@@ -64,7 +71,8 @@ export function PosterCard({
           />
         ) : (
           <View style={[styles.poster, styles.posterFallback]}>
-            <Text style={[styles.fallbackText, { color: t.textSecondary }]}>无海报</Text>
+            {/* 无封面：按条目类型显示图标（电影/剧集/音乐/照片…各用各的语义图标） */}
+            <AppIcon name={mediaIconOf(item.type)} size={32} color={t.textSecondary} />
           </View>
         )}
         {item.userData.played && (
@@ -114,13 +122,11 @@ export function PosterCard({
 const styles = StyleSheet.create({
   card: { flex: 1, gap: 4 },
   posterBox: {
-    aspectRatio: 2 / 3,
     borderRadius: POSTER_RADIUS,
     overflow: 'hidden',
   },
   poster: { width: '100%', height: '100%' },
   posterFallback: { alignItems: 'center', justifyContent: 'center' },
-  fallbackText: { fontSize: FONT_SIZE.body },
   /** 已看角标（深色圆底 + 白色对勾，与参考稿一致） */
   watchedBadge: {
     position: 'absolute',

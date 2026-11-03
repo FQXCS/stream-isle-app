@@ -12,9 +12,10 @@ import {
 import { normalizeAddress } from '@/util/normalizeUrl';
 import { AppError } from '@/infra/error';
 import { deleteToken, saveToken, warmupToken } from '@/infra/tokenVault';
+import { deletePassword, getPassword } from '@/infra/credentialVault';
 import { probeTls } from '@/infra/tlsBypass';
 import type { TlsProbeResult } from '@/infra/tlsBypass';
-import { useAccountStore } from '@/store/accountStore';
+import { useAccountStore, uniqueServerIdOf, upstreamServerIdOf } from '@/store/accountStore';
 
 export type { TlsProbeResult };
 
@@ -67,18 +68,38 @@ export async function login(
 }
 
 /**
- * 存账号：saveToken(serverId, userId, token) → upsertServer（serverId 相同不重复建，更新
- * serverName/version/baseUrl）→ upsertUser → switchActiveUser（复位 401 失效标志，04 §4.7）。
+ * 存账号：目标记录 id = 传入 recordId（已有服务器追加账号）或按上游 id 分配新的本地唯一 id
+ * （同一台服务器重复添加会生成新卡片，不自动合并）→ saveToken → upsertServer → upsertUser → 激活。
  * 探测 Id 缺省时用登录响应 ServerId 补。
  */
-export async function saveAccount(info: ServerInfo, auth: AuthResult): Promise<void> {
-  const serverId = info.serverId !== '' ? info.serverId : auth.serverId;
-  const mergedInfo: ServerInfo = { ...info, serverId };
-  await saveToken(serverId, auth.userId, auth.token);
+export async function saveAccount(
+  info: ServerInfo,
+  auth: AuthResult,
+  recordId?: string
+): Promise<string> {
+  const upstreamId = info.serverId !== '' ? info.serverId : auth.serverId;
   const store = useAccountStore.getState();
-  store.actions.upsertServer(mergedInfo);
-  store.actions.upsertUser(serverId, auth);
-  await store.actions.switchActiveUser(serverId, auth.userId);
+  const localId = recordId ?? uniqueServerIdOf(store.servers, upstreamId);
+  const mergedInfo: ServerInfo = { ...info, serverId: localId };
+  await saveToken(localId, auth.userId, auth.token);
+  store.actions.upsertServer(mergedInfo, upstreamId);
+  if (recordId !== undefined) {
+    // 单账号模型：一个服务器只保留一组账号密码，重登/改账号时替换而非追加
+    const oldUserList = store.servers.find((server) => server.serverId === recordId)?.users ?? [];
+    await Promise.all(
+      oldUserList
+        .filter((user) => user.userId !== auth.userId)
+        .map(async (user) => {
+          await deleteToken(recordId, user.userId);
+          await deletePassword(recordId, user.userId);
+        })
+    );
+    store.actions.replaceServerUser(localId, auth);
+  } else {
+    store.actions.upsertUser(localId, auth);
+  }
+  await store.actions.switchActiveUser(localId, auth.userId);
+  return localId;
 }
 
 /**
@@ -88,6 +109,7 @@ export async function saveAccount(info: ServerInfo, auth: AuthResult): Promise<v
  */
 export async function logout(serverId: string, userId: string): Promise<void> {
   await deleteToken(serverId, userId);
+  await deletePassword(serverId, userId);
   const state = useAccountStore.getState();
   const wasActive = state.active?.serverId === serverId && state.active?.userId === userId;
   state.actions.removeUser(serverId, userId);
@@ -114,6 +136,41 @@ export async function warmupActiveToken(): Promise<void> {
     return;
   }
   await warmupToken(active.serverId, active.userId);
+}
+
+/**
+ * 使用加密留存的账号密码自动重登（Token 失效时）：
+ * 解密密码 → 登录 → 覆盖同一服务器记录的 Token/账号；成功返回 true。
+ * 密码缺失、密码已在服务端修改或网络异常时返回 false，由调用方回退到登录页。
+ */
+export async function reloginWithStoredCredential(
+  serverId: string,
+  userId: string
+): Promise<boolean> {
+  const server = useAccountStore.getState().servers.find((item) => item.serverId === serverId);
+  const user = server?.users.find((item) => item.userId === userId);
+  if (server === undefined || user === undefined) {
+    return false;
+  }
+  const password = await getPassword(serverId, userId);
+  if (password === null || password === '') {
+    return false;
+  }
+  try {
+    const info: ServerInfo = {
+      flavor: server.flavor,
+      baseUrl: server.baseUrl,
+      serverId: upstreamServerIdOf(server),
+      serverName: server.serverName,
+      version: server.version,
+      versionTooLow: false,
+    };
+    const auth = await login(info, user.userName, password);
+    await saveAccount(info, auth, serverId);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // —— M6：Quick Connect 免密登录（06 文档 §4.3.2；设计文档 §6.1 QC 行）——
@@ -249,8 +306,9 @@ class QuickConnectFlowImpl implements QuickConnectFlow {
 /** 保存链路（saveAccount 的无 ServerInfo 包装：QC 响应 ServerId 兜底探测记录） */
 async function saveAccountByAuth(auth: AuthResult): Promise<void> {
   const servers = useAccountStore.getState().servers;
-  // QC 流程上下文里 server 记录已存在（登录页由 Connect 流/既有账号进入）；缺失时按 auth.serverId 兜底登记
-  const known = servers.find((server) => server.serverId === auth.serverId);
+  // QC 上下文里服务器记录可能已存在（为已有服务器加用户）：按上游 serverId 匹配记录，
+  // 追加到该记录而不是新开卡片（06 §4.3.3）
+  const known = servers.find((server) => upstreamServerIdOf(server) === auth.serverId);
   if (known === undefined) {
     // 理论不可达（登录页必有 serverInfo 上下文）；保底按最小信息登记，避免 Token 已发而账号未存
     const fallback: ServerInfo = {
@@ -267,20 +325,24 @@ async function saveAccountByAuth(auth: AuthResult): Promise<void> {
   const info: ServerInfo = {
     flavor: known.flavor,
     baseUrl: known.baseUrl,
-    serverId: known.serverId,
+    serverId: upstreamServerIdOf(known),
     serverName: known.serverName,
     version: known.version,
     versionTooLow: false,
   };
-  await saveAccount(info, auth);
+  await saveAccount(info, auth, known.serverId);
 }
 
 /**
  * 发起 Quick Connect（06 文档 §4.3.2）：Enabled 探测（关闭/失败抛 QUICK_CONNECT_DISABLED）
  * → Initiate；返回流程句柄供登录页 QC 面板消费。
  * 「连接新服务器」「为已有服务器添加用户」两种登录上下文均可用（OnboardingLogin 是唯一登录页）。
+ * recordId：已有服务器上下文传入 → 授权后追加到该记录；不传 → 按新服务器添加（同 IP 不自动合并）。
  */
-export async function beginQuickConnect(info: ServerInfo): Promise<QuickConnectFlow> {
+export async function beginQuickConnect(
+  info: ServerInfo,
+  recordId?: string
+): Promise<QuickConnectFlow> {
   // QC 端点免认证（无需 token）；认证头由 adapter 按既有差异实现组装
   const adapter = createAdapter({ baseUrl: info.baseUrl, flavor: info.flavor });
   try {
@@ -289,7 +351,12 @@ export async function beginQuickConnect(info: ServerInfo): Promise<QuickConnectF
       throw new AppError('QUICK_CONNECT_DISABLED');
     }
     const session = await adapter.initiateQuickConnect();
-    return createQuickConnectFlow(session, { adapter });
+    return createQuickConnectFlow(session, {
+      adapter,
+      save: async (auth) => {
+        await saveAccount(info, auth, recordId);
+      },
+    });
   } catch (err) {
     // Initiate 的 401 已由 adapter 翻译为 QUICK_CONNECT_DISABLED；此处仅透传业务码
     throw err;

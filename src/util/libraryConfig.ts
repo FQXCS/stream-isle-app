@@ -2,7 +2,12 @@
  * 库页 Tab/排序解析（纯函数）：catalog + 用户覆盖 → 有效 Tab 列表 / SortMenu 选项。
  * 规则：override 数组顺序即显示顺序；未知 id 丢弃；空回退默认；Tab 截断到 5 个。
  */
-import type { LibraryTypeEnum, ServerFlavor, SortByEnum } from '@/adapter/model';
+import type {
+  ItemFilterEnum,
+  LibraryTypeEnum,
+  ServerFlavor,
+  SortByEnum,
+} from '@/adapter/model';
 import type { SortOption } from '@/constant/browse';
 import {
   MAX_LIBRARY_TABS,
@@ -79,9 +84,55 @@ export function resolveDefaultTabId(
   return tabList.find((tab) => tab.defaultSelected)?.id ?? tabList[0]?.id;
 }
 
+/** 融合页每库行「最新添加」的服务器查询条件（取自默认 Tab） */
+export interface LibraryLatestQuery {
+  /** 服务器 IncludeItemTypes 原值（默认 Tab 的条目类型） */
+  includeItemTypes: string;
+  /** 服务器 Filters 原值（默认 Tab 的筛选，如收藏/未看） */
+  filters?: readonly ItemFilterEnum[];
+}
+
+export interface ResolveLibraryLatestQueryInput {
+  flavor: ServerFlavor;
+  libraryType: LibraryTypeEnum;
+  /** key = tabScopeKeyOf(flavor, libraryType)；值为已启用 Tab 的有序列表 */
+  tabOverrides?: Record<string, TabId[]>;
+  /** key = tabScopeKeyOf(flavor, libraryType) → 用户设为默认的 Tab */
+  preferredTabByScope?: Record<string, TabId>;
+}
+
+/**
+ * 融合页每库行 Top20 的查询条件：取该库类型当前默认 Tab 的条目类型与筛选
+ * （默认 Tab 在设置页「同类型服务器配置 · Tab 分类」里可改，改了首页行随之变化）。
+ * 歌曲 Tab 取 Audio；文件夹/推荐/直播等没有条目类型集合的 Tab 不展示该行（返回 null）。
+ */
+export function resolveLibraryLatestQuery(
+  input: ResolveLibraryLatestQueryInput
+): LibraryLatestQuery | null {
+  const tabList = resolveTabList({
+    flavor: input.flavor,
+    libraryType: input.libraryType,
+    tabOverrides: input.tabOverrides,
+  });
+  const defaultTabId = resolveDefaultTabId(
+    tabList,
+    input.preferredTabByScope?.[tabScopeKeyOf(input.flavor, input.libraryType)]
+  );
+  const tab = tabList.find((item) => item.id === defaultTabId);
+  if (tab === undefined) {
+    return null;
+  }
+  if (tab.kinds !== undefined && tab.kinds.length > 0) {
+    return { includeItemTypes: tab.kinds.join(','), filters: tab.filters };
+  }
+  if (tab.source === 'songs') {
+    return { includeItemTypes: 'Audio' };
+  }
+  return null;
+}
+
 /** 库的主内容 Tab（文件夹/收藏/已看/未看排序跟随它）：优先默认选中 Tab，否则首个可排序 Tab */
-export function primarySortTabOf(
-  flavor: ServerFlavor,
+export function primarySortTabOf(  flavor: ServerFlavor,
   libraryType: LibraryTypeEnum
 ): TabSpec | undefined {
   const tabList = tabsOfFlavor(libraryType, flavor);

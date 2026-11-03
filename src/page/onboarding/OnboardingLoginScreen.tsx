@@ -20,7 +20,7 @@ import { useTheme } from '@/component/useTheme';
 import { AppError, errorMessageOf } from '@/infra/error';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { beginQuickConnect, login, saveAccount, type QuickConnectFlow } from '@/service/AuthService';
-import { useAccountStore } from '@/store/accountStore';
+import { useAccountStore, upstreamServerIdOf } from '@/store/accountStore';
 import { compareVersion } from '@/util/semver';
 import { MIN_EMBY_VERSION, MIN_JELLYFIN_VERSION } from '@/constant/server';
 
@@ -55,15 +55,23 @@ export function OnboardingLoginScreen({ route, navigation }: Props) {
 
   /**
    * resolveServerInfo（§4.10）：route.params.serverInfo 优先（Connect 正常流程）；
-   * 否则按 serverId 从 accountStore.servers 恢复（401 重登：账号记录仍在、仅 active 被清除，
-   * versionTooLow 由 semver 按记录版本重算）；两者皆缺属导航时序错误，断言抛出。
+   * 否则按记录 id 从 accountStore.servers 恢复（401 重登/同服务器加账号）。
+   * 注意 serverInfo.serverId 用上游 id（本地记录 id 可能带 #2 后缀），recordId 才是本地记录 id。
    */
-  const resolved = useMemo<{ serverInfo: ServerInfo; savedUsers: SavedUser[] }>(() => {
+  const resolved = useMemo<{
+    serverInfo: ServerInfo;
+    savedUsers: SavedUser[];
+    recordId?: string;
+  }>(() => {
     if (routeServerInfo !== undefined) {
-      const saved = servers.find((server) => server.serverId === routeServerInfo.serverId);
+      const upstreamId = routeServerInfo.serverId;
+      const saved = servers.find(
+        (server) => upstreamServerIdOf(server) === upstreamId
+      );
       return {
         serverInfo: routeServerInfo,
         savedUsers: saved?.users.map((user) => ({ userId: user.userId, userName: user.userName })) ?? [],
+        recordId: saved?.serverId,
       };
     }
     if (routeServerId !== undefined) {
@@ -76,7 +84,7 @@ export function OnboardingLoginScreen({ route, navigation }: Props) {
       const serverInfo: ServerInfo = {
         flavor: saved.flavor,
         baseUrl: saved.baseUrl,
-        serverId: saved.serverId,
+        serverId: upstreamServerIdOf(saved),
         serverName: saved.serverName,
         version: saved.version,
         versionTooLow: compareVersion(saved.version, minVersion) < 0,
@@ -84,6 +92,7 @@ export function OnboardingLoginScreen({ route, navigation }: Props) {
       return {
         serverInfo,
         savedUsers: saved.users.map((user) => ({ userId: user.userId, userName: user.userName })),
+        recordId: saved.serverId,
       };
     }
     throw new Error('时序错误：OnboardingLogin 缺少 serverInfo/serverId 导航参数');
@@ -99,7 +108,9 @@ export function OnboardingLoginScreen({ route, navigation }: Props) {
   const handlePickSavedUser = async (userId: string) => {
     // 消费 401 重登标记（若有），下次登出走 Connect 首屏
     useAccountStore.getState().actions.setReloginServerId(null);
-    await useAccountStore.getState().actions.switchActiveUser(resolved.serverInfo.serverId, userId);
+    await useAccountStore
+      .getState()
+      .actions.switchActiveUser(resolved.recordId ?? resolved.serverInfo.serverId, userId);
     // guest 流程 gate 重建栈本屏已卸载（pop 不执行）；authed 追加用户流程就地弹回设置页
     dismissIfMounted();
   };
@@ -120,7 +131,7 @@ export function OnboardingLoginScreen({ route, navigation }: Props) {
     setErrorCode(null);
     try {
       const auth = await login(resolved.serverInfo, username, password);
-      await saveAccount(resolved.serverInfo, auth);
+      await saveAccount(resolved.serverInfo, auth, resolved.recordId);
       // 消费 401 重登标记（若有），下次登出走 Connect 首屏
       useAccountStore.getState().actions.setReloginServerId(null);
       // 成功后 guest 流程 gate 响应 active 变化自动切到 Tabs（§4.9 响应式）；
@@ -148,7 +159,7 @@ export function OnboardingLoginScreen({ route, navigation }: Props) {
     setQcError(null);
     void (async () => {
       try {
-        const flow = await beginQuickConnect(resolved.serverInfo);
+        const flow = await beginQuickConnect(resolved.serverInfo, resolved.recordId);
         setQcFlow(flow);
         // 轮询直至授权（内部完成换 Token + 保存链路）；resolve → 关闭面板 → 进 Tabs
         await flow.awaitAuthorization();

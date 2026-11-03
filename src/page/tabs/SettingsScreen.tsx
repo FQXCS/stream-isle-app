@@ -1,8 +1,9 @@
 /**
  * 设置页（04 文档 §4.5 完整化；设计文档 §5.1/§8.2/§9/§10.2/§11；M6 文档 §4.4.5/§4.9.3）：
- * 账号（AccountSection）/ 服务器管理（ServerSection）/ 播放（M3 PlaybackSettingsSection
- * 收编回归 + M4 新增「默认字幕语言」单选弹层）/ 外观（M6 浅色主题三态，06 §4.6.1）/
- * 下载与历史入口（06 §4.4.5 设置页入口）/ 收录类型二级页入口 / 关于（应用名/版本号/版本 Code + GitHub Releases 外链）。
+ * 播放（M3 PlaybackSettingsSection 收编回归 + M4 新增「默认字幕语言」单选弹层）/
+ * 外观（M6 浅色主题三态，06 §4.6.1）/ 下载与历史入口（06 §4.4.5 设置页入口）/
+ * 收录类型二级页入口 / 关于（应用名/版本号/版本 Code + GitHub Releases 外链）。
+ * 账号与服务器管理已迁至「媒体服务器」Tab（MediaServerScreen）。
  */
 import { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
@@ -22,9 +23,7 @@ import { FONT_SIZE, POSTER_RADIUS, SPACING } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import type { ThemeModeEnum } from '@/constant/theme';
 import { ROUTES } from '@/constant/navigation';
-import { AccountSection } from '@/page/tabs/components/AccountSection';
 import { PlaybackSettingsSection } from '@/page/tabs/components/PlaybackSettingsSection';
-import { ServerSection } from '@/page/tabs/components/ServerSection';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { useSettingsStore } from '@/store/settingsStore';
 
@@ -70,10 +69,6 @@ export function SettingsScreen() {
   return (
     <ScrollView style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={styles.content}>
       <Text style={[styles.title, { color: t.textPrimary }]}>设置</Text>
-      {/* 账号分区（04 §4.5）：活跃用户切换/添加用户/添加服务器/退出登录 */}
-      <AccountSection navigation={navigation} />
-      {/* 服务器管理分区（04 §4.5/§4.6）：操作展开 + 忽略自签名证书开关 */}
-      <ServerSection navigation={navigation} />
       {/* 播放分区：M3 PlaybackSettingsSection 原样收编（行为零改动，04 §4.5）+ M4 字幕语言行 */}
       <View style={styles.playGroup}>
         <PlaybackSettingsSection />
