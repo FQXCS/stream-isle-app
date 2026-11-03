@@ -19,6 +19,8 @@ interface LibraryDisplayActions {
   /** 覆盖已启用 Tab 的顺序（只接受当前目录内且已启用的 id） */
   reorderTabs(flavor: ServerFlavor, libraryType: LibraryTypeEnum, orderedTabIds: TabId[]): void;
   resetTabs(flavor: ServerFlavor, libraryType: LibraryTypeEnum): void;
+  /** 设置进入媒体库时默认打开的 Tab（仅接受已启用 Tab） */
+  setDefaultTab(flavor: ServerFlavor, libraryType: LibraryTypeEnum, tabId: TabId): void;
   /** 启用时追加到末尾；至少保留 1 项 */
   toggleSort(
     flavor: ServerFlavor,
@@ -42,6 +44,8 @@ interface LibraryDisplayState {
   tabListByScope: Record<string, TabId[]>;
   /** key = tabSortScopeKeyOf(flavor, libraryType, tabId) */
   sortListByTabScope: Record<string, SortByEnum[]>;
+  /** key = tabScopeKeyOf(flavor, libraryType) → 进入媒体库时默认打开的 Tab */
+  defaultTabByScope: Record<string, TabId>;
   actions: LibraryDisplayActions;
 }
 
@@ -103,6 +107,7 @@ export const useLibraryDisplayStore = create<LibraryDisplayState>()(
     (set) => ({
       tabListByScope: {},
       sortListByTabScope: {},
+      defaultTabByScope: {},
 
       actions: {
         toggleTab: (flavor, libraryType, tabId) => {
@@ -125,12 +130,15 @@ export const useLibraryDisplayStore = create<LibraryDisplayState>()(
               }
               next = [...current, tabId];
             }
-            return {
-              tabListByScope: {
-                ...state.tabListByScope,
-                [tabScopeKeyOf(flavor, libraryType)]: next,
-              },
-            };
+            const scopeKey = tabScopeKeyOf(flavor, libraryType);
+            const tabListByScope = { ...state.tabListByScope, [scopeKey]: next };
+            // 关闭默认 Tab 时清除默认设置，回退到目录默认选中
+            if (active && state.defaultTabByScope[scopeKey] === tabId) {
+              const defaultTabByScope = { ...state.defaultTabByScope };
+              delete defaultTabByScope[scopeKey];
+              return { tabListByScope, defaultTabByScope };
+            }
+            return { tabListByScope };
           });
         },
 
@@ -165,12 +173,35 @@ export const useLibraryDisplayStore = create<LibraryDisplayState>()(
         resetTabs: (flavor, libraryType) => {
           set((state) => {
             const key = tabScopeKeyOf(flavor, libraryType);
-            if (state.tabListByScope[key] === undefined) {
+            if (
+              state.tabListByScope[key] === undefined &&
+              state.defaultTabByScope[key] === undefined
+            ) {
               return state;
             }
             const tabListByScope = { ...state.tabListByScope };
             delete tabListByScope[key];
-            return { tabListByScope };
+            const defaultTabByScope = { ...state.defaultTabByScope };
+            delete defaultTabByScope[key];
+            return { tabListByScope, defaultTabByScope };
+          });
+        },
+
+        setDefaultTab: (flavor, libraryType, tabId) => {
+          set((state) => {
+            const catalog = tabsOfFlavor(libraryType, flavor);
+            if (!catalog.some((tab) => tab.id === tabId)) {
+              return state;
+            }
+            if (!currentTabIdsOf(state, flavor, libraryType).includes(tabId)) {
+              return state;
+            }
+            return {
+              defaultTabByScope: {
+                ...state.defaultTabByScope,
+                [tabScopeKeyOf(flavor, libraryType)]: tabId,
+              },
+            };
           });
         },
 
@@ -249,7 +280,10 @@ export const useLibraryDisplayStore = create<LibraryDisplayState>()(
             const sortListByTabScope = Object.fromEntries(
               Object.entries(state.sortListByTabScope).filter(([key]) => !key.startsWith(prefix))
             );
-            return { tabListByScope, sortListByTabScope };
+            const defaultTabByScope = Object.fromEntries(
+              Object.entries(state.defaultTabByScope).filter(([key]) => !key.startsWith(prefix))
+            );
+            return { tabListByScope, sortListByTabScope, defaultTabByScope };
           });
         },
       },
@@ -260,6 +294,7 @@ export const useLibraryDisplayStore = create<LibraryDisplayState>()(
       partialize: (state) => ({
         tabListByScope: state.tabListByScope,
         sortListByTabScope: state.sortListByTabScope,
+        defaultTabByScope: state.defaultTabByScope,
       }),
       merge: (persistedState, currentState) => ({
         ...currentState,

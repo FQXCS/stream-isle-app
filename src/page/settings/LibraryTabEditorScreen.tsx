@@ -1,20 +1,23 @@
 /**
  * 某库类型的 Tab 编辑器：已启用区长按拖动排序，未启用区开关启用；
- * 作为独立路由 push，保留原生滑动动画与动态标题。
+ * 「默认显示」选择进入媒体库时默认打开的 Tab；作为独立路由 push，保留原生滑动动画与动态标题。
  */
+import { useRef, useState, type ComponentRef } from 'react';
 import { useRoute } from '@react-navigation/native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { LibraryTypeEnum, ServerFlavor } from '@/adapter/model';
+import { AnchorMenu, type AnchorRect } from '@/component/AnchorMenu';
 import { AppIcon } from '@/component/AppIcon';
 import { DragHandle } from '@/component/DragHandle';
 import { SelectableRow } from '@/component/SelectableRow';
+import { SettingRow } from '@/component/SettingRow';
 import { SortableSettingsList } from '@/component/SortableSettingsList';
 import { useTheme } from '@/component/useTheme';
 import { MAX_LIBRARY_TABS, tabsOfFlavor } from '@/constant/libraryTabs';
 import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useLibraryDisplayStore } from '@/store/libraryDisplayStore';
-import { resolveTabList } from '@/util/libraryConfig';
+import { resolveDefaultTabId, resolveTabList, tabScopeKeyOf } from '@/util/libraryConfig';
 
 interface LibraryTabEditorParams {
   flavor: ServerFlavor;
@@ -27,7 +30,10 @@ export function LibraryTabEditorScreen() {
   const route = useRoute<{ key: string; name: string; params: LibraryTabEditorParams }>();
   const { flavor, libraryType } = route.params;
   const tabListByScope = useLibraryDisplayStore((state) => state.tabListByScope);
+  const defaultTabByScope = useLibraryDisplayStore((state) => state.defaultTabByScope);
   const actions = useLibraryDisplayStore((state) => state.actions);
+  const [defaultMenuAnchor, setDefaultMenuAnchor] = useState<AnchorRect | null>(null);
+  const defaultRowRef = useRef<ComponentRef<typeof View>>(null);
 
   const allTabs = tabsOfFlavor(libraryType, flavor);
   const enabledTabs = resolveTabList({ flavor, libraryType, tabOverrides: tabListByScope });
@@ -35,6 +41,24 @@ export function LibraryTabEditorScreen() {
   const disabledTabs = allTabs.filter((tab) => !enabledIds.has(tab.id));
   const atMax = enabledTabs.length >= MAX_LIBRARY_TABS;
   const atMin = enabledTabs.length <= 1;
+  const defaultTabId = resolveDefaultTabId(
+    enabledTabs,
+    defaultTabByScope[tabScopeKeyOf(flavor, libraryType)]
+  );
+  const defaultTab = enabledTabs.find((tab) => tab.id === defaultTabId);
+  const defaultMenuItems = enabledTabs.map((tab) => ({
+    key: tab.id,
+    label: tab.label,
+    icon: tab.id === defaultTabId ? ('radioChecked' as const) : ('radioUnchecked' as const),
+    onPress: () => actions.setDefaultTab(flavor, libraryType, tab.id),
+  }));
+
+  /** 以「默认显示」行为锚点弹出 Tab 选择菜单 */
+  const handleOpenDefaultMenu = () => {
+    defaultRowRef.current?.measureInWindow((x, y, width, height) =>
+      setDefaultMenuAnchor({ x, y, width, height })
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -49,12 +73,22 @@ export function LibraryTabEditorScreen() {
           )
         }
         header={
-          <View style={styles.hintRow}>
-            <Text style={styles.hintText}>
-              已启用（{enabledTabs.length}/{MAX_LIBRARY_TABS}）· 长按
-            </Text>
-            <AppIcon name="dragHandle" size={12} color={t.textSecondary} />
-            <Text style={styles.hintText}>拖动排序</Text>
+          <View>
+            <Text style={styles.sectionTitle}>默认显示</Text>
+            <View ref={defaultRowRef} style={styles.card}>
+              <SettingRow
+                label="进入媒体库时打开"
+                value={defaultTab?.label}
+                onPress={handleOpenDefaultMenu}
+              />
+            </View>
+            <View style={styles.hintRow}>
+              <Text style={styles.hintText}>
+                已启用（{enabledTabs.length}/{MAX_LIBRARY_TABS}）· 长按
+              </Text>
+              <AppIcon name="dragHandle" size={12} color={t.textSecondary} />
+              <Text style={styles.hintText}>拖动排序</Text>
+            </View>
           </View>
         }
         renderItem={(tab, drag) => (
@@ -97,6 +131,11 @@ export function LibraryTabEditorScreen() {
             </Pressable>
           </View>
         }
+      />
+      <AnchorMenu
+        anchor={defaultMenuAnchor}
+        itemList={defaultMenuItems}
+        onClose={() => setDefaultMenuAnchor(null)}
       />
     </View>
   );

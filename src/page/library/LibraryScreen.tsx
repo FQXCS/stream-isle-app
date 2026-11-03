@@ -31,6 +31,7 @@ import {
   resolvePrimarySortOptions,
   resolveTabList,
   resolveTabSortOptions,
+  tabScopeKeyOf,
   usesPrimarySortConfig,
 } from '@/util/libraryConfig';
 
@@ -54,6 +55,7 @@ function LibraryBody({ library }: { library: MediaLibrary }) {
   const serverId = active?.serverId ?? '';
   const tabListByScope = useLibraryDisplayStore((state) => state.tabListByScope);
   const sortListByTabScope = useLibraryDisplayStore((state) => state.sortListByTabScope);
+  const defaultTabByScope = useLibraryDisplayStore((state) => state.defaultTabByScope);
   const sortByKey = useLibraryViewStore((state) => state.sortByKey);
 
   const tabList = useMemo(
@@ -65,7 +67,10 @@ function LibraryBody({ library }: { library: MediaLibrary }) {
       }),
     [flavor, library.type, tabListByScope]
   );
-  const defaultTabId = resolveDefaultTabId(tabList);
+  const defaultTabId = resolveDefaultTabId(
+    tabList,
+    defaultTabByScope[tabScopeKeyOf(flavor, library.type)]
+  );
   const [selectedTabId, setSelectedTabId] = useState<string | undefined>(defaultTabId);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const activeTab: TabSpec | undefined =

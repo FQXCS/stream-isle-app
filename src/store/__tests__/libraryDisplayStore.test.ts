@@ -9,7 +9,11 @@ const MOVIE_SCOPE = 'EMBY:MOVIE';
 const MOVIE_ALL_SORT_SCOPE = 'EMBY:MOVIE:all';
 
 function resetStore(): void {
-  useLibraryDisplayStore.setState({ tabListByScope: {}, sortListByTabScope: {} });
+  useLibraryDisplayStore.setState({
+    tabListByScope: {},
+    sortListByTabScope: {},
+    defaultTabByScope: {},
+  });
 }
 
 describe('libraryDisplayStore（Tab 启停与拖动排序）', () => {
@@ -88,6 +92,23 @@ describe('libraryDisplayStore（Tab 启停与拖动排序）', () => {
     resetTabs('EMBY', 'MOVIE');
     expect(useLibraryDisplayStore.getState().tabListByScope[MOVIE_SCOPE]).toBeUndefined();
   });
+
+  it('默认显示只接受已启用 Tab；关闭默认 Tab 时清除设置', () => {
+    const { setDefaultTab, toggleTab } = useLibraryDisplayStore.getState().actions;
+    setDefaultTab('EMBY', 'MOVIE', 'trailer');
+    expect(useLibraryDisplayStore.getState().defaultTabByScope[MOVIE_SCOPE]).toBeUndefined();
+    setDefaultTab('EMBY', 'MOVIE', 'favorite');
+    expect(useLibraryDisplayStore.getState().defaultTabByScope[MOVIE_SCOPE]).toBe('favorite');
+    toggleTab('EMBY', 'MOVIE', 'favorite');
+    expect(useLibraryDisplayStore.getState().defaultTabByScope[MOVIE_SCOPE]).toBeUndefined();
+  });
+
+  it('resetTabs 同时清除默认显示', () => {
+    const { setDefaultTab, resetTabs } = useLibraryDisplayStore.getState().actions;
+    setDefaultTab('EMBY', 'MOVIE', 'folder');
+    resetTabs('EMBY', 'MOVIE');
+    expect(useLibraryDisplayStore.getState().defaultTabByScope[MOVIE_SCOPE]).toBeUndefined();
+  });
 });
 
 describe('libraryDisplayStore（排序启停与拖动排序）', () => {
@@ -145,12 +166,14 @@ describe('libraryDisplayStore（排序启停与拖动排序）', () => {
   });
 
   it('resetSorts 清覆盖；resetAll 只清指定 flavor', () => {
-    const { toggleTab, toggleSort, resetSorts, resetAll } =
+    const { toggleTab, toggleSort, setDefaultTab, resetSorts, resetAll } =
       useLibraryDisplayStore.getState().actions;
     toggleTab('EMBY', 'MOVIE', 'played');
     toggleTab('JELLYFIN', 'MOVIE', 'played');
     toggleSort('EMBY', 'MOVIE', 'all', 'DIRECTOR');
     toggleSort('JELLYFIN', 'MOVIE', 'all', 'RANDOM');
+    setDefaultTab('EMBY', 'MOVIE', 'favorite');
+    setDefaultTab('JELLYFIN', 'MOVIE', 'favorite');
     resetSorts('EMBY', 'MOVIE', 'all');
     expect(useLibraryDisplayStore.getState().sortListByTabScope[MOVIE_ALL_SORT_SCOPE]).toBeUndefined();
     expect(
@@ -159,6 +182,10 @@ describe('libraryDisplayStore（排序启停与拖动排序）', () => {
     resetAll('EMBY');
     expect(useLibraryDisplayStore.getState().tabListByScope[MOVIE_SCOPE]).toBeUndefined();
     expect(useLibraryDisplayStore.getState().tabListByScope['JELLYFIN:MOVIE']).toBeDefined();
+    expect(useLibraryDisplayStore.getState().defaultTabByScope[MOVIE_SCOPE]).toBeUndefined();
+    expect(useLibraryDisplayStore.getState().defaultTabByScope['JELLYFIN:MOVIE']).toBe(
+      'favorite'
+    );
   });
 });
 
@@ -168,11 +195,13 @@ describe('libraryDisplayStore persist', () => {
     resetStore();
   });
 
-  it('持久化两个有序映射，不落 actions', () => {
-    const { toggleTab } = useLibraryDisplayStore.getState().actions;
+  it('持久化配置映射，不落 actions', () => {
+    const { toggleTab, setDefaultTab } = useLibraryDisplayStore.getState().actions;
     toggleTab('EMBY', 'MOVIE', 'played');
+    setDefaultTab('EMBY', 'MOVIE', 'played');
     const snapshot = mmkv.getString(LIBRARY_DISPLAY_STORE_KEY) ?? '';
     expect(snapshot).toContain('"tabListByScope"');
+    expect(snapshot).toContain('"defaultTabByScope"');
     expect(snapshot).toContain('"played"');
     expect(snapshot).not.toContain('"actions"');
   });

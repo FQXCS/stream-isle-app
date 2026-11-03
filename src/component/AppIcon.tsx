@@ -13,6 +13,8 @@ export type AppIconName =
   | 'more'
   | 'close'
   | 'check'
+  | 'radioChecked'
+  | 'radioUnchecked'
   | 'chevronRight'
   | 'chevronUp'
   | 'chevronDown'
@@ -76,6 +78,8 @@ const ICON_GLYPH_MAP: Record<AppIconName, MciName> = {
   more: 'dots-horizontal',
   close: 'close',
   check: 'check',
+  radioChecked: 'radiobox-marked',
+  radioUnchecked: 'radiobox-blank',
   chevronRight: 'chevron-right',
   chevronUp: 'chevron-up',
   chevronDown: 'chevron-down',

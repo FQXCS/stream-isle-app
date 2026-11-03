@@ -68,8 +68,14 @@ export function resolveTabList(input: ResolveTabListInput): readonly TabSpec[] {
   return catalog.slice(0, 1);
 }
 
-/** 默认选中的 Tab：defaultSelected 优先，否则首个 */
-export function resolveDefaultTabId(tabList: readonly TabSpec[]): TabId | undefined {
+/** 默认选中的 Tab：用户默认显示配置优先（需仍启用），否则 defaultSelected，最后首个 */
+export function resolveDefaultTabId(
+  tabList: readonly TabSpec[],
+  preferredTabId?: TabId
+): TabId | undefined {
+  if (preferredTabId !== undefined && tabList.some((tab) => tab.id === preferredTabId)) {
+    return preferredTabId;
+  }
   return tabList.find((tab) => tab.defaultSelected)?.id ?? tabList[0]?.id;
 }
 

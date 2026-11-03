@@ -93,6 +93,12 @@ describe('resolveTabList', () => {
       'photo'
     );
   });
+
+  it('默认显示配置优先；配置的 Tab 已禁用时回退目录默认', () => {
+    const tabList = resolveTabList({ flavor: 'EMBY', libraryType: 'MOVIE' });
+    expect(resolveDefaultTabId(tabList, 'favorite')).toBe('favorite');
+    expect(resolveDefaultTabId(tabList, 'played')).toBe('all');
+  });
 });
 
 describe('resolveTabSortOptions', () => {
