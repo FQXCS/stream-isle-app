@@ -34,6 +34,7 @@ import { AudioReporting, type AudioReportingHost } from '@/service/AudioReportin
 import { showToast } from '@/component/Toast';
 import { useAccountStore } from '@/store/accountStore';
 import { usePlayerStore } from '@/store/playerStore';
+import { combinedPlaybackMode, type PlaybackModeEnum } from '@/util/playbackMode';
 import { newUid } from '@/util/uuid';
 
 /** 歌词加载取活跃 userId（入口仅 Now Playing 页，UI 路由守卫保证有活跃账号） */
@@ -64,9 +65,18 @@ export interface AudioQueueEntry {
   id: string;
   title: string;
   artist?: string;
+  /** 专辑名（队列行副标题「艺人 - 专辑」） */
+  album?: string;
   /** 通知栏 artwork / 封面缩略（带 token 完整 URL） */
   coverUrl?: string;
   durationMs?: number;
+}
+
+/** 相邻曲预览（迷你条左右滑时的下一首/上一首标题） */
+export interface AdjacentTrackPreview {
+  id: string;
+  title: string;
+  artist?: string;
 }
 
 /** RepeatModeEnum → @rntp/player RepeatMode 映射（05 文档 §4.5；v5：track→One、queue→All） */
@@ -265,9 +275,36 @@ export class AudioService {
       id: item.mediaId ?? '',
       title: item.title ?? '',
       artist: item.artist,
+      album: item.albumTitle,
       coverUrl: typeof item.artworkUrl === 'string' ? item.artworkUrl : undefined,
       durationMs: item.duration !== undefined ? item.duration * 1000 : undefined,
     }));
+  }
+
+  /**
+   * 相邻曲预览（迷你条左右滑显示下一首/上一首名称）：队列真源在原生侧，按当前索引取前后项。
+   * 无相邻曲时对应字段缺省（滑到队首/队尾不预览也不切歌）。
+   */
+  async getAdjacentTrackPreviews(): Promise<{
+    previous?: AdjacentTrackPreview;
+    next?: AdjacentTrackPreview;
+  }> {
+    const index = TrackPlayer.getActiveMediaItemIndex();
+    if (index === null) {
+      return {};
+    }
+    const queue = TrackPlayer.getQueue();
+    const toPreview = (item: MediaItem | undefined): AdjacentTrackPreview | undefined => {
+      if (item === undefined) {
+        return undefined;
+      }
+      const preview: AdjacentTrackPreview = { id: item.mediaId ?? '', title: item.title ?? '' };
+      if (item.artist !== undefined) {
+        preview.artist = item.artist;
+      }
+      return preview;
+    };
+    return { previous: toPreview(queue[index - 1]), next: toPreview(queue[index + 1]) };
   }
 
   /**
@@ -320,6 +357,11 @@ export class AudioService {
     await TrackPlayer.skipToPrevious();
   }
 
+  /** 直接切上一曲（不做「位置 > 3 秒回曲头」判定；迷你条右滑用） */
+  async skipToPreviousTrack(): Promise<void> {
+    await TrackPlayer.skipToPrevious();
+  }
+
   /** 拖动进度（UI 与通知栏进度条同路径）：即时上报 Progress 并重置节流计时 */
   async seekTo(positionMs: number): Promise<void> {
     await TrackPlayer.seekTo(positionMs / 1000);
@@ -330,6 +372,29 @@ export class AudioService {
   async setRepeatMode(mode: RepeatModeEnum): Promise<void> {
     await TrackPlayer.setRepeatMode(toNativeRepeatMode(mode));
     usePlayerStore.getState().setAudioState({ repeatMode: mode });
+  }
+
+  /**
+   * 播放模式循环（列表循环 → 随机 → 单曲循环 → 列表循环）：NowPlaying 模式按钮与
+   * 队列面板标题共用同一实现；返回切换后的模式（UI 提示文案取 PLAYBACK_MODE_META）。
+   */
+  async cyclePlaybackMode(): Promise<PlaybackModeEnum> {
+    const audio = usePlayerStore.getState().audio;
+    const mode = combinedPlaybackMode(audio.repeatMode, audio.shuffle);
+    if (mode === 'queue') {
+      // 列表循环 → 随机（队列重建打乱）
+      await this.toggleShuffle();
+      return 'shuffle';
+    }
+    if (mode === 'shuffle') {
+      // 随机 → 单曲循环（先恢复原序，再切循环模式）
+      await this.toggleShuffle();
+      await this.setRepeatMode('track');
+      return 'track';
+    }
+    // 单曲循环 → 列表循环
+    await this.setRepeatMode('queue');
+    return 'queue';
   }
 
   /**
@@ -444,7 +509,12 @@ export class AudioService {
     this.lyricsPending.clear();
     TrackPlayer.clear();
     this.reporting.endProgress();
+    // resetAudio 会复位整块 audio 切片；但原生引擎仍处于已初始化状态（setupPromise 未销毁），
+    // 就绪标记必须保留——否则清空队列后再点歌，音频虽入队但迷你条/NowPlaying 入口全部隐藏，
+    // 表现为「点击音频没有反应」（engineReady 只在 setupPlayer 首次成功时写 true）
+    const { engineReady } = usePlayerStore.getState().audio;
     usePlayerStore.getState().resetAudio();
+    usePlayerStore.getState().setAudioState({ engineReady });
   }
 
   // —— 会话激活（AudioReportingHost 回调；新曲生效的编排核心）——
@@ -481,7 +551,9 @@ export class AudioService {
     this.reporting.beginSession(session);
     usePlayerStore.getState().setAudioState({
       currentTrack: audioItem ?? this.audioItemFromTrack(track),
-      status: 'buffering',
+      // 清空队列/重建队列后 MediaItemTransition 可能晚于 IsPlayingChanged(true)：
+      // 此时原生已在播，不能再写 buffering，否则 UI 永久停在「播放」按钮（点了没反应）
+      status: TrackPlayer.isPlaying() ? 'playing' : 'buffering',
     });
     await this.reporting.reportPlayingFor(itemId, playSessionId);
   }

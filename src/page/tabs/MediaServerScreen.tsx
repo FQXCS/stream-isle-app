@@ -16,6 +16,7 @@ import { AnchorMenu, type AnchorMenuItem, type AnchorRect } from '@/component/An
 import { AppIcon } from '@/component/AppIcon';
 import { ServerFlavorLogo } from '@/component/ServerFlavorLogo';
 import { showToast } from '@/component/Toast';
+import { useMiniPlayerPadding } from '@/component/MiniPlayer';
 import { useTheme } from '@/component/useTheme';
 import { ROUTES } from '@/constant/navigation';
 import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
@@ -42,6 +43,8 @@ const FLAVOR_CARD_TINT: Record<ServerFlavor, string> = {
 export function MediaServerScreen() {
   const t = useTheme();
   const styles = createStyles(t);
+  // 迷你条浮在 Tab 栏上方：底部让位，卡片不被条子覆盖（停止播放后自动归零）
+  const miniPadding = useMiniPlayerPadding();
   const navigation = useNavigation<NavigationProp>();
   const servers = useAccountStore((state) => state.servers);
   const active = useAccountStore((state) => state.active);
@@ -277,7 +280,7 @@ export function MediaServerScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: t.bg }]}>
+    <View style={[styles.container, { backgroundColor: t.bg, paddingBottom: miniPadding }]}>
       <View style={styles.header}>
         {selectMode ? (
           <View style={styles.headerButton} />

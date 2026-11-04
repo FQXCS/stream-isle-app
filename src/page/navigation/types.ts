@@ -55,8 +55,8 @@ export type RootStackParamList = {
   [ROUTES.PLAYER]: { session: PlaybackSession };
   /** M5：专辑/艺术家/歌单详情三态（05 §4.15） */
   [ROUTES.ALBUM_DETAIL]: { kind: 'album' | 'artist' | 'playlist'; itemId: string };
-  /** M5：Now Playing 全屏页（已在页内时重复 navigate 忽略由 MiniPlayer 保证） */
-  [ROUTES.NOW_PLAYING]: undefined;
+  /** M5：Now Playing 全屏页；openQueue 供迷你条「队列」按钮直达队列面板 */
+  [ROUTES.NOW_PLAYING]: { openQueue?: boolean } | undefined;
   /**
    * M5：照片查看器。totalCount 供页码分母、albumId 供查看器续载下一页（05 §4.13）；
    * 仅元数据随栈传参（photoList 为已加载片段引用）

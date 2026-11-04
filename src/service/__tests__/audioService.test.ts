@@ -330,6 +330,29 @@ describe('事件 → 上报接线（§4.5 事件表）', () => {
     expect(usePlayerStore.getState().audio.currentTrack?.id).toBe('b');
   });
 
+  it('MediaItemTransition 晚到且原生已播放：状态保持 playing，不回退 buffering', async () => {
+    const service = makeService();
+    service.attachPlaybackSession();
+    await service.playQueue([song('a')], 0);
+    // 清空队列后事件可能乱序：IsPlayingChanged(true) 先到，MediaItemTransition 后到且原生已在播
+    (TrackPlayer.isPlaying as jest.Mock).mockReturnValue(true);
+    usePlayerStore.getState().setAudioState({ status: 'playing' });
+    await listenerOf(Event.MediaItemTransition)({ item: MEDIA_OF('a'), index: 0, reason: 'playlistChanged' });
+    expect(usePlayerStore.getState().audio.status).toBe('playing');
+    (TrackPlayer.isPlaying as jest.Mock).mockReturnValue(false);
+  });
+
+  it('清空队列的 MediaItemTransition(item=undefined) 后首次点歌：不抛错且正常激活', async () => {
+    const service = makeService();
+    service.attachPlaybackSession();
+    await service.playQueue([song('a')], 0);
+    // 原生清空事件可能把 item 置 undefined（类型声明为 null，运行时不保证）：
+    // 未归一化时下一次切歌会在 previous.mediaId 抛 TypeError，首次点歌事件链中断
+    await listenerOf(Event.MediaItemTransition)({ item: undefined });
+    await listenerOf(Event.MediaItemTransition)({ item: MEDIA_OF('a'), index: 0, reason: 'playlistChanged' });
+    expect(usePlayerStore.getState().audio.currentTrack?.id).toBe('a');
+  });
+
   it('PlaybackStateChanged(Ended)：末曲 Stopped；stop()：clear + 当前曲 Stopped + store 复位', async () => {
     const adapter = makeFakeAdapter();
     const service = makeService(adapter);
@@ -348,6 +371,21 @@ describe('事件 → 上报接线（§4.5 事件表）', () => {
     expect(TrackPlayer.clear).toHaveBeenCalledTimes(1);
     expect(usePlayerStore.getState().audio.status).toBe('idle');
     expect(usePlayerStore.getState().audio.currentTrack).toBeNull();
+  });
+
+  it('stop() 清空后再 playQueue：engineReady 保持就绪（清空后点歌迷你条仍可见）', async () => {
+    const service = makeService();
+    await service.playQueue([song('a')], 0);
+    expect(usePlayerStore.getState().audio.engineReady).toBe(true);
+
+    await service.stop();
+    expect(usePlayerStore.getState().audio.status).toBe('idle');
+
+    // 引擎（setupPromise）已初始化，resetAudio 不应把就绪标记永久清掉；
+    // 否则清空队列后点歌虽然入队，但迷你条/NowPlaying 入口全部隐藏，表现为「点了没反应」
+    await service.playQueue([song('b')], 0);
+    expect(usePlayerStore.getState().audio.engineReady).toBe(true);
+    expect(usePlayerStore.getState().audio.queueLength).toBe(1);
   });
 
   it('PlaybackError：状态置 error + 当前曲 Stopped；IsPlayingChanged 即时 Progress', async () => {

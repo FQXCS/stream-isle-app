@@ -41,6 +41,7 @@ export type AppIconName =
   // 播放控制 / 手势
   | 'play'
   | 'pause'
+  | 'stop'
   | 'skipPrevious'
   | 'skipNext'
   | 'repeat'
@@ -60,6 +61,8 @@ export type AppIconName =
   | 'flagOutline'
   | 'download'
   | 'trash'
+  | 'broom'
+  | 'equalizer'
   | 'video'
   | 'audio'
   | 'subtitle'
@@ -110,6 +113,7 @@ const ICON_GLYPH_MAP: Record<AppIconName, MciName> = {
   settings: 'cog',
   play: 'play',
   pause: 'pause',
+  stop: 'stop',
   skipPrevious: 'skip-previous',
   skipNext: 'skip-next',
   repeat: 'repeat',
@@ -128,6 +132,8 @@ const ICON_GLYPH_MAP: Record<AppIconName, MciName> = {
   flagOutline: 'flag-outline',
   download: 'download',
   trash: 'delete',
+  broom: 'broom',
+  equalizer: 'equalizer',
   video: 'video',
   audio: 'music-note',
   subtitle: 'subtitles',

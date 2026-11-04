@@ -37,5 +37,8 @@ export const HOT_SONGS_LIMIT = 20;
 /** 专辑/歌单封面与曲目封面宽（迷你条、通知栏 artwork、Now Playing 大封面共用） */
 export const AUDIO_ARTWORK_MAX_WIDTH = 600;
 
+/** 播放模式切换提示停留时长（毫秒）：参考稿 2 秒后自动消失 */
+export const MODE_HINT_DURATION_MS = 2_000;
+
 /** 艺术家专辑网格/头像宽 */
 export const ALBUM_GRID_COVER_MAX_WIDTH = 400;

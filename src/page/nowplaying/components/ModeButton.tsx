@@ -2,60 +2,47 @@
  * 播放模式按钮（M5 文档 §4.10）：点击循环 列表循环 → 随机 → 单曲循环 → 列表循环，
  * 图标与 playerStore.audio 双向同步。随机/退出随机经 AudioService.toggleShuffle
  * （队列重建，当前曲不中断）；循环模式经 AudioService.setRepeatMode。
+ * 图标/文案口径与队列面板标题共用 util/playbackMode；切换后目标模式文案经 onModeChange
+ * 回传页面弹提示（2s 自动消失）。
  */
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 
-import type { RepeatModeEnum } from '@/adapter/model';
-import { AppIcon, type AppIconName } from '@/component/AppIcon';
+import { AppIcon } from '@/component/AppIcon';
 import { audioService } from '@/service/AudioService';
 import { usePlayerStore } from '@/store/playerStore';
 import { COLORS } from '@/constant/theme';
+import { PLAYBACK_MODE_META, combinedPlaybackMode } from '@/util/playbackMode';
 
-/** 组合模式（shuffle 与 repeatMode 的合并展示态） */
-type CombinedMode = 'queue' | 'shuffle' | 'track';
-
-const MODE_META: Record<CombinedMode, { label: string; icon: AppIconName }> = {
-  queue: { label: '列表循环', icon: 'repeat' },
-  shuffle: { label: '随机播放', icon: 'shuffle' },
-  track: { label: '单曲循环', icon: 'repeatOne' },
-};
-
-function combinedOf(repeatMode: RepeatModeEnum, shuffle: boolean): CombinedMode {
-  if (shuffle) {
-    return 'shuffle';
-  }
-  return repeatMode === 'track' ? 'track' : 'queue';
+interface ModeButtonProps {
+  /** 图标色（默认沉浸深色页白；无封面主题玻璃页由 NowPlaying 传主题色） */
+  iconColor?: string;
+  /** 切换后的目标模式文案（页面用于弹提示；未传则不提示） */
+  onModeChange?: (label: string) => void;
 }
 
-export function ModeButton() {
+export function ModeButton({ iconColor = COLORS.textPrimary, onModeChange }: ModeButtonProps) {
   const repeatMode = usePlayerStore((state) => state.audio.repeatMode);
   const shuffle = usePlayerStore((state) => state.audio.shuffle);
-  const mode = combinedOf(repeatMode, shuffle);
+  const mode = combinedPlaybackMode(repeatMode, shuffle);
 
   const handleCycle = () => {
-    if (mode === 'queue') {
-      // 列表循环 → 随机（队列重建打乱）
-      void audioService.toggleShuffle();
-      return;
-    }
-    if (mode === 'shuffle') {
-      // 随机 → 单曲循环（先恢复原序，再切循环模式）
-      void audioService.toggleShuffle().then(() => audioService.setRepeatMode('track'));
-      return;
-    }
-    // 单曲循环 → 列表循环
-    void audioService.setRepeatMode('queue');
+    void audioService.cyclePlaybackMode().then((nextMode) => {
+      onModeChange?.(PLAYBACK_MODE_META[nextMode].label);
+    });
   };
 
   return (
-    <Pressable hitSlop={8} style={styles.button} onPress={handleCycle}>
-      <AppIcon name={MODE_META[mode].icon} size={22} color={COLORS.textPrimary} />
-      <Text style={styles.label}>{MODE_META[mode].label}</Text>
+    <Pressable
+      hitSlop={8}
+      style={styles.button}
+      onPress={handleCycle}
+      accessibilityLabel={PLAYBACK_MODE_META[mode].label}
+    >
+      <AppIcon name={PLAYBACK_MODE_META[mode].icon} size={24} color={iconColor} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  button: { alignItems: 'center', paddingHorizontal: 12, paddingVertical: 4 },
-  label: { color: COLORS.textSecondary, fontSize: 10, marginTop: 2 },
+  button: { padding: 4 },
 });

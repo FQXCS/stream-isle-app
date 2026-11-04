@@ -30,6 +30,7 @@ import { ErrorView } from '@/component/ErrorView';
 import { LoadingView } from '@/component/LoadingView';
 import { PosterRow } from '@/component/PosterRow';
 import { showToast } from '@/component/Toast';
+import { useMiniPlayerPadding } from '@/component/MiniPlayer';
 import { useTheme } from '@/component/useTheme';
 import { MEDIA_CARD_HEIGHT } from '@/constant/browse';
 import { ROUTES } from '@/constant/navigation';
@@ -83,6 +84,8 @@ function SectionGroup({ title, onMore, children }: SectionGroupProps) {
 export function LibrariesScreen() {
   const t = useTheme();
   const styles = createStyles(t);
+  // 迷你条浮在 Tab 栏上方：底部让位，内容不被条子覆盖（停止播放后自动归零）
+  const miniPadding = useMiniPlayerPadding();
   const navigation = useNavigation<NavigationProp>();
   const active = useAccountStore((state) => state.active);
   const serverList = useAccountStore((state) => state.servers);
@@ -322,7 +325,7 @@ export function LibrariesScreen() {
   return (
     <>
       <ScrollView
-        style={[styles.fill, { backgroundColor: t.bg }]}
+        style={[styles.fill, { backgroundColor: t.bg, marginBottom: miniPadding }]}
         contentContainerStyle={styles.content}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={t.accent} />

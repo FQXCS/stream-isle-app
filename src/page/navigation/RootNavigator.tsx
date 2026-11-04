@@ -18,12 +18,13 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, ToastAndroid, View } from 'react-native';
 
-import { ROUTES } from '@/constant/navigation';
+import { MINI_PLAYER_HIDDEN_ROUTES, ROUTES } from '@/constant/navigation';
 import { LIBRARY_TYPE_LABELS, TAB_CATALOG } from '@/constant/libraryTabs';
 import { errorMessageOf } from '@/infra/error';
 import { apiEvents } from '@/infra/api/apiEvents';
 import { AppIcon } from '@/component/AppIcon';
 import { MiniPlayer } from '@/component/MiniPlayer';
+import { MiniPlayerInset } from '@/component/MiniPlayerInset';
 import { SharedPosterOverlay } from '@/component/SharedPosterOverlay';
 import { ToastHost } from '@/component/Toast';
 import { useResolvedScheme, useTheme } from '@/component/useTheme';
@@ -161,6 +162,15 @@ export function RootNavigator() {
           initialRouteName={ROUTES.TABS}
           // 全局顶部导航样式：标题居中（Android 默认左对齐）
           screenOptions={{ headerTitleAlign: 'center' }}
+          // 迷你条不遮内容：非 Tab / 非沉浸页在场景底部预留条高（MiniPlayerInset 内部订阅，
+          // 停止播放后自动归零；Tab 页由三个 Tab 屏幕自己的 useMiniPlayerPadding 预留）
+          screenLayout={({ children, route }) =>
+            route.name === ROUTES.TABS || MINI_PLAYER_HIDDEN_ROUTES.includes(route.name) ? (
+              children
+            ) : (
+              <MiniPlayerInset>{children}</MiniPlayerInset>
+            )
+          }
         >
           <RootStack.Screen
             name={ROUTES.TABS}

@@ -162,9 +162,12 @@ export class AudioReporting {
     TrackPlayer.addEventListener(Event.PlaybackError, (event) => this.handlePlaybackError(event));
   }
 
-  private async handleMediaItemTransition(event: { item: MediaItem | null }): Promise<void> {
+  private async handleMediaItemTransition(event: { item: MediaItem | null | undefined }): Promise<void> {
     const previous = this.lastActiveItem;
-    this.lastActiveItem = event.item;
+    // 清空队列/stop() 时原生事件可能带 undefined（类型声明只写 null），必须归一化：
+    // 否则下一次切歌时 previous 为 undefined，`previous.mediaId` 抛 TypeError，
+    // 首次点歌事件链中断（表现为清空后第一次点音频没反应、第二次才正常）
+    this.lastActiveItem = event.item ?? null;
     const next = event.item ?? undefined;
     // 上一曲收尾：Stopped（positionMs 取节流服务记录的最近位置）；
     // repeat-one 循环（同曲）不报 Stopped（曲未变，会话由 activateTrack 重建）

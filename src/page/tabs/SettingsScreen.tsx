@@ -20,6 +20,7 @@ import {
 } from '@/constant/subtitle';
 import { SERVER_FLAVOR_OPTIONS } from '@/constant/server';
 import { FONT_SIZE, POSTER_RADIUS, SPACING } from '@/constant/theme';
+import { useMiniPlayerPadding } from '@/component/MiniPlayer';
 import { useTheme } from '@/component/useTheme';
 import type { ThemeModeEnum } from '@/constant/theme';
 import { ROUTES } from '@/constant/navigation';
@@ -43,6 +44,8 @@ const GITHUB_RELEASES_URL = 'https://github.com/renym/stream-isle-app/releases';
 export function SettingsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const t = useTheme();
+  // 迷你条浮在 Tab 栏上方：底部让位，设置项不被条子覆盖（停止播放后自动归零）
+  const miniPadding = useMiniPlayerPadding();
   const preferredSubtitleLang = useSettingsStore((state) => state.preferredSubtitleLang);
   const themeMode = useSettingsStore((state) => state.themeMode);
   const [subtitleSheetOpen, setSubtitleSheetOpen] = useState(false);
@@ -67,7 +70,10 @@ export function SettingsScreen() {
   const versionCode = Application.nativeBuildVersion ?? '-';
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: t.bg, marginBottom: miniPadding }]}
+      contentContainerStyle={styles.content}
+    >
       <Text style={[styles.title, { color: t.textPrimary }]}>设置</Text>
       {/* 播放分区：M3 PlaybackSettingsSection 原样收编（行为零改动，04 §4.5）+ M4 字幕语言行 */}
       <View style={styles.playGroup}>

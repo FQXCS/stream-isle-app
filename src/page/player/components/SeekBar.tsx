@@ -18,13 +18,42 @@ interface SeekBarProps {
   onPreview: (positionMs: number) => void;
   /** 松手/点按提交 seek */
   onSeek: (positionMs: number) => void;
+  /** 轨道配色（默认沉浸白；无封面主题玻璃页传主题色，避免浅底白轨不可见） */
+  palette?: SeekBarPalette;
 }
+
+/** 进度条四层配色（播放页默认白；NowPlaying 主题玻璃页传主题 token） */
+export interface SeekBarPalette {
+  /** 已播轨道 */
+  played: string;
+  /** 缓冲轨道 */
+  buffered: string;
+  /** 底轨 */
+  base: string;
+  /** 拖动圆点 */
+  thumb: string;
+}
+
+const DEFAULT_PALETTE: SeekBarPalette = {
+  played: '#FFFFFF',
+  buffered: 'rgba(255,255,255,0.6)',
+  base: 'rgba(255,255,255,0.25)',
+  thumb: '#FFFFFF',
+};
 
 const TRACK_HEIGHT = 4;
 const THUMB_SIZE = 14;
 const BAR_HEIGHT = 32;
 
-export function SeekBar({ positionMs, bufferedMs, durationMs, onPreview, onSeek }: SeekBarProps) {
+export function SeekBar({
+  positionMs,
+  bufferedMs,
+  durationMs,
+  onPreview,
+  onSeek,
+  palette,
+}: SeekBarProps) {
+  const trackPalette = palette ?? DEFAULT_PALETTE;
   // 拖动中的预览值（松手前不动真实进度）
   const [previewMs, setPreviewMs] = useState<number | null>(null);
   const previewRef = useRef(0);
@@ -85,12 +114,27 @@ export function SeekBar({ positionMs, bufferedMs, durationMs, onPreview, onSeek 
         }}
       >
         <View style={styles.trackWrap}>
-          {/* 三层轨道：底轨 25% 白 / 缓冲 60% 白 / 已播白（02 §4.12） */}
-          <View style={styles.trackBase} />
-          <View style={[styles.trackBuffered, { width: `${bufferedRatio * 100}%` }]} />
-          <View style={[styles.trackPlayed, { width: `${playedRatio * 100}%` }]} />
+          {/* 三层轨道：底轨 / 缓冲 / 已播（配色随页面 tone，播放页默认白） */}
+          <View style={[styles.trackBase, { backgroundColor: trackPalette.base }]} />
+          <View
+            style={[
+              styles.trackBuffered,
+              { width: `${bufferedRatio * 100}%`, backgroundColor: trackPalette.buffered },
+            ]}
+          />
+          <View
+            style={[
+              styles.trackPlayed,
+              { width: `${playedRatio * 100}%`, backgroundColor: trackPalette.played },
+            ]}
+          />
         </View>
-        <View style={[styles.thumb, { left: `${playedRatio * 100}%` }]} />
+        <View
+          style={[
+            styles.thumb,
+            { left: `${playedRatio * 100}%`, backgroundColor: trackPalette.thumb },
+          ]}
+        />
       </View>
     </GestureDetector>
   );
@@ -110,28 +154,24 @@ const styles = StyleSheet.create({
   },
   trackBase: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(255,255,255,0.25)',
   },
   trackBuffered: {
     position: 'absolute',
     top: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: 'rgba(255,255,255,0.6)',
   },
   trackPlayed: {
     position: 'absolute',
     top: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: '#FFFFFF',
   },
   thumb: {
     position: 'absolute',
     width: THUMB_SIZE,
     height: THUMB_SIZE,
     borderRadius: THUMB_SIZE / 2,
-    backgroundColor: '#FFFFFF',
     marginLeft: -THUMB_SIZE / 2,
     top: (BAR_HEIGHT - THUMB_SIZE) / 2,
   },
