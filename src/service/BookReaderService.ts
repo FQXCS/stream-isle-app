@@ -1,8 +1,8 @@
 /**
- * 图书阅读服务（M7）：Book 原文件本地缓存与阅读断点。
+ * 图书阅读服务（M7）：Book 原文件本地缓存、阅读断点与阅读方向偏好。
  * 下载复用 expo-file-system/legacy downloadAsync（仿 DownloadService，不走 ApiClient），
  * 缓存目录 cacheDirectory/pdf/{serverId}/{itemId}.pdf（系统磁盘紧张可回收，不做主动清理）；
- * 断点页码存 MMKV。Book 无媒体源概念，URL 由 adapter.buildBookFileUrl 产出（api_key 认证），
+ * 断点页码与阅读方向存 MMKV。Book 无媒体源概念，URL 由 adapter.buildBookFileUrl 产出（api_key 认证），
  * 不触碰 PlaybackInfo（Emby 对 Book 必 500）。
  */
 import * as FileSystem from 'expo-file-system/legacy';
@@ -11,10 +11,21 @@ import { mmkv } from '@/infra/storage';
 import { getActiveAdapter } from '@/service/adapterProvider';
 import { useAccountStore } from '@/store/accountStore';
 
+/**
+ * 阅读方向：
+ * vertical   —— 上下连续滚动（全部页纵向排列，双击缩放）
+ * horizontal —— 左右整页翻页（一屏一页横向吸附，双击缩放不生效）
+ */
+export type BookReadingMode = 'vertical' | 'horizontal';
+
 /** 阅读缓存目录名（cacheDirectory 下） */
 const READER_CACHE_DIR = 'pdf';
 /** 阅读断点 MMKV key 前缀（完整 key：reader-position:{serverId}:{itemId}） */
 const READER_POSITION_PREFIX = 'reader-position';
+/** 阅读方向 MMKV key（全局阅读偏好，不按条目/服务器区分） */
+const READING_MODE_KEY = 'reader-mode';
+/** 默认阅读方向：上下连续滚动（与阅读器未传 mode 时的 HTML 默认一致） */
+const DEFAULT_READING_MODE: BookReadingMode = 'vertical';
 
 /** 下载进度（totalBytesExpectedToWrite 未知时 percent 为 null，页面退化为不定进度） */
 export interface ReaderDownloadProgress {
@@ -86,6 +97,16 @@ export class BookReaderService {
     if (key !== null) {
       mmkv.set(key, String(page));
     }
+  }
+
+  /** 读阅读方向偏好（无记录/脏值返回默认上下连续滚动） */
+  getReadingMode(): BookReadingMode {
+    return mmkv.getString(READING_MODE_KEY) === 'horizontal' ? 'horizontal' : DEFAULT_READING_MODE;
+  }
+
+  /** 写阅读方向偏好（阅读页切换时调用，下次进入沿用） */
+  saveReadingMode(mode: BookReadingMode): void {
+    mmkv.set(READING_MODE_KEY, mode);
   }
 
   /** 读至末页自动标记已看（复用 markPlayed；失败由调用方静默，不影响阅读） */

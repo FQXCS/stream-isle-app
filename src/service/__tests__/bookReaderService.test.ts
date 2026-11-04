@@ -1,7 +1,7 @@
 /**
  * BookReaderService 单测（M7）：缓存命中直接返回；未命中走 buildBookFileUrl 下载并返回
  * 本地 uri；非 200 → SERVER_ERROR 且清理残留；网络异常 → NETWORK_UNREACHABLE；
- * 断点页码 MMKV 往返与脏值兜底；无活跃账号断言抛错。
+ * 断点页码 / 阅读方向 MMKV 往返与脏值兜底；无活跃账号断言抛错。
  * fs / adapterProvider 全注入假实现（不触真机/真网络）。
  */
 import { AppError } from '@/infra/error';
@@ -107,5 +107,15 @@ describe('BookReaderService 断点页码', () => {
   it('markRead 经 adapter.markPlayed 携带活跃 userId', async () => {
     await bookReaderService.markRead('b1');
     expect(mockMarkPlayed).toHaveBeenCalledWith('u1', 'b1');
+  });
+});
+
+describe('BookReaderService 阅读方向', () => {
+  it('默认上下滑动；save → get 往返', () => {
+    expect(bookReaderService.getReadingMode()).toBe('vertical');
+    bookReaderService.saveReadingMode('horizontal');
+    expect(bookReaderService.getReadingMode()).toBe('horizontal');
+    bookReaderService.saveReadingMode('vertical');
+    expect(bookReaderService.getReadingMode()).toBe('vertical');
   });
 });

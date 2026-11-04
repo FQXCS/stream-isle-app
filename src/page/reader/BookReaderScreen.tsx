@@ -1,10 +1,10 @@
 /**
- * 图书阅读页（M7）：全屏沉浸 WebView + PDF.js 连续滚动阅读。
+ * 图书阅读页（M7）：全屏沉浸 WebView + PDF.js 阅读器。
  * 流程：ensureLocalPdf 取本地缓存（未命中带进度下载）→ WebView 加载 android_asset/pdf/reader.html
- * → onLoadEnd 注入 init(fileUri) → HTML postMessage 上报 ready/page/tap/error。
- * 阅读模式：全部页垂直连续排列、原生滚动（可视区懒渲染 + 离屏回收），双击 1x/2x 缩放。
- * 页码条复用 SeekBar（page 当时长语义，比例换算即页码，点击/拖动注入 goToPage 跳页）；
- * 断点经 BookReaderService 存 MMKV；读至末页自动 markRead（幂等一次）。
+ * → onLoadEnd 注入 init(fileUri, mode) → HTML postMessage 上报 ready/page/tap/error。
+ * 两种阅读方向（底部控制条切换，偏好存 MMKV）：上下连续滚动（垂直虚拟化、双击 1x/2x 缩放）
+ * 与左右整页翻页（一屏一页横向吸附）。页码条复用 SeekBar（page 当时长语义，比例换算即页码，
+ * 点击/拖动注入 goToPage 跳页）；断点经 BookReaderService 存 MMKV；读至末页自动 markRead（幂等一次）。
  * PDF 渲染、滚动、缩放手势均在 reader.html 内实现，本页只做编排与控制层 UI
  * （页面薄编排、逻辑在服务，M2 模式）。
  */
@@ -24,12 +24,18 @@ import { FONT_SIZE, SPACING } from '@/constant/theme';
 import { AppError } from '@/infra/error';
 import { SeekBar } from '@/page/player/components/SeekBar';
 import type { RootStackParamList } from '@/page/navigation/types';
-import { bookReaderService } from '@/service/BookReaderService';
+import { bookReaderService, type BookReadingMode } from '@/service/BookReaderService';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 /** 页面阶段：取文件（含下载）→ WebView 就绪渲染中 → 失败 */
 type ReaderPhase = 'loadingFile' | 'rendering' | 'error';
+
+/** 阅读方向选项（底部控制条二选一，取值与 reader.html 的 mode 一致） */
+const READING_MODE_OPTIONS: { mode: BookReadingMode; label: string }[] = [
+  { mode: 'vertical', label: '上下滑动' },
+  { mode: 'horizontal', label: '左右翻页' },
+];
 
 /** reader.html → RN 的消息形态（桥协议见 reader.html 头注释） */
 interface ReaderMessage {
@@ -59,6 +65,10 @@ export function BookReaderScreen() {
 
   // 断点初值同步读 MMKV（mount 时确定，ready 后 HTML 从第 1 页跳至该页）
   const [resumePage] = useState(() => bookReaderService.getResumePage(itemId));
+  // 阅读方向初值同步读 MMKV（底部控制条切换即持久化，下次进入沿用）
+  const [readingMode, setReadingMode] = useState<BookReadingMode>(() =>
+    bookReaderService.getReadingMode()
+  );
   const [phase, setPhase] = useState<ReaderPhase>('loadingFile');
   const [error, setError] = useState<AppError | null>(null);
   const [downloadPercent, setDownloadPercent] = useState<number | null>(null);
@@ -139,12 +149,14 @@ export function BookReaderScreen() {
       return;
     }
     initSentRef.current = true;
-    // init 固定从第 1 页起渲染；有断点时随即跳转（goToPage 内部重渲染）
-    webViewRef.current?.injectJavaScript(`window.__reader.init(${JSON.stringify(uri)}); true;`);
+    // init 固定从第 1 页起渲染（附阅读方向初值）；有断点时随即跳转（goToPage 内部重渲染）
+    webViewRef.current?.injectJavaScript(
+      `window.__reader.init(${JSON.stringify(uri)}, ${JSON.stringify(readingMode)}); true;`
+    );
     if (resumePage > 1) {
       webViewRef.current?.injectJavaScript(`window.__reader.goToPage(${resumePage}); true;`);
     }
-  }, [resumePage]);
+  }, [resumePage, readingMode]);
 
   const handleMessage = useCallback(
     (event: WebViewMessageEvent) => {
@@ -196,6 +208,19 @@ export function BookReaderScreen() {
       handlePageChange(nextPage);
     },
     [pageCount, page, handlePageChange]
+  );
+
+  /** 切换阅读方向：偏好落盘 + 注入 setMode（HTML 内重建槽位并锚定当前页） */
+  const changeReadingMode = useCallback(
+    (nextMode: BookReadingMode) => {
+      if (nextMode === readingMode) {
+        return;
+      }
+      setReadingMode(nextMode);
+      bookReaderService.saveReadingMode(nextMode);
+      webViewRef.current?.injectJavaScript(`window.__reader.setMode(${JSON.stringify(nextMode)}); true;`);
+    },
+    [readingMode]
   );
 
   if (phase === 'error' && error !== null) {
@@ -250,6 +275,28 @@ export function BookReaderScreen() {
           </View>
           {pageCount > 0 && (
             <View style={[styles.bottomBar, { paddingBottom: insets.bottom + SPACING.s }]}>
+              {/* 阅读方向二选一：切换即注入 setMode，偏好持久化到 MMKV */}
+              <View style={styles.modeRow}>
+                {READING_MODE_OPTIONS.map((option) => {
+                  const selected = readingMode === option.mode;
+                  return (
+                    <Pressable
+                      key={option.mode}
+                      onPress={() => changeReadingMode(option.mode)}
+                      style={[styles.modeChip, selected && styles.modeChipSelected]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      accessibilityLabel={`翻页方式：${option.label}`}
+                    >
+                      <Text
+                        style={[styles.modeChipText, selected && styles.modeChipTextSelected]}
+                      >
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
               <SeekBar
                 positionMs={page}
                 bufferedMs={0}
@@ -293,4 +340,20 @@ const styles = StyleSheet.create({
     paddingTop: SPACING.s,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
+  modeRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: SPACING.s,
+    paddingBottom: SPACING.xs,
+  },
+  modeChip: {
+    paddingHorizontal: SPACING.m,
+    paddingVertical: SPACING.xs,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  modeChipSelected: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
+  modeChipText: { color: '#FFFFFF', fontSize: FONT_SIZE.body },
+  modeChipTextSelected: { color: '#141414' },
 });

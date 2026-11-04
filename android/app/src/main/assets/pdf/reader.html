@@ -1,13 +1,18 @@
 <!DOCTYPE html>
 <!--
- * PDF 连续滚动阅读器（M7 内置阅读器）：由 BookReaderScreen 以 file:///android_asset/pdf/reader.html 加载。
+ * PDF 阅读器（M7 内置阅读器）：由 BookReaderScreen 以 file:///android_asset/pdf/reader.html 加载。
  * pdf.min.js / pdf.worker.min.js 拷自 pdfjs-dist@3.11.174 legacy/build（最后一个提供 UMD 构建的版本，
  * 4.x+ 纯 ESM 在 file:// 协议下会被 Chromium 阻止），升级 pdfjs-dist 时须同步拷贝。
- * 渲染模式：全部页垂直排列、**body 原生滚动**（WebView 内 absolute 容器滚动在手势层被禁，
- * touch 事件可达但原生 pan 不触发，故用 document 滚动路径），可视区 ±1 页懒渲染、离屏回收
- * （虚拟化），页宽恒为屏宽（fit width），双击切换 1x/2x（2x 横向可滚）。
+ * 两种阅读方向（RN 控制栏「上下滑动 / 左右翻页」运行时切换，经 setMode 注入）：
+ *   vertical   —— 全部页垂直排列、**body 原生滚动**（WebView 内 absolute 容器滚动在手势层被禁，
+ *                 touch 事件可达但原生 pan 不触发，故用 document 滚动路径），可视区 ±1 页懒渲染、
+ *                 离屏回收（虚拟化），页宽恒为屏宽（fit width），双击切换 1x/2x（2x 横向可滚）。
+ *   horizontal —— 一屏一页、整页适配视口（contain），body 原生横向滚动 + scroll-snap 整页吸附，
+ *                 左右滑动翻页；以翻页为主，双击缩放不生效（页内平移会与翻页手势冲突）。
+ * 两种模式共用同一套懒渲染/回收/页码上报逻辑，仅滚动轴与槽位排版不同。
  * 与 RN 的桥协议（BookReaderScreen 消费）：
- *   RN → HTML：window.__reader.init(fileUrl)（onLoadEnd 后注入）、window.__reader.goToPage(n)
+ *   RN → HTML：window.__reader.init(fileUrl, mode?)（onLoadEnd 后注入；mode 缺省 vertical）、
+ *             window.__reader.goToPage(n)、window.__reader.setMode('vertical'|'horizontal')
  *   HTML → RN：{type:'ready',pageCount} / {type:'page',page}（滚动经过页变化时上报，1-based）
  *             / {type:'tap'} / {type:'error',message}
 -->
@@ -21,6 +26,15 @@
                /* 显式放行原生 pan（body 滚动路径）；页面缩放由自管双击 zoom 承担 */
                touch-action: pan-x pan-y; }
   body { overflow-x: auto; overflow-y: scroll; }
+  /* 左右翻页：横向整页吸附。根滚动容器（document）以 html 上的 snap 类型为准，
+     body 同步一份兜底不同内核的 overflow 传播差异 */
+  html.mode-horizontal { scroll-snap-type: x mandatory; }
+  body.mode-horizontal { overflow-x: scroll; overflow-y: hidden; touch-action: pan-x;
+                         scroll-snap-type: x mandatory; }
+  body.mode-horizontal #pages { display: flex; flex-direction: row; margin: 0; }
+  body.mode-horizontal .pageSlot { display: flex; align-items: center; justify-content: center;
+                                   overflow: hidden; scroll-snap-align: start;
+                                   scroll-snap-stop: always; }
   #pages { width: max-content; margin: 0 auto; }
   .pageSlot { position: relative; background: #202020; }
   .pageSlot canvas { display: block; }
@@ -37,7 +51,7 @@
   'use strict';
   var pagesEl = document.getElementById('pages');
   var hint = document.getElementById('hint');
-  // document 滚动元素（html）：scrollTop/scrollHeight/clientHeight 直接读写根滚动
+  // document 滚动元素（html）：scrollTop/scrollLeft/scrollHeight/clientHeight 直接读写根滚动
   var scroller = document.scrollingElement || document.documentElement;
 
   function post(msg) {
@@ -72,18 +86,52 @@
 
   var doc = null;
   var pageCount = 0;
-  var zoom = 1;                       // 双击切换 1x / 2x
+  var mode = 'vertical';              // 阅读方向：vertical 上下连续滚动 / horizontal 左右整页翻页
+  var zoom = 1;                       // 双击切换 1x / 2x（仅上下滑动模式）
   var dpr = window.devicePixelRatio || 1;
   var pageWidth = 0;                  // 页逻辑宽（1x = 视口宽）
   var firstRatio = 1;                 // 第 1 页高宽比（占位基准，渲染时逐页校正）
   var slots = [];                     // {el, canvas, task, rendering, rendered, cssH}
-  var cachedTops = null;              // 占位 top 前缀和缓存（高度校正后置脏重算）
+  var cachedTops = null;              // 槽位起点前缀和缓存（高度校正/换方向后置脏重算）
   var pendingPage = 0;                // 文档未就绪期间的跳页请求（断点续读）
   var reportedPage = 0;               // 已上报 RN 的当前页（去重）
   var ZOOM_MAX = 2;
 
+  function isHorizontal() {
+    return mode === 'horizontal';
+  }
+
+  /** 滚动轴随阅读方向切换：左右翻页走横向偏移，上下滚动走纵向偏移 */
+  function axisOffset() {
+    return isHorizontal() ? scroller.scrollLeft : scroller.scrollTop;
+  }
+
+  function setAxisOffset(value) {
+    if (isHorizontal()) {
+      scroller.scrollLeft = value;
+    } else {
+      scroller.scrollTop = value;
+    }
+  }
+
+  function axisViewport() {
+    return isHorizontal() ? window.innerWidth : window.innerHeight;
+  }
+
+  /** 槽位在滚动轴上的尺寸（左右翻页为屏宽，上下滚动为页高） */
+  function slotPx(slot) {
+    return isHorizontal() ? slot.el.offsetWidth : slot.el.offsetHeight;
+  }
+
   function pageW() {
     return pageWidth * zoom;
+  }
+
+  // —— 方向切换 ——
+  function applyModeClass() {
+    var horizontal = isHorizontal();
+    document.documentElement.classList.toggle('mode-horizontal', horizontal);
+    document.body.classList.toggle('mode-horizontal', horizontal);
   }
 
   // —— 占位与几何 ——
@@ -94,21 +142,22 @@
       var el = document.createElement('div');
       el.className = 'pageSlot';
       el.style.width = pageW() + 'px';
-      el.style.height = Math.round(pageW() * firstRatio) + 'px';
+      // 左右翻页：槽位恒为一屏高、页面在其中居中；上下滚动：按首屏比例占位（逐页渲染校正）
+      el.style.height = Math.round(isHorizontal() ? window.innerHeight : pageW() * firstRatio) + 'px';
       pagesEl.appendChild(el);
       slots.push({ el: el, canvas: null, task: null, rendering: false, rendered: false, cssH: 0 });
     }
     cachedTops = null;
   }
 
-  /** 占位 top 前缀和（二分可视区用；tops[0]=0，长度 pageCount） */
+  /** 槽位起点前缀和（二分可视区用；tops[0]=0，长度 pageCount） */
   function slotTops() {
     if (cachedTops !== null) { return cachedTops; }
     var top = 0;
     var arr = new Array(slots.length);
     for (var i = 0; i < slots.length; i++) {
       arr[i] = top;
-      top += slots[i].el.offsetHeight;
+      top += slotPx(slots[i]);
     }
     cachedTops = arr;
     return arr;
@@ -155,10 +204,16 @@
     doc.getPage(index + 1).then(function (page) {
       if (!slot.rendering) { return; }
       var base = page.getViewport({ scale: 1 });
-      var viewport = page.getViewport({ scale: (pageW() / base.width) * dpr });
+      // 左右翻页整页适配视口（常规竖版 PDF 即按宽适配，文字大小与上下滚动一致）；
+      // 上下滚动按屏宽适配
+      var scale = isHorizontal()
+        ? Math.min(pageW() / base.width, window.innerHeight / base.height)
+        : pageW() / base.width;
+      var viewport = page.getViewport({ scale: scale * dpr });
       var cssH = Math.round(viewport.height / dpr);
-      // 高度校正（首渲染后占位与实际不符）：更新占位 + 置脏 top 缓存
-      if (Math.abs(slot.el.offsetHeight - cssH) > 1) {
+      // 上下滚动的高度校正（首渲染后占位与实际不符）：更新占位 + 置脏 top 缓存；
+      // 左右翻页槽位定高（页面居中），无需校正
+      if (!isHorizontal() && Math.abs(slot.el.offsetHeight - cssH) > 1) {
         slot.el.style.height = cssH + 'px';
         cachedTops = null;
       }
@@ -193,28 +248,28 @@
   function update() {
     ticking = false;
     if (doc === null || slots.length === 0) { return; }
-    var st = scroller.scrollTop;
-    var vh = window.innerHeight;
+    var offset = axisOffset();
+    var viewportPx = axisViewport();
     var tops = slotTops();
-    var first = Math.max(0, upperBound(tops, st) - 1);
-    var last = Math.min(slots.length - 1, upperBound(tops, st + vh) - 1);
+    var first = Math.max(0, upperBound(tops, offset) - 1);
+    var last = Math.min(slots.length - 1, upperBound(tops, offset + viewportPx) - 1);
     var from = Math.max(0, first - 1);
     var to = Math.min(slots.length - 1, last + 1);
     for (var i = from; i <= to; i++) {
       renderSlot(i);
     }
     // 回收：渲染页离开可视区 2 屏以外即释放
-    var margin = vh * 2;
+    var margin = viewportPx * 2;
     for (var j = 0; j < slots.length; j++) {
       if (!slots[j].rendered) { continue; }
       var slotTop = tops[j];
-      var slotBottom = slotTop + slots[j].el.offsetHeight;
-      if (slotBottom < st - margin || slotTop > st + vh + margin) {
+      var slotBottom = slotTop + slotPx(slots[j]);
+      if (slotBottom < offset - margin || slotTop > offset + viewportPx + margin) {
         recycleSlot(slots[j]);
       }
     }
     // 当前页（滚动中心所在页）变化才上报 RN
-    var current = Math.min(slots.length, Math.max(1, upperBound(tops, st + vh / 2)));
+    var current = Math.min(slots.length, Math.max(1, upperBound(tops, offset + viewportPx / 2)));
     if (current !== reportedPage) {
       reportedPage = current;
       post({ type: 'page', page: current });
@@ -229,13 +284,13 @@
     }
     var n = Math.min(pageCount, Math.max(1, Math.round(pageNum)));
     var tops = slotTops();
-    var vh = window.innerHeight;
-    var slotH = slots[n - 1].el.offsetHeight;
-    // 目标页滚至视口中心
-    scroller.scrollTop = Math.max(0, tops[n - 1] - (vh - slotH) / 2);
+    var size = slotPx(slots[n - 1]);
+    // 目标页滚至视口中心（左右翻页时槽位即一屏，等价于整页对齐）
+    setAxisOffset(Math.max(0, tops[n - 1] - (axisViewport() - size) / 2));
   }
 
   function setZoom(next) {
+    if (isHorizontal()) { return; }
     zoom = next;
     var anchor = reportedPage;
     for (var i = 0; i < slots.length; i++) {
@@ -256,8 +311,36 @@
     });
   }
 
+  /** 切换阅读方向（文档未就绪时只落类名，init 内 buildSlots 按新方向排版） */
+  function setMode(next) {
+    var normalized = next === 'horizontal' ? 'horizontal' : 'vertical';
+    if (normalized === mode) { return; }
+    mode = normalized;
+    // 左右翻页不做缩放（页内平移会与翻页手势冲突），切回上下滚动也统一回到 1x
+    zoom = 1;
+    applyModeClass();
+    pageWidth = window.innerWidth;
+    if (doc === null) { return; }
+    var anchor = reportedPage > 0 ? reportedPage : 1;
+    for (var i = 0; i < slots.length; i++) {
+      recycleSlot(slots[i]);
+    }
+    buildSlots();
+    // 布局生效后再锚定当前页（双 rAF 与 init 断点跳转同款：避让 WebView 合成器初始化期）
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        reportedPage = 0;
+        scrollToPage(anchor);
+        update();
+      });
+    });
+  }
+
   window.__reader = {
-    init: function (fileUrl) {
+    init: function (fileUrl, initialMode) {
+      if (initialMode === 'horizontal' || initialMode === 'vertical') {
+        setMode(initialMode);
+      }
       // 本地 PDF 经 XHR 读入内存后以 data 形态交给 pdf.js（绕开 fetch 不支持 file:// 的限制）
       readViaXhr(fileUrl, 'arraybuffer')
         .then(function (buffer) {
@@ -267,6 +350,7 @@
           doc = loaded;
           pageCount = loaded.numPages;
           pageWidth = window.innerWidth;
+          applyModeClass();
           hint.style.display = 'none';
           return loaded.getPage(1).then(function (page1) {
             var base = page1.getViewport({ scale: 1 });
@@ -274,7 +358,7 @@
             buildSlots();
             post({ type: 'ready', pageCount: pageCount });
             if (pendingPage > 0) {
-              // 断点跳转必须延后：onLoadEnd 早期程序性 scrollTop 赋值会把 Android WebView 的
+              // 断点跳转必须延后：onLoadEnd 早期程序性滚动赋值会把 Android WebView 的
               // 手势滚动锁死（native 层缓存初始位置并持续纠正，合成器层面表现，JS 不可见）——
               // 双 rAF 等内核与合成器同步完成后再跳
               var target = pendingPage;
@@ -291,9 +375,10 @@
         });
     },
     goToPage: function (pageNum) { scrollToPage(pageNum); },
+    setMode: function (next) { setMode(next); },
   };
 
-  // —— 手势：单击/双击判定（滚动交给 body 原生滚动；双击切换缩放） ——
+  // —— 手势：单击/双击判定（滚动交给 body 原生滚动；双击切换缩放仅上下滚动模式） ——
   var start = null;
   var lastTapAt = 0;
   var TAP_MAX_MOVE = 10;
@@ -314,6 +399,11 @@
     var quick = Date.now() - start.t < 350;
     start = null;
     if (!moved && quick) {
+      if (isHorizontal()) {
+        // 左右翻页无双击缩放，单击立即上报（无需等待双击判定窗口）
+        post({ type: 'tap' });
+        return;
+      }
       var now = Date.now();
       if (now - lastTapAt < 300) {
         // 双击：1x ↔ 2x
