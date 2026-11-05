@@ -1,12 +1,11 @@
 /**
  * PlaybackService 会话重启/切换单测（M3 文档 §6.1 PlaybackService.restart 行）：
  * 重启时序（Stopped→DELETE→resolve(startPositionMs=快照) 顺序）、switchSubtitle 三分支、
- * 重启不触发 markPlayed、switchBitrate 直连返回 null 且不写 settingsStore、音轨保持与回填、
+ * 重启不触发 markPlayed、switchResolution 直连返回 null 且不写 settingsStore、音轨保持与回填、
  * subtitleTarget="keep" 不重放自动选轨。
  * store 用真实 zustand 实例（settingsStore/playerStore），adapter/accountStore/mediaCaps 注入 mock。
  */
 import type { PlaybackSession, ResolvePlaybackOpts } from '@/adapter/model';
-import { BITRATE_TIER_MAP } from '@/constant/bitrate';
 import { getActiveAdapter } from '@/service/adapterProvider';
 import { PlaybackService } from '@/service/PlaybackService';
 import { usePlayerStore } from '@/store/playerStore';
@@ -80,6 +79,7 @@ const NEW_SOURCE = {
   url: 'http://srv/hls-new.m3u8?api_key=x',
   positionMsAtStart: 40_000,
   runTimeMs: 100_000,
+  maxResolutionTier: 'FHD' as const,
   subtitleList: transcodeSession().subtitleList,
   audioList: transcodeSession().audioList,
 };
@@ -92,18 +92,18 @@ describe('PlaybackService（M3 会话重启与切换）', () => {
     mockAdapter.resolvePlayback.mockResolvedValue(NEW_SOURCE);
     // store 归零
     usePlayerStore.getState().reset();
-    useSettingsStore.setState({ maxBitrateMode: 'AUTO', allowHevcDirectPlay: true });
+    useSettingsStore.setState({ maxResolutionTier: 'UNLIMITED', allowHevcDirectPlay: true });
   });
 
   describe('resolve（profileInputs 组装）', () => {
     it('以 settingsStore 开关/档位 + mediaCaps 缓存组装 profileInputs', async () => {
-      useSettingsStore.setState({ maxBitrateMode: 'MEDIUM', allowHevcDirectPlay: false });
+      useSettingsStore.setState({ maxResolutionTier: 'FHD', allowHevcDirectPlay: false });
       const service = new PlaybackService();
       await service.resolve('item1', { startPositionMs: 5_000 });
       expect(mockAdapter.resolvePlayback).toHaveBeenCalledWith('u1', 'item1', {
         mediaSourceId: undefined,
         startPositionMs: 5_000,
-        maxBitrateBps: BITRATE_TIER_MAP.MEDIUM.bitrateBps,
+        maxResolutionTier: 'FHD',
         audioStreamIndex: undefined,
         subtitleStreamIndex: undefined,
         profileInputs: { allowHevcDirectPlay: false, decoderCaps: MOCK_CAPS },
@@ -111,24 +111,24 @@ describe('PlaybackService（M3 会话重启与切换）', () => {
     });
   });
 
-  describe('switchBitrate', () => {
+  describe('switchResolution', () => {
     it('直连会话返回 null，且不写 settingsStore、不重启（自动降档路径同口径）', async () => {
-      const before = useSettingsStore.getState().maxBitrateMode;
+      const before = useSettingsStore.getState().maxResolutionTier;
       const service = new PlaybackService();
-      const result = await service.switchBitrate(directSession(), 'LOW');
+      const result = await service.switchResolution(directSession(), 'SD');
       expect(result).toBeNull();
       expect(mockAdapter.resolvePlayback).not.toHaveBeenCalled();
       expect(mockAdapter.reportStopped).not.toHaveBeenCalled();
-      expect(useSettingsStore.getState().maxBitrateMode).toBe(before);
+      expect(useSettingsStore.getState().maxResolutionTier).toBe(before);
       expect(usePlayerStore.getState().isRestartingSession).toBe(false);
     });
 
-    it('转码会话：beginRestart → 时序 Stopped→DELETE→resolve(maxBitrateBps=新档, startPositionMs=快照) → 回填', async () => {
+    it('转码会话：beginRestart → 时序 Stopped→DELETE→resolve(maxResolutionTier=新档, startPositionMs=快照) → 回填', async () => {
       usePlayerStore.getState().setSession(transcodeSession(), { resetTrackSelection: true });
       usePlayerStore.getState().updateProgress(40_000, 0, 100_000);
       usePlayerStore.getState().setActiveSubtitle(3);
       const service = new PlaybackService();
-      const promise = service.switchBitrate(transcodeSession(), 'MEDIUM');
+      const promise = service.switchResolution(transcodeSession(), 'SD');
       expect(usePlayerStore.getState().isRestartingSession).toBe(true);
       const newSession = await promise;
       // 调用顺序：Stopped → DELETE → resolve
@@ -145,7 +145,7 @@ describe('PlaybackService（M3 会话重启与切换）', () => {
       // resolve 入参：快照位置 + 新档位；未显式传音轨时保持当前选中（null → undefined）
       const opts = mockAdapter.resolvePlayback.mock.calls[0][2] as ResolvePlaybackOpts;
       expect(opts.startPositionMs).toBe(40_000);
-      expect(opts.maxBitrateBps).toBe(BITRATE_TIER_MAP.MEDIUM.bitrateBps);
+      expect(opts.maxResolutionTier).toBe('SD');
       expect(opts.subtitleStreamIndex).toBeUndefined();
       // store：新会话就位；subtitleTarget=keep → activeSubtitle 保持
       expect(newSession).not.toBeNull();
@@ -156,37 +156,48 @@ describe('PlaybackService（M3 会话重启与切换）', () => {
       expect(mockAdapter.markPlayed).not.toHaveBeenCalled();
     });
 
-    it('手动切换也不写 settingsStore（持久化由调用方 BitrateMenu 负责）', async () => {
+    it('起播加载阶段（status=loading）重启：起点沿用旧会话续播点，不被 0 进度覆盖', async () => {
+      // 蜂窝自动降档会在首帧 onLoad 前触发重启，此时 positionMs 恒为 0
+      const oldSession = transcodeSession({ positionMsAtStart: 59_011 });
+      usePlayerStore.getState().setSession(oldSession, { resetTrackSelection: true });
+      usePlayerStore.getState().setStatus('loading');
+      const service = new PlaybackService();
+      await service.switchResolution(oldSession, 'SD');
+      const opts = mockAdapter.resolvePlayback.mock.calls[0][2] as ResolvePlaybackOpts;
+      expect(opts.startPositionMs).toBe(59_011);
+    });
+
+    it('手动切换也不写 settingsStore（持久化由调用方 ResolutionMenu 负责）', async () => {
       usePlayerStore.getState().setSession(transcodeSession(), { resetTrackSelection: true });
       const service = new PlaybackService();
-      await service.switchBitrate(transcodeSession(), 'LOW');
-      expect(useSettingsStore.getState().maxBitrateMode).toBe('AUTO');
+      await service.switchResolution(transcodeSession(), 'SD');
+      expect(useSettingsStore.getState().maxResolutionTier).toBe('UNLIMITED');
     });
 
-    it('蜂窝降档态（旧会话 4Mbps）切字幕重启：maxBitrateBps 沿用旧会话，不抬升回用户档位（03 §4.9）', async () => {
-      useSettingsStore.setState({ maxBitrateMode: 'AUTO' });
+    it('蜂窝降档态（旧会话 720p）切字幕重启：maxResolutionTier 沿用旧会话，不抬升回用户档位（03 §4.9）', async () => {
+      useSettingsStore.setState({ maxResolutionTier: 'UNLIMITED' });
       usePlayerStore.getState().setActiveSubtitle(4); // 激活烧录轨（出烧录路径必重启）
       const service = new PlaybackService();
-      // 出烧录重启（overrides 不含 maxBitrateBps）：沿用旧会话降档档位
-      await service.switchSubtitle(transcodeSession({ maxBitrateBps: 4_000_000 }), null);
+      // 出烧录重启（overrides 不含 maxResolutionTier）：沿用旧会话降档档位
+      await service.switchSubtitle(transcodeSession({ maxResolutionTier: 'HD' }), null);
       const opts = mockAdapter.resolvePlayback.mock.calls[0][2] as ResolvePlaybackOpts;
-      expect(opts.maxBitrateBps).toBe(4_000_000);
+      expect(opts.maxResolutionTier).toBe('HD');
     });
 
-    it('蜂窝降档态切音轨重启：maxBitrateBps 同样沿用旧会话', async () => {
-      useSettingsStore.setState({ maxBitrateMode: 'AUTO' });
+    it('蜂窝降档态切音轨重启：maxResolutionTier 同样沿用旧会话', async () => {
+      useSettingsStore.setState({ maxResolutionTier: 'UNLIMITED' });
       const service = new PlaybackService();
-      await service.switchAudioTrack(transcodeSession({ maxBitrateBps: 4_000_000 }), { streamIndex: 2 });
+      await service.switchAudioTrack(transcodeSession({ maxResolutionTier: 'HD' }), { streamIndex: 2 });
       const opts = mockAdapter.resolvePlayback.mock.calls[0][2] as ResolvePlaybackOpts;
-      expect(opts.maxBitrateBps).toBe(4_000_000);
+      expect(opts.maxResolutionTier).toBe('HD');
     });
 
-    it('直连旧会话（无码率记录）切烧录字幕转转码：回落 settingsStore 用户档位', async () => {
-      useSettingsStore.setState({ maxBitrateMode: 'HIGH' });
+    it('直连旧会话（无档位记录）切烧录字幕转转码：回落 settingsStore 用户档位', async () => {
+      useSettingsStore.setState({ maxResolutionTier: 'FHD' });
       const service = new PlaybackService();
       await service.switchSubtitle(directSession(), transcodeSession().subtitleList[1]!);
       const opts = mockAdapter.resolvePlayback.mock.calls[0][2] as ResolvePlaybackOpts;
-      expect(opts.maxBitrateBps).toBe(BITRATE_TIER_MAP.HIGH.bitrateBps);
+      expect(opts.maxResolutionTier).toBe('FHD');
     });
   });
 
@@ -292,7 +303,7 @@ describe('PlaybackService（M3 会话重启与切换）', () => {
         .mockRejectedValueOnce(new Error('network'))
         .mockResolvedValueOnce(NEW_SOURCE);
       const service = new PlaybackService();
-      await expect(service.switchBitrate(transcodeSession(), 'LOW')).resolves.toMatchObject({
+      await expect(service.switchResolution(transcodeSession(), 'SD')).resolves.toMatchObject({
         playSessionId: 'ps-new',
       });
       // 第一次失败 + 重试恰好 1 次（共 2 次调用）
@@ -303,7 +314,7 @@ describe('PlaybackService（M3 会话重启与切换）', () => {
       usePlayerStore.getState().setSession(transcodeSession(), { resetTrackSelection: true });
       mockAdapter.resolvePlayback.mockRejectedValue(new Error('network'));
       const service = new PlaybackService();
-      await expect(service.switchBitrate(transcodeSession(), 'LOW')).rejects.toThrow('network');
+      await expect(service.switchResolution(transcodeSession(), 'SD')).rejects.toThrow('network');
       expect(mockAdapter.resolvePlayback).toHaveBeenCalledTimes(2);
     }, 10_000);
   });

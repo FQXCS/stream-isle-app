@@ -2,16 +2,16 @@
  * 设置 store（M1 文档 §4.8；设计文档 §9；M3 文档 §4.7.2；04 §4.7 终态）。
  * allowInsecureTls 白名单键 = 规范化 baseUrl（04 收口升级，M1 基座为 host 键）；
  * 原生侧经 syncTlsBypassHosts 逐条解析为 host:port 全量回同步（变化时重放剩余白名单）。
- * M3 增量四个播放设置字段：maxBitrateMode / allowHevcDirectPlay / autoDowngradeOnCellular /
- * preferredSubtitleLang。persist，key "settings-store" 不变。
- * 注意：自动降档（蜂窝）不写 maxBitrateMode——唯一落盘入口是 BitrateMenu/设置页手动切换（03 §4.9）。
+ * M3 四个播放设置字段：maxResolutionTier（转码分辨率档位，替代原码率档位）/ allowHevcDirectPlay /
+ * autoDowngradeOnCellular / preferredSubtitleLang；断点续播开关 resumePlaybackEnabled。persist，key "settings-store" 不变。
+ * 注意：自动降档（蜂窝）不写 maxResolutionTier——唯一落盘入口是 ResolutionMenu/设置页手动切换（03 §4.9）。
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 import type { MediaItemTypeEnum } from '@/adapter/model';
-import type { BitrateTierKey } from '@/constant/bitrate';
-import { DEFAULT_BITRATE_TIER } from '@/constant/bitrate';
+import type { ResolutionTierKey } from '@/constant/resolution';
+import { DEFAULT_RESOLUTION_TIER } from '@/constant/resolution';
 import { DEFAULT_FEED_TYPES, HISTORY_TYPE_OPTIONS, RESUME_TYPE_OPTIONS } from '@/constant/browse';
 import type { ThemeModeEnum } from '@/constant/theme';
 import { SETTINGS_STORE_KEY } from '@/constant/storage';
@@ -26,12 +26,14 @@ interface SettingsActions {
   setInsecureTlsAllowed(baseUrl: string, allowed: boolean): void;
   /** 删除服务器级联清理（04 §4.7）：移除该 baseUrl 白名单键并全量回同步原生 */
   removeServerScopedData(baseUrl: string): void;
-  /** 码率档位落盘（BitrateMenu 与设置页共用同一 action，杜绝两处语义分叉，03 §4.13） */
-  setMaxBitrateMode(tier: BitrateTierKey): void;
+  /** 转码分辨率档位落盘（ResolutionMenu 与设置页共用同一 action，杜绝两处语义分叉，03 §4.13） */
+  setMaxResolutionTier(tier: ResolutionTierKey): void;
   /** 「允许 HEVC 直连」开关（默认 true；关闭后 HEVC 片全量转码兜底） */
   setAllowHevcDirectPlay(value: boolean): void;
   /** 「蜂窝自动降档」开关（默认 true；仅控制自动降档，不影响手动切换） */
   setAutoDowngradeOnCellular(value: boolean): void;
+  /** 「断点续播」开关（默认 true；关闭后点播放恒从头开始） */
+  setResumePlaybackEnabled(value: boolean): void;
   /** 字幕语言偏好（M3 无 UI，M4 设置页接入；null = 取 DEFAULT_SUBTITLE_LANGUAGE 自动选轨） */
   setPreferredSubtitleLang(lang: string | null): void;
   /** M5：电池引导已展示标记（无论用户选择与否，写 true 后不再弹，05 文档 §4.14） */
@@ -47,12 +49,14 @@ interface SettingsActions {
 interface SettingsState {
   /** 证书白名单（键 = 规范化 baseUrl，04 §4.6） */
   allowInsecureTls: string[];
-  /** 码率档位（默认 AUTO=20Mbps，设计文档 §8.2） */
-  maxBitrateMode: BitrateTierKey;
+  /** 最大转码分辨率档位（默认无限制；直连不受影响） */
+  maxResolutionTier: ResolutionTierKey;
   /** 允许 HEVC 直连（默认 true，设计文档 §8.2；探测仍要求 Main10 才声明 hevc，03 §4.4.2） */
   allowHevcDirectPlay: boolean;
   /** 蜂窝自动降档（默认 true，设计文档 §11「可关」） */
   autoDowngradeOnCellular: boolean;
+  /** 断点续播（默认 true：点播放从上次停止位置继续；关闭后恒从头播放） */
+  resumePlaybackEnabled: boolean;
   /** 字幕语言偏好（默认 null → 消费时取 DEFAULT_SUBTITLE_LANGUAGE，03 §4.7.2） */
   preferredSubtitleLang: string | null;
   /** M5：电池白名单引导一次性标记（已展示不再弹，05 文档 §4.14；persist） */
@@ -89,9 +93,10 @@ export const useSettingsStore = create<SettingsState>()(
   persist(
     (set, get) => ({
       allowInsecureTls: [],
-      maxBitrateMode: DEFAULT_BITRATE_TIER,
+      maxResolutionTier: DEFAULT_RESOLUTION_TIER,
       allowHevcDirectPlay: true,
       autoDowngradeOnCellular: true,
+      resumePlaybackEnabled: true,
       preferredSubtitleLang: null,
       batteryGuideShown: false,
       themeMode: 'system',
@@ -122,8 +127,8 @@ export const useSettingsStore = create<SettingsState>()(
           syncTlsBypassHosts(get().allowInsecureTls);
         },
 
-        setMaxBitrateMode: (tier: BitrateTierKey) => {
-          set({ maxBitrateMode: tier });
+        setMaxResolutionTier: (tier: ResolutionTierKey) => {
+          set({ maxResolutionTier: tier });
         },
 
         setAllowHevcDirectPlay: (value: boolean) => {
@@ -132,6 +137,10 @@ export const useSettingsStore = create<SettingsState>()(
 
         setAutoDowngradeOnCellular: (value: boolean) => {
           set({ autoDowngradeOnCellular: value });
+        },
+
+        setResumePlaybackEnabled: (value: boolean) => {
+          set({ resumePlaybackEnabled: value });
         },
 
         setPreferredSubtitleLang: (lang: string | null) => {
@@ -167,9 +176,10 @@ export const useSettingsStore = create<SettingsState>()(
       // 只持久化设置字段：actions 是函数集合，JSON 序列化为 {}，回灌会清空全部 action
       partialize: (state) => ({
         allowInsecureTls: state.allowInsecureTls,
-        maxBitrateMode: state.maxBitrateMode,
+        maxResolutionTier: state.maxResolutionTier,
         allowHevcDirectPlay: state.allowHevcDirectPlay,
         autoDowngradeOnCellular: state.autoDowngradeOnCellular,
+        resumePlaybackEnabled: state.resumePlaybackEnabled,
         preferredSubtitleLang: state.preferredSubtitleLang,
         batteryGuideShown: state.batteryGuideShown,
         themeMode: state.themeMode,

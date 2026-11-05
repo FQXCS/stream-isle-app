@@ -66,7 +66,7 @@ interface PlayerStore {
   activeAudioStreamIndex: number | null;
   /** 会话重启中：驱动 SessionRestartOverlay；重启中忽略重复切换与 netinfo 触发 */
   isRestartingSession: boolean;
-  /** 重启浮层文案（BURN_IN_RESTART_NOTICE / BITRATE_RESTART_NOTICE 等） */
+  /** 重启浮层文案（BURN_IN_RESTART_NOTICE / RESOLUTION_RESTART_NOTICE 等） */
   restartNotice: string | null;
   /** M5 audio 切片（队列真源在 track-player 原生侧，此处仅镜像 UI 状态） */
   audio: AudioPlayerState;

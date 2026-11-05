@@ -30,8 +30,8 @@ export const CAST_ROW_LIMIT = 20;
 /** 烧录字幕重启提示文案（SessionRestartOverlay），见设计文档 §8.2 */
 export const BURN_IN_RESTART_NOTICE = '该字幕需服务器转码渲染，正在切换…';
 
-/** 码率切换重启提示文案 */
-export const BITRATE_RESTART_NOTICE = '正在切换码率…';
+/** 分辨率切换重启提示文案 */
+export const RESOLUTION_RESTART_NOTICE = '正在切换分辨率…';
 
 /** 音轨切换（转码重启路径）提示文案（03 §4.6.2 switchAudioTrack 走重启增强） */
 export const AUDIO_TRACK_RESTART_NOTICE = '正在切换音轨…';

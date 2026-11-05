@@ -33,6 +33,7 @@ import { getActiveAdapter } from '@/service/adapterProvider';
 import { playbackService } from '@/service/PlaybackService';
 import { useAccountStore } from '@/store/accountStore';
 import { useDownloadStore, type DownloadTaskUi } from '@/store/downloadStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { sanitizedForLog } from '@/util/sanitize';
 import { getResumePositionMs } from '@/util/resume';
 import { newUid } from '@/util/uuid';
@@ -280,7 +281,7 @@ export class DownloadService {
   /**
    * 本地播放会话（06 文档 §4.4.2）：读快照行 → 构造 PlaybackSession
    * （url=media_file_uri、playSessionId=客户端生成 UUID、playMethod="DirectPlay"、local=true、
-   * positionMsAtStart=离线续播判定（user_played=1 → 不弹续播））。
+   * positionMsAtStart=离线续播判定（user_played=1 或断点续播关闭 → 0））。
    */
   async buildLocalSession(itemId: string): Promise<PlaybackSession> {
     const { serverId } = requireActiveAccount();
@@ -289,11 +290,14 @@ export class DownloadService {
     if (row === null || row.status !== 'completed') {
       throw new AppError('NOT_FOUND');
     }
-    const resumeMs = getResumePositionMs({
-      played: row.userPlayed,
-      playbackPositionMs: row.userPositionMs,
-      runtimeMs: row.runtimeMs ?? undefined,
-    });
+    // 断点续播关闭时本地播放同样从头（与在线播放入口共用同一设置）
+    const resumeMs = useSettingsStore.getState().resumePlaybackEnabled
+      ? getResumePositionMs({
+          played: row.userPlayed,
+          playbackPositionMs: row.userPositionMs,
+          runtimeMs: row.runtimeMs ?? undefined,
+        })
+      : null;
     return {
       playSessionId: newUid(),
       itemId: row.itemId,

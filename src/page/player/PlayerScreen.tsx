@@ -1,7 +1,7 @@
 /**
  * 播放页（M2 文档 §4.12 + M3 文档 §4.8）：编排 Video（react-native-video）+ 生命周期 + 上报。
  * M3 增量：HLS 转码分支（source 直用会话 URL）、外挂文本轨注入与纯客户端切换、烧录字幕/
- * 码率/转码音轨三类会话重启编排、三菜单入口、蜂窝自动降档订阅、SessionRestartOverlay。
+ * 分辨率/转码音轨三类会话重启编排、三菜单入口、蜂窝自动降档订阅、SessionRestartOverlay。
  * 挂载即锁横屏、退出恢复竖屏；控制层/锁屏/三组手势；AppState 进后台暂停即报；
  * back/unmount 报 Stopped、onEnd 收尾（02 §4.12 生命周期状态机）。
  * 时间口径：react-native-video 事件为秒，服务层/store 全部毫秒（页面层换算）。
@@ -34,12 +34,11 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import type { AudioTrack, PlaybackSession, SubtitleTrack } from '@/adapter/model';
 import { AppIcon } from '@/component/AppIcon';
 import PlaybackGestures from '../../../modules/expo-playback-gestures';
-import type { BitrateTierKey } from '@/constant/bitrate';
+import type { ResolutionTierKey } from '@/constant/resolution';
 import {
-  BITRATE_TIER_LIST,
-  BITRATE_TIER_MAP,
-  CELLULAR_BITRATE_TIER,
-} from '@/constant/bitrate';
+  CELLULAR_RESOLUTION_TIER,
+  DEFAULT_RESOLUTION_TIER,
+} from '@/constant/resolution';
 import {
   AUTO_NEXT_RESTART_NOTICE,
   CONTROLS_AUTO_HIDE_MS,
@@ -48,7 +47,7 @@ import {
 } from '@/constant/playback';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
 import { AudioTrackMenu } from '@/page/player/components/AudioTrackMenu';
-import { BitrateMenu } from '@/page/player/components/BitrateMenu';
+import { ResolutionMenu } from '@/page/player/components/ResolutionMenu';
 import { ControlOverlay } from '@/page/player/components/ControlOverlay';
 import { GestureHud, type HudState } from '@/page/player/components/GestureHud';
 import { GestureLayer } from '@/page/player/components/GestureLayer';
@@ -59,7 +58,7 @@ import { ProgressService } from '@/service/ProgressService';
 import { playbackService } from '@/service/PlaybackService';
 import { usePlayerStore } from '@/store/playerStore';
 import { useSettingsStore } from '@/store/settingsStore';
-import { resolveBitrateTierForNetwork } from '@/util/bitrate';
+import { resolveResolutionTierForNetwork } from '@/util/resolution';
 import { selectAutoSubtitleStreamIndex } from '@/util/subtitleSelect';
 import { sanitizedForLog } from '@/util/sanitize';
 import type { PlaybackEndReason } from '@/util/resume';
@@ -70,7 +69,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 const HUD_HIDE_DELAY_MS = 600;
 
 /** 控制层菜单显隐（三菜单互斥，none=全关） */
-type VisibleMenu = 'none' | 'subtitle' | 'audio' | 'bitrate';
+type VisibleMenu = 'none' | 'subtitle' | 'audio' | 'resolution';
 
 /**
  * 起播默认字幕策略（03 §4.8.3 + 04 §4.5 匹配定稿，仅首次起播/连播新集执行）：
@@ -103,7 +102,7 @@ export function PlayerScreen() {
   const activeAudioStreamIndex = usePlayerStore((state) => state.activeAudioStreamIndex);
   // 会话重启中（SessionRestartOverlay 自行订阅渲染；本页用于重启结束后的网络补判）
   const isRestartingSession = usePlayerStore((state) => state.isRestartingSession);
-  const settingsMaxBitrateMode = useSettingsStore((state) => state.maxBitrateMode);
+  const settingsMaxResolutionTier = useSettingsStore((state) => state.maxResolutionTier);
 
   const videoRef = useRef<VideoRef>(null);
   const progressRef = useRef<ProgressService>(new ProgressService());
@@ -410,12 +409,15 @@ export function PlayerScreen() {
     [finishOnce, navigation]
   );
 
-  // —— 蜂窝自动降档（03 §4.9）：netinfo type 变化时判定；断网（none）跳过；自动降档与
-  // 恢复均不写 settingsStore（用户档位以 settingsStore.maxBitrateMode 为准，回 WiFi 恢复原档）。
-  // 判定逻辑抽取为 evaluateBitrateForConnection 供两处共用：①订阅回调（type 变化去重）；
+  // 用户本次会话手动选过分辨率：蜂窝自动降档仅作默认，不再覆盖手动结果（网络切换时复位）
+  const manualResolutionOverrideRef = useRef(false);
+
+  // —— 蜂窝自动降分辨率（03 §4.9）：netinfo type 变化时判定；断网（none）跳过；自动降档与
+  // 恢复均不写 settingsStore（用户档位以 settingsStore.maxResolutionTier 为准，回 WiFi 恢复原档）。
+  // 判定逻辑抽取为 evaluateResolutionForConnection 供两处共用：①订阅回调（type 变化去重）；
   // ②重启结束补判——重启期间被 isRestartingSession 挡掉的事件已随 lastTypeRef 更新不再触发，
   // 重启完成后按当前实际网络补判一次（蜂窝降档中重启不丢降档、回 WiFi 恢复不丢档）——
-  const evaluateBitrateForConnection = useCallback(
+  const evaluateResolutionForConnection = useCallback(
     (type: string) => {
       setConnectionType(type);
       const store = usePlayerStore.getState();
@@ -423,9 +425,13 @@ export function PlayerScreen() {
       if (store.isRestartingSession || store.session === null || store.session.playMethod !== 'Transcode') {
         return;
       }
+      // 手动选择优先：蜂窝降档只是默认值，用户改过分辨率后本次会话不再自动覆盖
+      if (manualResolutionOverrideRef.current) {
+        return;
+      }
       const settings = useSettingsStore.getState();
-      const targetTier = resolveBitrateTierForNetwork(
-        settings.maxBitrateMode,
+      const targetTier = resolveResolutionTierForNetwork(
+        settings.maxResolutionTier,
         type,
         settings.autoDowngradeOnCellular
       );
@@ -433,13 +439,13 @@ export function PlayerScreen() {
       if (targetTier === null) {
         return;
       }
-      const targetBps = BITRATE_TIER_MAP[targetTier].bitrateBps;
-      // 目标档位 ≠ 当前生效档位（session.maxBitrateBps 反查）才重启
-      if (store.session.maxBitrateBps === undefined || store.session.maxBitrateBps === targetBps) {
+      // 目标档位 ≠ 当前生效档位（session.maxResolutionTier）才重启
+      const currentTier = store.session.maxResolutionTier ?? DEFAULT_RESOLUTION_TIER;
+      if (currentTier === targetTier) {
         return;
       }
       const currentSession = store.session;
-      void runSwitch(() => playbackService.switchBitrate(currentSession, targetTier));
+      void runSwitch(() => playbackService.switchResolution(currentSession, targetTier));
     },
     [runSwitch]
   );
@@ -453,10 +459,12 @@ export function PlayerScreen() {
         return;
       }
       lastTypeRef.current = type;
-      evaluateBitrateForConnection(type);
+      // 网络切换：蜂窝降档恢复为默认（新网络重新按默认判定）
+      manualResolutionOverrideRef.current = false;
+      evaluateResolutionForConnection(type);
     });
     return () => unsubscribe();
-  }, [evaluateBitrateForConnection]);
+  }, [evaluateResolutionForConnection]);
 
   // 重启结束（isRestartingSession true→false）后按当前实际网络补判定一次（03 §4.9）
   const prevRestartingRef = useRef(false);
@@ -468,27 +476,29 @@ export function PlayerScreen() {
     }
     void NetInfo.fetch()
       .then((state) => {
-        evaluateBitrateForConnection(state.type);
+        evaluateResolutionForConnection(state.type);
       })
       .catch(() => {
         // 读取失败静默（下次 type 变化事件再判）
       });
-  }, [isRestartingSession, evaluateBitrateForConnection]);
+  }, [isRestartingSession, evaluateResolutionForConnection]);
 
-  // 码率选择：先落盘（T4 依赖，唯一入口语义见 03 §4.8.1）再 switchBitrate；直连仅提示
-  const handleBitrateSelect = useCallback(
-    (tier: BitrateTierKey) => {
+  // 分辨率选择：先落盘（T4 依赖，唯一入口语义见 03 §4.8.1）再 switchResolution；直连仅提示
+  const handleResolutionSelect = useCallback(
+    (tier: ResolutionTierKey) => {
       setVisibleMenu('none');
-      useSettingsStore.getState().actions.setMaxBitrateMode(tier);
+      // 手动选择优先于蜂窝自动降档（本次会话内保持）
+      manualResolutionOverrideRef.current = true;
+      useSettingsStore.getState().actions.setMaxResolutionTier(tier);
       void runSwitch(async () => {
         const store = usePlayerStore.getState();
         if (store.session === null) {
           return null;
         }
-        const newSession = await playbackService.switchBitrate(store.session, tier);
+        const newSession = await playbackService.switchResolution(store.session, tier);
         if (newSession === null) {
           // 直连会话不重启：设置已落盘，下次转码会话生效（03 §4.6.2）
-          ToastAndroid.show('直连播放不受码率限制，设置将在下次会话生效', ToastAndroid.SHORT);
+          ToastAndroid.show('直连播放不受分辨率限制，设置将在下次会话生效', ToastAndroid.SHORT);
         }
         return newSession;
       });
@@ -541,9 +551,9 @@ export function PlayerScreen() {
     void (async () => {
       const store = usePlayerStore.getState();
       const currentPosition = store.positionMs;
-      // 码率保持：旧会话生效码率随重试沿用（蜂窝降档态重试不抬升回用户档位，03 §4.9；
+      // 分辨率保持：旧会话生效档位随重试沿用（蜂窝降档态重试不抬升回用户档位，03 §4.9；
       // 直连旧会话 undefined → resolve 回落 settingsStore 用户档位）
-      const previousMaxBitrateBps = store.session?.maxBitrateBps;
+      const previousMaxResolutionTier = store.session?.maxResolutionTier;
       await finishOnce('error');
       endReasonRef.current = null; // 新会话允许再次收尾
       // 旧会话已收尾：从 store 摘除，避免 resolve 的防御式收尾重复上报（03 §4.6.2）
@@ -551,7 +561,7 @@ export function PlayerScreen() {
       try {
         const newSession = await playbackService.resolve(initialSession.itemId, {
           startPositionMs: currentPosition,
-          maxBitrateBps: previousMaxBitrateBps,
+          maxResolutionTier: previousMaxResolutionTier,
         });
         store.setSession(newSession);
         store.setStatus('loading');
@@ -635,7 +645,7 @@ export function PlayerScreen() {
   );
 
   const isPlaying = status === 'playing';
-  // M6 本地会话（06 文档 §4.4.2 控制层降级）：字幕菜单仅本地内嵌轨、音轨菜单用引擎轨、码率按钮隐藏
+  // M6 本地会话（06 文档 §4.4.2 控制层降级）：字幕菜单仅本地内嵌轨、音轨菜单用引擎轨、分辨率按钮隐藏
   const isLocalSession = session.local === true;
   const localSubtitleTracks: SubtitleTrack[] = isLocalSession
     ? engineTextTracks.map((track) => ({
@@ -656,8 +666,9 @@ export function PlayerScreen() {
   const source = useMemo(
     () => ({
       uri: session.url,
-      // 直连 URL 不带起点，起点由播放器 startPosition 承载（秒；02 §4.3）；转码 HLS 同机制恢复
-      startPosition: session.positionMsAtStart / 1000,
+      // 直连 URL 不带起点，起点由播放器 startPosition 承载（毫秒：Android 直接传给
+      // ExoPlayer setMediaSource、iOS 内部 /1000 转秒；02 §4.3）；转码 HLS 同机制恢复
+      startPosition: session.positionMsAtStart,
       // 外挂文本轨注入（03 §4.8.2）：只注入非烧录轨；uri 用 adapter 已拼好的完整 URL
       textTracks: session.subtitleList
         .filter((track) => !track.burnIn && track.vttUrl !== undefined)
@@ -726,19 +737,14 @@ export function PlayerScreen() {
     return localIndex >= 0 ? { type: SelectedTrackType.INDEX, value: localIndex } : undefined;
   }, [session.audioList, session.local, activeAudioStreamIndex, engineAudioTracks]);
 
-  // 当前生效档位（session.maxBitrateBps 反查；直连回退用户设置档位）
-  const activeBitrateTier = useMemo<BitrateTierKey>(() => {
-    const bps = session.maxBitrateBps;
-    if (bps === undefined) {
-      return settingsMaxBitrateMode;
-    }
-    return BITRATE_TIER_LIST.find((tier) => tier.bitrateBps === bps)?.key ?? settingsMaxBitrateMode;
-  }, [session.maxBitrateBps, settingsMaxBitrateMode]);
+  // 当前生效档位（session.maxResolutionTier；直连回退用户设置档位）
+  const activeResolutionTier: ResolutionTierKey =
+    session.maxResolutionTier ?? settingsMaxResolutionTier;
   // 蜂窝强制降档生效中（提示用）：生效档位=蜂窝档但用户档位非该档
   const cellularForced =
     connectionType === 'cellular' &&
-    activeBitrateTier === CELLULAR_BITRATE_TIER &&
-    settingsMaxBitrateMode !== CELLULAR_BITRATE_TIER;
+    activeResolutionTier === CELLULAR_RESOLUTION_TIER &&
+    settingsMaxResolutionTier !== CELLULAR_RESOLUTION_TIER;
 
   return (
     <View style={styles.container}>
@@ -785,7 +791,7 @@ export function PlayerScreen() {
           </Pressable>
         </View>
       )}
-      {/* 控制层（未锁屏且可见时；本地会话隐藏码率按钮，06 §4.4.2） */}
+      {/* 控制层（未锁屏且可见时；本地会话隐藏分辨率按钮，06 §4.4.2） */}
       {!isLocked && controlsVisible && (
         <ControlOverlay
           title={session.name ?? ''}
@@ -799,8 +805,8 @@ export function PlayerScreen() {
           onSeek={seekTo}
           onOpenSubtitleMenu={() => setVisibleMenu('subtitle')}
           onOpenAudioTrackMenu={() => setVisibleMenu('audio')}
-          onOpenBitrateMenu={() => setVisibleMenu('bitrate')}
-          showBitrate={!isLocalSession}
+          onOpenResolutionMenu={() => setVisibleMenu('resolution')}
+          showResolution={!isLocalSession && session.playMethod === 'Transcode'}
         />
       )}
       {/* 三菜单（互斥；isRestartingSession 期间由下方浮层整体遮挡） */}
@@ -820,19 +826,20 @@ export function PlayerScreen() {
           onClose={() => setVisibleMenu('none')}
         />
       )}
-      {visibleMenu === 'bitrate' && (
-        <BitrateMenu
-          activeTier={activeBitrateTier}
+      {visibleMenu === 'resolution' && (
+        <ResolutionMenu
+          activeTier={activeResolutionTier}
+          sourceHeight={session.sourceHeight}
           cellularForced={cellularForced}
-          onSelect={handleBitrateSelect}
+          onSelect={handleResolutionSelect}
           onClose={() => setVisibleMenu('none')}
         />
       )}
       <GestureHud hud={hud} />
       {/* 会话重启浮层（03 §4.8.1：屏蔽重复点击，onLoad 后由 endRestart 收起） */}
       <SessionRestartOverlay />
-      {/* 加载态 */}
-      {status === 'loading' && (
+      {/* 加载态（重启浮层自带转圈与文案，同时成立时避免叠出两个圈） */}
+      {status === 'loading' && !isRestartingSession && (
         <View style={styles.centerLayer} pointerEvents="none">
           <ActivityIndicator color={COLORS.accent} size="large" />
         </View>

@@ -30,7 +30,8 @@ import { PERSON_AVATAR_MAX_WIDTH, SEARCH_GROUP_LIMIT } from '@/constant/search';
 import { PROBE_TIMEOUT_MS } from '@/constant/api';
 import { MIN_EMBY_VERSION, MIN_JELLYFIN_VERSION } from '@/constant/server';
 import { SIMILAR_LIMIT } from '@/constant/playback';
-import { DEFAULT_BITRATE_TIER, BITRATE_TIER_MAP } from '@/constant/bitrate';
+import { AUDIO_MAX_STREAMING_BITRATE_BPS } from '@/constant/bitrate';
+import { DEFAULT_RESOLUTION_TIER } from '@/constant/resolution';
 import { SORT_CHAIN } from '@/constant/sortCatalog';
 import { apiClient, type ApiClient } from '@/infra/api/ApiClient';
 import { AppError } from '@/infra/error';
@@ -1331,10 +1332,10 @@ export abstract class BaseAdapter implements ServerAdapter {
   /**
    * 音频 universal 统一端点 URL（设计文档 §8.4 原文模板 + PlaySessionId 增量参数）。
    * 直连时服务器 302 到 stream?static=true、否则实时转 mp4/aac，对队列逻辑透明；
-   * maxBitrateBps 缺省 = 自动档 20Mbps（档位由调用方从 settingsStore 解析后传入）。
+   * maxBitrateBps 缺省 = 音频固定上限 20Mbps（音频无分辨率档位）。
    */
   buildAudioUniversalUrl(itemId: string, playSessionId: string, maxBitrateBps?: number): string {
-    const bitrate = maxBitrateBps ?? BITRATE_TIER_MAP[DEFAULT_BITRATE_TIER].bitrateBps;
+    const bitrate = maxBitrateBps ?? AUDIO_MAX_STREAMING_BITRATE_BPS;
     const query = this.buildQuery({
       DeviceId: this.deviceId,
       api_key: this.token ?? '',
@@ -2100,13 +2101,12 @@ export abstract class BaseAdapter implements ServerAdapter {
     itemId: string,
     opts?: ResolvePlaybackOpts
   ): Promise<PlaybackSource> {
-    // 档位缺省 = AUTO（20Mbps）；profileInputs 由服务层组装（settingsStore + mediaCaps）
-    const maxBitrateBps =
-      opts?.maxBitrateBps ?? BITRATE_TIER_MAP[DEFAULT_BITRATE_TIER].bitrateBps;
+    // 档位缺省 = 无限制；profileInputs 由服务层组装（settingsStore + mediaCaps）
+    const maxResolutionTier = opts?.maxResolutionTier ?? DEFAULT_RESOLUTION_TIER;
     const body: Record<string, unknown> = {
       UserId: userId,
       DeviceProfile: buildDeviceProfile({
-        maxBitrateBps,
+        maxResolutionTier,
         allowHevcDirectPlay: opts?.profileInputs.allowHevcDirectPlay ?? true,
         decoderCaps: opts?.profileInputs.decoderCaps ?? {
           supportsHevcMain10: false,
@@ -2145,7 +2145,19 @@ export abstract class BaseAdapter implements ServerAdapter {
     const subtitleList = this.translateSubtitleTracks(rawSource, itemId);
     const audioList = translateAudioTracks(rawSource);
     const positionMsAtStart = opts?.startPositionMs ?? 0;
-    const base = { playSessionId: data.PlaySessionId, itemId, mediaSourceId, positionMsAtStart, runTimeMs, subtitleList, audioList };
+    // 源视频尺寸（分辨率菜单据此隐藏高于源的档位；缺失时菜单展示全部档位）
+    const videoStream = rawSource.MediaStreams?.find((stream) => stream.Type === 'Video');
+    const base = {
+      playSessionId: data.PlaySessionId,
+      itemId,
+      mediaSourceId,
+      positionMsAtStart,
+      runTimeMs,
+      subtitleList,
+      audioList,
+      sourceWidth: videoStream?.Width,
+      sourceHeight: videoStream?.Height,
+    };
 
     // 直连分支（M2 既有构造，不变）
     if (rawSource.SupportsDirectPlay) {
@@ -2157,7 +2169,7 @@ export abstract class BaseAdapter implements ServerAdapter {
     // 转码分支（M3）：TranscodingUrl 由服务器生成（含 api_key/PlaySessionId），客户端只拼 baseUrl
     if (rawSource.SupportsTranscoding && rawSource.TranscodingUrl) {
       const url = `${this.baseUrl}${rawSource.TranscodingUrl}`;
-      return { ...base, playMethod: 'Transcode', url, maxBitrateBps };
+      return { ...base, playMethod: 'Transcode', url, maxResolutionTier };
     }
     // SupportsTranscoding=true 但 TranscodingUrl 为空（异常服务器）同按无法播放处理
     throw new AppError('PLAYBACK_UNSUPPORTED');

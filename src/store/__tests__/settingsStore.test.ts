@@ -139,25 +139,25 @@ describe('settingsStore（M3 播放设置四字段，03 §4.7.2）', () => {
   beforeEach(() => {
     mmkv.clearAll();
     useSettingsStore.setState({
-      maxBitrateMode: 'AUTO',
+      maxResolutionTier: 'UNLIMITED',
       allowHevcDirectPlay: true,
       autoDowngradeOnCellular: true,
       preferredSubtitleLang: null,
     });
   });
 
-  it('四字段默认值：AUTO / true / true / null', () => {
-    expect(useSettingsStore.getState().maxBitrateMode).toBe('AUTO');
+  it('四字段默认值：UNLIMITED / true / true / null', () => {
+    expect(useSettingsStore.getState().maxResolutionTier).toBe('UNLIMITED');
     expect(useSettingsStore.getState().allowHevcDirectPlay).toBe(true);
     expect(useSettingsStore.getState().autoDowngradeOnCellular).toBe(true);
     expect(useSettingsStore.getState().preferredSubtitleLang).toBeNull();
   });
 
-  it('setMaxBitrateMode：写入档位（BitrateMenu 与设置页共用同一 action）', () => {
-    useSettingsStore.getState().actions.setMaxBitrateMode('MEDIUM');
-    expect(useSettingsStore.getState().maxBitrateMode).toBe('MEDIUM');
-    useSettingsStore.getState().actions.setMaxBitrateMode('LOW');
-    expect(useSettingsStore.getState().maxBitrateMode).toBe('LOW');
+  it('setMaxResolutionTier：写入档位（ResolutionMenu 与设置页共用同一 action）', () => {
+    useSettingsStore.getState().actions.setMaxResolutionTier('FHD');
+    expect(useSettingsStore.getState().maxResolutionTier).toBe('FHD');
+    useSettingsStore.getState().actions.setMaxResolutionTier('SD');
+    expect(useSettingsStore.getState().maxResolutionTier).toBe('SD');
   });
 
   it('setAllowHevcDirectPlay / setAutoDowngradeOnCellular / setPreferredSubtitleLang', () => {
@@ -172,11 +172,11 @@ describe('settingsStore（M3 播放设置四字段，03 §4.7.2）', () => {
   });
 
   it('persist 快照含新字段（杀 App 重进恢复，T4/T9/T10 支撑）', () => {
-    useSettingsStore.getState().actions.setMaxBitrateMode('HIGH');
+    useSettingsStore.getState().actions.setMaxResolutionTier('FHD');
     useSettingsStore.getState().actions.setAllowHevcDirectPlay(false);
     useSettingsStore.getState().actions.setAutoDowngradeOnCellular(false);
     const snapshot = mmkv.getString(SETTINGS_STORE_KEY) ?? '';
-    expect(snapshot).toContain('"maxBitrateMode":"HIGH"');
+    expect(snapshot).toContain('"maxResolutionTier":"FHD"');
     expect(snapshot).toContain('"allowHevcDirectPlay":false');
     expect(snapshot).toContain('"autoDowngradeOnCellular":false');
   });

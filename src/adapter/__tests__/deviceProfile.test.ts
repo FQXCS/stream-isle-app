@@ -1,42 +1,74 @@
 /**
- * DeviceProfileBuilder 单测（M3 文档 §6.1 DeviceProfileBuilder 行）：
- * 档位×能力×开关矩阵、SubtitleProfiles/TranscodingProfiles 恒定值、
- * 全能力机型产出 = 设计文档 §8.2 JSON（03 §4.4.2 逐字断言）。
+ * DeviceProfileBuilder 单测：分辨率档位 × 能力 × 开关矩阵、SubtitleProfiles/TranscodingProfiles
+ * 恒定值、全能力机型产出（03 §4.4.2 逐字断言）。
  */
 import {
   buildDeviceProfile,
   type DecoderCapabilities,
 } from '@/adapter/DeviceProfileBuilder';
-import { BITRATE_TIER_MAP } from '@/constant/bitrate';
+import { RESOLUTION_TIER_MAP } from '@/constant/resolution';
 
 /** 能力快捷构造（缺省全 false） */
 function caps(overrides: Partial<DecoderCapabilities> = {}): DecoderCapabilities {
   return { supportsHevcMain10: false, supportsVp9: false, supportsAv1: false, ...overrides };
 }
 
-/** 全能力机型（探测全真）+ 开关开：产出应与设计文档 §8.2 静态 JSON 逐字一致 */
+/** 全能力机型（探测全真）+ 开关开 */
 const ALL_CAPS = caps({ supportsHevcMain10: true, supportsVp9: true, supportsAv1: true });
 
-describe('buildDeviceProfile（M3 完整版）', () => {
-  it('四档位 → MaxStreamingBitrate 取档位表值', () => {
-    for (const tier of Object.values(BITRATE_TIER_MAP)) {
+describe('buildDeviceProfile', () => {
+  it('档位 → MaxStreamingBitrate 取档位内置上限；分辨率档输出 MaxWidth/MaxHeight', () => {
+    for (const tier of Object.values(RESOLUTION_TIER_MAP)) {
       const profile = buildDeviceProfile({
-        maxBitrateBps: tier.bitrateBps,
+        maxResolutionTier: tier.key,
         allowHevcDirectPlay: true,
         decoderCaps: ALL_CAPS,
       });
       expect(profile.MaxStreamingBitrate).toBe(tier.bitrateBps);
+      const transcode = profile.TranscodingProfiles[0];
+      if (tier.maxHeight > 0) {
+        expect(transcode.MaxWidth).toBe(tier.maxWidth);
+        expect(transcode.MaxHeight).toBe(tier.maxHeight);
+      } else {
+        expect(transcode.MaxWidth).toBeUndefined();
+        expect(transcode.MaxHeight).toBeUndefined();
+      }
     }
-    // 明确断言四档数值（自动 20M / 10 / 4 / 2M，设计文档 §8.2/§8.3）
-    expect(BITRATE_TIER_MAP.AUTO.bitrateBps).toBe(20_000_000);
-    expect(BITRATE_TIER_MAP.HIGH.bitrateBps).toBe(10_000_000);
-    expect(BITRATE_TIER_MAP.MEDIUM.bitrateBps).toBe(4_000_000);
-    expect(BITRATE_TIER_MAP.LOW.bitrateBps).toBe(2_000_000);
+    // 明确断言档位数值（无限制 60M / 4K 40M / 1080p 20M / 720p 10M / 480p 4M）
+    expect(RESOLUTION_TIER_MAP.UNLIMITED.bitrateBps).toBe(60_000_000);
+    expect(RESOLUTION_TIER_MAP.UHD.bitrateBps).toBe(40_000_000);
+    expect(RESOLUTION_TIER_MAP.FHD.bitrateBps).toBe(20_000_000);
+    expect(RESOLUTION_TIER_MAP.HD.bitrateBps).toBe(10_000_000);
+    expect(RESOLUTION_TIER_MAP.SD.bitrateBps).toBe(4_000_000);
+  });
+
+  it('1080p 档 → 转码档 MaxWidth=1920 / MaxHeight=1080', () => {
+    const profile = buildDeviceProfile({
+      maxResolutionTier: 'FHD',
+      allowHevcDirectPlay: true,
+      decoderCaps: caps(),
+    });
+    expect(profile.TranscodingProfiles[0]).toMatchObject({ MaxWidth: 1920, MaxHeight: 1080 });
+  });
+
+  it('无限制档 → 转码档不带分辨率上限', () => {
+    const profile = buildDeviceProfile({
+      maxResolutionTier: 'UNLIMITED',
+      allowHevcDirectPlay: true,
+      decoderCaps: caps(),
+    });
+    expect(profile.TranscodingProfiles[0]).toEqual({
+      Container: 'ts',
+      Type: 'Video',
+      VideoCodec: 'h264',
+      AudioCodec: 'aac',
+      Protocol: 'hls',
+    });
   });
 
   it('Main10=false → VideoCodec 不含 hevc（8bit-only 机型让 10bit 片转码，T1 机制）', () => {
     const profile = buildDeviceProfile({
-      maxBitrateBps: 20_000_000,
+      maxResolutionTier: 'UNLIMITED',
       allowHevcDirectPlay: true,
       decoderCaps: caps({ supportsVp9: true }),
     });
@@ -45,7 +77,7 @@ describe('buildDeviceProfile（M3 完整版）', () => {
 
   it('开关关（即使 Main10=true）→ 不含 hevc', () => {
     const profile = buildDeviceProfile({
-      maxBitrateBps: 20_000_000,
+      maxResolutionTier: 'UNLIMITED',
       allowHevcDirectPlay: false,
       decoderCaps: caps({ supportsHevcMain10: true }),
     });
@@ -54,7 +86,7 @@ describe('buildDeviceProfile（M3 完整版）', () => {
 
   it('Main10=true 且开关开 → 含 hevc；vp9/av1 按探测结果拼接', () => {
     const profile = buildDeviceProfile({
-      maxBitrateBps: 20_000_000,
+      maxResolutionTier: 'UNLIMITED',
       allowHevcDirectPlay: true,
       decoderCaps: caps({ supportsHevcMain10: true, supportsAv1: true }),
     });
@@ -63,7 +95,7 @@ describe('buildDeviceProfile（M3 完整版）', () => {
 
   it('DirectPlayProfiles 容器/音频编解码恒定；仅一条', () => {
     const profile = buildDeviceProfile({
-      maxBitrateBps: 20_000_000,
+      maxResolutionTier: 'UNLIMITED',
       allowHevcDirectPlay: true,
       decoderCaps: ALL_CAPS,
     });
@@ -75,20 +107,9 @@ describe('buildDeviceProfile（M3 完整版）', () => {
     });
   });
 
-  it('TranscodingProfiles 恒定（ts/h264/aac/hls）', () => {
+  it('SubtitleProfiles 恒定（字幕策略矩阵）', () => {
     const profile = buildDeviceProfile({
-      maxBitrateBps: 4_000_000,
-      allowHevcDirectPlay: false,
-      decoderCaps: caps(),
-    });
-    expect(profile.TranscodingProfiles).toEqual([
-      { Container: 'ts', Type: 'Video', VideoCodec: 'h264', AudioCodec: 'aac', Protocol: 'hls' },
-    ]);
-  });
-
-  it('SubtitleProfiles 恒定（字幕策略矩阵，与设计文档 §8.2 JSON 逐字一致）', () => {
-    const profile = buildDeviceProfile({
-      maxBitrateBps: 20_000_000,
+      maxResolutionTier: 'UNLIMITED',
       allowHevcDirectPlay: true,
       decoderCaps: caps(),
     });
@@ -101,15 +122,15 @@ describe('buildDeviceProfile（M3 完整版）', () => {
     ]);
   });
 
-  it('全能力机型（探测全真+开关开）产出 = 设计文档 §8.2 静态 JSON', () => {
+  it('全能力机型（探测全真+开关开+无限制）产出', () => {
     expect(
       buildDeviceProfile({
-        maxBitrateBps: 20_000_000,
+        maxResolutionTier: 'UNLIMITED',
         allowHevcDirectPlay: true,
         decoderCaps: ALL_CAPS,
       })
     ).toEqual({
-      MaxStreamingBitrate: 20000000,
+      MaxStreamingBitrate: 60000000,
       DirectPlayProfiles: [
         {
           Container: 'mp4,mkv,mov,m4v',
@@ -132,7 +153,11 @@ describe('buildDeviceProfile（M3 完整版）', () => {
   });
 
   it('每次调用返回新对象（无共享可变状态）', () => {
-    const opts = { maxBitrateBps: 20_000_000, allowHevcDirectPlay: true, decoderCaps: caps() };
+    const opts = {
+      maxResolutionTier: 'UNLIMITED' as const,
+      allowHevcDirectPlay: true,
+      decoderCaps: caps(),
+    };
     expect(buildDeviceProfile(opts)).not.toBe(buildDeviceProfile(opts));
   });
 });

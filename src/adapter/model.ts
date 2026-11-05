@@ -5,6 +5,7 @@
  * 其余为 M2+ 消费的先行定义。
  */
 import type { DecoderCapabilities } from '@/adapter/DeviceProfileBuilder';
+import type { ResolutionTierKey } from '@/constant/resolution';
 
 /** 服务器类型（UI 不感知，仅 adapter/账号层使用） */
 export type ServerFlavor = 'JELLYFIN' | 'EMBY';
@@ -461,8 +462,11 @@ export interface PlaybackSource {
   /** M3 填充（MediaStreams 翻译） */
   subtitleList: SubtitleTrack[];
   audioList: AudioTrack[];
-  /** M3：本次会话生效码率上限（直连 undefined） */
-  maxBitrateBps?: number;
+  /** M3：本次会话生效的转码分辨率档位（直连 undefined） */
+  maxResolutionTier?: ResolutionTierKey;
+  /** 源视频像素尺寸（菜单按源分辨率收敛可选档位；本地会话/未知为 undefined） */
+  sourceWidth?: number;
+  sourceHeight?: number;
 }
 
 /** 一次播放会话 = PlaybackSource + 会话元数据（进入播放页后不可变，02 §4.2） */
@@ -476,7 +480,7 @@ export type PlaybackSession = PlaybackSource & {
   seriesId?: string;
   /**
    * M6 增量（06 文档 §4.2）：本地文件会话为 true（DownloadService.buildLocalSession 置位）；
-   * PlayerScreen 据此做控制层降级（码率按钮隐藏、字幕仅本地内嵌轨）。以交叉类型扩展，不改 M2 既有定义。
+   * PlayerScreen 据此做控制层降级（分辨率按钮隐藏、字幕仅本地内嵌轨）。以交叉类型扩展，不改 M2 既有定义。
    */
   local?: boolean;
 };
@@ -539,8 +543,8 @@ export interface ResolvePlaybackOpts {
   mediaSourceId?: string;
   /** 会话重启时传当前毫秒位置 */
   startPositionMs?: number;
-  /** 缺省取码率档位表（M3 constant/bitrate.ts）；档位：自动 20M / 10M / 4M / 2M（设计文档 §8.2） */
-  maxBitrateBps?: number;
+  /** 缺省取用户设置档位（settingsStore.maxResolutionTier）；转码输出分辨率上限（设计文档 §8.2） */
+  maxResolutionTier?: ResolutionTierKey;
   /** 转码场景指定服务器转哪条音轨（重启增强路径用） */
   audioStreamIndex?: number;
   /** 烧录字幕场景指定烧录轨；undefined = 不烧录（切回文本/关闭时显式传 undefined） */

@@ -9,9 +9,9 @@ import {
   AUDIO_TRANSCODING_CONTAINER,
   UNIVERSAL_CONTAINER_LIST,
 } from '@/constant/audio';
-import { BITRATE_TIER_MAP } from '@/constant/bitrate';
+import { AUDIO_MAX_STREAMING_BITRATE_BPS } from '@/constant/bitrate';
 
-const AUTO_BPS = BITRATE_TIER_MAP.AUTO.bitrateBps;
+const AUTO_BPS = AUDIO_MAX_STREAMING_BITRATE_BPS;
 
 function make(flavor: 'JELLYFIN' | 'EMBY'): JellyfinAdapter | EmbyAdapter {
   const Ctor = flavor === 'JELLYFIN' ? JellyfinAdapter : EmbyAdapter;
@@ -36,7 +36,7 @@ describe('buildAudioUniversalUrl（§8.4 统一端点，双实例）', () => {
       expect(url).toContain(`TranscodingAudioCodec=${AUDIO_TRANSCODING_AUDIO_CODEC}`);
     });
 
-    it(`[${flavor}] 显式档位传入 MaxStreamingBitrate（2Mbps 档触发服务器转 AAC）`, () => {
+    it(`[${flavor}] 显式码率传入 MaxStreamingBitrate（调用方覆盖音频上限）`, () => {
       const url = make(flavor).buildAudioUniversalUrl('itm1', 'ps-1', 2_000_000);
       expect(url).toContain('MaxStreamingBitrate=2000000');
     });

@@ -1,6 +1,6 @@
 /**
  * 控制层（M2 文档 §4.12 + M3 §4.8.1）：顶部（返回 + 「标题 · S1E2 集名」+ 锁屏按钮）；
- * 底部（播放/暂停 + 字幕/音轨/码率三按钮 + SeekBar + 时长/剩余时长）。
+ * 底部（播放/暂停 + 字幕/音轨/分辨率三按钮 + SeekBar + 时长/剩余时长）。
  * 底色 M2 用半透明黑（毛玻璃顺延 M6）；无操作 CONTROLS_AUTO_HIDE_MS 自动隐藏。
  */
 import { useCallback, useEffect, useRef } from 'react';
@@ -24,15 +24,15 @@ interface ControlOverlayProps {
   onToggleLock: () => void;
   onTogglePlay: () => void;
   onSeek: (positionMs: number) => void;
-  /** M3 三菜单入口（字幕/音轨/码率，03 §4.8.1） */
+  /** M3 三菜单入口（字幕/音轨/转码分辨率，03 §4.8.1） */
   onOpenSubtitleMenu: () => void;
   onOpenAudioTrackMenu: () => void;
-  onOpenBitrateMenu: () => void;
+  onOpenResolutionMenu: () => void;
   /**
-   * M6 本地会话控制层降级（06 文档 §4.4.2）：false 时隐藏码率按钮
-   * （码率概念仅存在于服务器转码/串流会话；本地 fileUri 会话无此概念）。
+   * M6 本地会话控制层降级（06 文档 §4.4.2）：false 时隐藏分辨率按钮
+   * （转码分辨率概念仅存在于服务器转码/串流会话；本地 fileUri 会话无此概念）。
    */
-  showBitrate?: boolean;
+  showResolution?: boolean;
 }
 
 export function ControlOverlay({
@@ -47,8 +47,8 @@ export function ControlOverlay({
   onSeek,
   onOpenSubtitleMenu,
   onOpenAudioTrackMenu,
-  onOpenBitrateMenu,
-  showBitrate = true,
+  onOpenResolutionMenu,
+  showResolution = true,
 }: ControlOverlayProps) {
   // 无操作自动隐藏（CONTROLS_AUTO_HIDE_MS）：挂载即计时，交互（按钮/拖动）重置；
   // 控制层显隐由页面 toggleControls 驱动，本组件不持有 visible 状态
@@ -103,7 +103,7 @@ export function ControlOverlay({
         </Pressable>
       </View>
       <View style={styles.flexSpacer} pointerEvents="none" />
-      {/* 底部：播放/暂停 + 字幕/音轨/码率三按钮 + SeekBar + 时长 / 剩余 */}
+      {/* 底部：播放/暂停 + 字幕/音轨/分辨率三按钮 + SeekBar + 时长 / 剩余 */}
       <View style={styles.bottomBar}>
         <Pressable
           style={styles.iconButton}
@@ -126,13 +126,13 @@ export function ControlOverlay({
         >
           <AppIcon name="audio" size={20} color={COLORS.textPrimary} />
         </Pressable>
-        {showBitrate && (
+        {showResolution && (
           <Pressable
             style={styles.iconButton}
-            onPress={interact(onOpenBitrateMenu)}
-            accessibilityLabel="码率"
+            onPress={interact(onOpenResolutionMenu)}
+            accessibilityLabel="转码分辨率"
           >
-            <AppIcon name="bitrate" size={20} color={COLORS.textPrimary} />
+            <AppIcon name="resolution" size={20} color={COLORS.textPrimary} />
           </Pressable>
         )}
         <SeekBar

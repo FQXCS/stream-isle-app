@@ -1,32 +1,47 @@
 /**
- * 码率菜单（M3 文档 §4.8.1）：四档单选；蜂窝强制期间顶部提示。点选 = setMaxBitrateMode
- * （落盘，T4 依赖）+ switchBitrate（转码重启 / 直连提示下次生效）——本菜单是唯一写档位
- * 设置的入口，与蜂窝自动降档（不落盘）严格区分（03 §4.8.1/§4.9）。
+ * 转码分辨率菜单（原码率菜单替换）：五档单选；蜂窝强制期间顶部提示。
+ * 点选 = setMaxResolutionTier（落盘）+ switchResolution（转码重启 / 直连提示下次生效）
+ * ——本菜单是唯一写档位设置的入口，与蜂窝自动降档（不落盘）严格区分（03 §4.8.1/§4.9）。
  */
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { BITRATE_TIER_LIST, type BitrateTierKey } from '@/constant/bitrate';
+import type { ResolutionTierKey } from '@/constant/resolution';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
+import {
+  availableResolutionTiers,
+  normalizeResolutionTierForSource,
+} from '@/util/resolution';
 
-interface BitrateMenuProps {
-  /** 当前生效档位（session.maxBitrateBps 反查；直连回退用户设置档位） */
-  activeTier: BitrateTierKey;
-  /** 蜂窝自动降档生效中（顶部提示「蜂窝网络 · 已自动降至 4Mbps」） */
+interface ResolutionMenuProps {
+  /** 当前生效档位（session.maxResolutionTier；直连会话不展示本菜单） */
+  activeTier: ResolutionTierKey;
+  /** 源视频高度：隐藏高于源的档位（转码只降不升） */
+  sourceHeight?: number;
+  /** 蜂窝自动降档生效中（顶部提示「蜂窝网络 · 已自动降至 480p」） */
   cellularForced: boolean;
-  onSelect: (tier: BitrateTierKey) => void;
+  onSelect: (tier: ResolutionTierKey) => void;
   onClose: () => void;
 }
 
-export function BitrateMenu({ activeTier, cellularForced, onSelect, onClose }: BitrateMenuProps) {
+export function ResolutionMenu({
+  activeTier,
+  sourceHeight,
+  cellularForced,
+  onSelect,
+  onClose,
+}: ResolutionMenuProps) {
+  // 原画恒显示；高于源分辨率的档无意义，隐藏；当前档高于源时效果等价原画，展示为原画
+  const tierList = availableResolutionTiers(sourceHeight);
+  const shownActiveTier = normalizeResolutionTierForSource(activeTier, sourceHeight);
   return (
     <View style={styles.panel}>
-      <Text style={styles.panelTitle}>码率</Text>
+      <Text style={styles.panelTitle}>转码分辨率</Text>
       {cellularForced ? (
-        <Text style={styles.cellularNotice}>蜂窝网络 · 已自动降至 4Mbps</Text>
+        <Text style={styles.cellularNotice}>蜂窝网络 · 已自动降至 480p</Text>
       ) : null}
       <ScrollView style={styles.list} nestedScrollEnabled>
-        {BITRATE_TIER_LIST.map((tier) => {
-          const active = tier.key === activeTier;
+        {tierList.map((tier) => {
+          const active = tier.key === shownActiveTier;
           return (
             <Pressable
               key={tier.key}

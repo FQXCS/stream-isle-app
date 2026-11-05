@@ -17,6 +17,7 @@ import { itemActionService } from '@/service/ItemActionService';
 import { markService } from '@/service/MarkService';
 import { playbackService } from '@/service/PlaybackService';
 import type { RootStackParamList } from '@/page/navigation/types';
+import { useSettingsStore } from '@/store/settingsStore';
 
 type ItemActionNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -65,12 +66,14 @@ export function ItemActionMenu({
     return null;
   }
 
-  /** 直接起播：有断点从断点续播，已看完从头播 */
+  /** 直接起播：断点续播开启时有断点从断点续播，否则（关闭/已看完）从头播 */
   const handlePlay = () => {
     void (async () => {
       try {
+        const resumeEnabled = useSettingsStore.getState().resumePlaybackEnabled;
         const session = await playbackService.resolve(item.id, {
-          startPositionMs: item.userData.played ? 0 : item.userData.playbackPositionMs,
+          startPositionMs:
+            resumeEnabled && !item.userData.played ? item.userData.playbackPositionMs : 0,
         });
         navigation.navigate(ROUTES.PLAYER, {
           session: { ...session, name: item.name, itemType: item.type },

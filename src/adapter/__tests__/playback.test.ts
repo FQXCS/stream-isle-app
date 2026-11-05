@@ -61,7 +61,7 @@ const TRANSCODE_RESPONSE = {
       TranscodingUrl:
         '/videos/ms-9/hls1/main.m3u8?DeviceId=d1&MediaSourceId=ms-9&PlaySessionId=ps-t1&api_key=srvkey',
       MediaStreams: [
-        { Index: 0, Type: 'Video', Codec: 'hevc' },
+        { Index: 0, Type: 'Video', Codec: 'hevc', Width: 1920, Height: 1080 },
         {
           Index: 1,
           Type: 'Audio',
@@ -112,7 +112,7 @@ describe('resolvePlayback（PlaybackInfo body：DeviceProfile/索引参数）', 
         UserId: 'u1',
         MediaSourceId: 'ms-1',
         DeviceProfile: buildDeviceProfile({
-          maxBitrateBps: 20_000_000,
+          maxResolutionTier: 'UNLIMITED',
           allowHevcDirectPlay: true,
           decoderCaps: CAPS,
         }),
@@ -133,13 +133,15 @@ describe('resolvePlayback（PlaybackInfo body：DeviceProfile/索引参数）', 
     });
   });
 
-  it('maxBitrateBps 透传 DeviceProfile.MaxStreamingBitrate', async () => {
+  it('maxResolutionTier 透传转码档 MaxWidth/MaxHeight 与内置码率上限', async () => {
     const { adapter, api } = makeAdapter('EMBY', DIRECT_RESPONSE);
     await adapter.resolvePlayback('u1', 'item1', {
-      maxBitrateBps: 4_000_000,
+      maxResolutionTier: 'SD',
       profileInputs: INPUTS,
     });
-    expect(api.request.mock.calls[0][0].body.DeviceProfile.MaxStreamingBitrate).toBe(4_000_000);
+    const profile = api.request.mock.calls[0][0].body.DeviceProfile;
+    expect(profile.MaxStreamingBitrate).toBe(4_000_000);
+    expect(profile.TranscodingProfiles[0]).toMatchObject({ MaxWidth: 854, MaxHeight: 480 });
   });
 });
 
@@ -154,7 +156,7 @@ describe('resolvePlayback（直连分支，M2 回归）', () => {
     expect(source.playSessionId).toBe('ps-1');
     expect(source.mediaSourceId).toBe('ms-1');
     expect(source.runTimeMs).toBe(720_000); // RunTimeTicks → ms
-    expect(source.maxBitrateBps).toBeUndefined(); // 直连不记码率上限
+    expect(source.maxResolutionTier).toBeUndefined(); // 直连不记分辨率档位
   });
 
   it('多 MediaSource：未传 mediaSourceId 取第一个可直连源（M2 行为不变）', async () => {
@@ -190,17 +192,19 @@ describe('resolvePlayback（直连分支，M2 回归）', () => {
 });
 
 describe('resolvePlayback（转码分支，M3）', () => {
-  it('TranscodingUrl 仅拼 baseUrl、不增删参数；playMethod=Transcode；maxBitrateBps 随源记录', async () => {
+  it('TranscodingUrl 仅拼 baseUrl、不增删参数；playMethod=Transcode；maxResolutionTier 随源记录', async () => {
     const { adapter } = makeAdapter('EMBY', TRANSCODE_RESPONSE);
     const source = await adapter.resolvePlayback('u1', 'item1', {
-      maxBitrateBps: 4_000_000,
+      maxResolutionTier: 'SD',
       profileInputs: INPUTS,
     });
     expect(source.playMethod).toBe('Transcode');
     expect(source.url).toBe(
       'http://srv/videos/ms-9/hls1/main.m3u8?DeviceId=d1&MediaSourceId=ms-9&PlaySessionId=ps-t1&api_key=srvkey'
     );
-    expect(source.maxBitrateBps).toBe(4_000_000);
+    expect(source.maxResolutionTier).toBe('SD');
+    expect(source.sourceWidth).toBe(1920);
+    expect(source.sourceHeight).toBe(1080);
     expect(source.positionMsAtStart).toBe(0);
     expect(source.runTimeMs).toBe(600_000);
   });

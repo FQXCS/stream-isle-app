@@ -13,7 +13,7 @@ jest.mock('@/store/accountStore', () => ({
 
 jest.mock('@/store/settingsStore', () => ({
   useSettingsStore: {
-    getState: () => ({ maxBitrateMode: 'LOW', allowHevcDirectPlay: true }),
+    getState: () => ({ maxResolutionTier: 'UNLIMITED', allowHevcDirectPlay: true }),
   },
 }));
 

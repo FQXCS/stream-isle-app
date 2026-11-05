@@ -1,6 +1,6 @@
 /**
  * 播放服务（M2 文档 §4.5 + M3 文档 §4.6）：播放会话生命周期
- * （决策/Playing/Stopped 收尾/会话重启编排/码率·字幕·音轨切换）。
+ * （决策/Playing/Stopped 收尾/会话重启编排/分辨率·字幕·音轨切换）。
  * 节流归 ProgressService（两者并列，见设计文档 §4）。
  * 会话重启套路（03 §4.6.1）：快照 positionMs → 先报 Stopped（不做 markPlayed 兜底）→
  * 转码则 DELETE ActiveEncodings → resolve 新会话（startPositionMs=快照，音轨/烧录态保持）→
@@ -12,11 +12,11 @@ import type {
   ResolvePlaybackOpts,
   SubtitleTrack,
 } from '@/adapter/model';
-import type { BitrateTierKey } from '@/constant/bitrate';
-import { BITRATE_TIER_MAP } from '@/constant/bitrate';
+import type { ResolutionTierKey } from '@/constant/resolution';
+import { AUDIO_MAX_STREAMING_BITRATE_BPS } from '@/constant/bitrate';
 import {
   AUDIO_TRACK_RESTART_NOTICE,
-  BITRATE_RESTART_NOTICE,
+  RESOLUTION_RESTART_NOTICE,
   BURN_IN_RESTART_NOTICE,
   RESTART_RESOLVE_RETRY_DELAY_MS,
   STOPPED_RETRY_DELAY_MS,
@@ -100,7 +100,7 @@ export class PlaybackService {
     const source = await adapter.resolvePlayback(requireUserId(), itemId, {
       mediaSourceId: opts?.mediaSourceId,
       startPositionMs: opts?.startPositionMs,
-      maxBitrateBps: opts?.maxBitrateBps ?? BITRATE_TIER_MAP[settings.maxBitrateMode].bitrateBps,
+      maxResolutionTier: opts?.maxResolutionTier ?? settings.maxResolutionTier,
       audioStreamIndex: opts?.audioStreamIndex,
       subtitleStreamIndex: opts?.subtitleStreamIndex,
       profileInputs: {
@@ -115,7 +115,7 @@ export class PlaybackService {
    * 音频播放决策（M5 文档 §4.4；设计文档 §8.4）：不做三选一判定，统一 universal 端点——
    * 服务器直连则 302 原流、否则实时转 AAC，对队列逻辑透明。不调 PlaybackInfo、不带 DeviceProfile。
    * playSessionId 缺省内部生成；runTimeMs 由 AudioService 随曲目传入（仅会话元数据）。
-   * track.url 在入队时定型：播放中切码率档位不影响当前队列，下次入队生效（无会话内切档）。
+   * track.url 在入队时定型：播放中切分辨率档位不影响当前队列，下次入队生效（无会话内切档）。
    */
   async resolveAudio(
     itemId: string,
@@ -123,9 +123,7 @@ export class PlaybackService {
   ): Promise<PlaybackSession> {
     const adapter = getActiveAdapter();
     const playSessionId = opts?.playSessionId ?? newUid();
-    const settings = useSettingsStore.getState();
-    const maxBitrateBps = BITRATE_TIER_MAP[settings.maxBitrateMode].bitrateBps;
-    const url = adapter.buildAudioUniversalUrl(itemId, playSessionId, maxBitrateBps);
+    const url = adapter.buildAudioUniversalUrl(itemId, playSessionId, AUDIO_MAX_STREAMING_BITRATE_BPS);
     return {
       playSessionId,
       itemId,
@@ -260,17 +258,20 @@ export class PlaybackService {
   }
 
   /**
-   * 码率档位切换（03 §4.6.2）：仅重启会话，不读写 settingsStore——持久化由调用方负责
-   * （BitrateMenu 手动切换先 setMaxBitrateMode 再调用；自动降档不落盘，两路径不得混淆）。
-   * 直连会话返回 null（不重启；页面提示「直连播放不受码率限制」）。
+   * 转码分辨率切换（03 §4.6.2）：仅重启会话，不读写 settingsStore——持久化由调用方负责
+   * （ResolutionMenu 手动切换先 setMaxResolutionTier 再调用；自动降档不落盘，两路径不得混淆）。
+   * 直连会话返回 null（不重启；页面提示「直连播放不受分辨率限制」）。
    */
-  async switchBitrate(session: PlaybackSession, tier: BitrateTierKey): Promise<PlaybackSession | null> {
+  async switchResolution(
+    session: PlaybackSession,
+    tier: ResolutionTierKey
+  ): Promise<PlaybackSession | null> {
     if (session.playMethod !== 'Transcode') {
       return null;
     }
-    usePlayerStore.getState().beginRestart(BITRATE_RESTART_NOTICE);
+    usePlayerStore.getState().beginRestart(RESOLUTION_RESTART_NOTICE);
     return this.restartSession(session, {
-      overrides: { maxBitrateBps: BITRATE_TIER_MAP[tier].bitrateBps },
+      overrides: { maxResolutionTier: tier },
       subtitleTarget: 'keep',
     });
   }
@@ -332,8 +333,10 @@ export class PlaybackService {
     intent: RestartIntent
   ): Promise<PlaybackSession> {
     const playerState = usePlayerStore.getState();
-    // 1. 快照（先取，后续 store 变更不影响）
-    const positionMs = playerState.positionMs;
+    // 1. 快照（先取，后续 store 变更不影响）：首帧 onLoad 前（status=loading）进度恒为 0，
+    //    此时沿用旧会话起始点——蜂窝自动降档会在起播阶段触发重启，不能用 0 抹掉续播起点
+    const positionMs =
+      playerState.status === 'loading' ? oldSession.positionMsAtStart : playerState.positionMs;
     // 2. 先报 Stopped（03 §8.3；静默吞错）
     await this.reportStoppedQuietly(oldSession, positionMs);
     // 3. 转码会话停服务器转码（幂等吞错，03 §4.5.3；失败不阻塞重启）
@@ -352,7 +355,7 @@ export class PlaybackService {
       (item) => item.streamIndex === activeSubtitleStreamIndex
     );
     // 字幕参数：overrides 显式给出（'subtitleStreamIndex' in overrides，含显式 undefined=不烧录）
-    // 则用之；否则烧录保持——当前激活轨为烧录轨时续烧该轨，防止码率/音轨/蜂窝重启丢烧录状态
+    // 则用之；否则烧录保持——当前激活轨为烧录轨时续烧该轨，防止分辨率/音轨/蜂窝重启丢烧录状态
     const subtitleStreamIndex = 'subtitleStreamIndex' in overrides
       ? overrides.subtitleStreamIndex
       : activeSubtitleTrack?.burnIn
@@ -360,16 +363,16 @@ export class PlaybackService {
         : undefined;
     const audioStreamIndex =
       overrides.audioStreamIndex ?? playerState.activeAudioStreamIndex ?? undefined;
-    // 码率保持：overrides 未显式给 maxBitrateBps 时沿用旧会话生效码率——蜂窝自动降档态
-    // （session.maxBitrateBps=4M ≠ 用户档位）下的字幕/音轨重启不得抬升回用户档位
+    // 分辨率保持：overrides 未显式给 maxResolutionTier 时沿用旧会话生效档位——蜂窝自动降档态
+    // （session.maxResolutionTier=720p ≠ 用户档位）下的字幕/音轨重启不得抬升回用户档位
     // （03 §4.9 持续语义）；直连旧会话（undefined）回落 settingsStore 用户档位，语义不变
-    const maxBitrateBps = 'maxBitrateBps' in overrides
-      ? overrides.maxBitrateBps
-      : oldSession.maxBitrateBps;
+    const maxResolutionTier = 'maxResolutionTier' in overrides
+      ? overrides.maxResolutionTier
+      : oldSession.maxResolutionTier;
     const resolveOpts: PlaybackResolveOptions = {
       startPositionMs: positionMs,
       ...overrides,
-      maxBitrateBps,
+      maxResolutionTier,
       audioStreamIndex,
       subtitleStreamIndex,
     };

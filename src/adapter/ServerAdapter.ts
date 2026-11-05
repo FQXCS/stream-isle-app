@@ -137,8 +137,7 @@ export interface ServerAdapter {
 
   /**
    * 音频 universal 统一端点 URL（设计文档 §8.4）：直连时服务器 302 原流、否则实时转 AAC。
-   * maxBitrateBps 缺省 = 自动档 20Mbps（实现级加法参数：05 §4.3 两参签名不含档位，
-   * 但 §4.4 模板含 MaxStreamingBitrate 且取自 settingsStore 档位，经调用方传入保持 adapter 纯函数）。
+   * maxBitrateBps 缺省 = 音频固定上限 20Mbps（音频无分辨率档位；参数保留供调用方显式覆盖）。
    */
   buildAudioUniversalUrl(itemId: string, playSessionId: string, maxBitrateBps?: number): string;
 

@@ -52,6 +52,7 @@ export type AppIconName =
   | 'playlistPlus'
   | 'lyrics'
   | 'bitrate'
+  | 'resolution'
   | 'brightness'
   | 'volume'
   | 'lock'
@@ -126,6 +127,7 @@ const ICON_GLYPH_MAP: Record<AppIconName, MciName> = {
   playlistPlus: 'playlist-plus',
   lyrics: 'script-text-outline',
   bitrate: 'speedometer',
+  resolution: 'monitor',
   brightness: 'brightness-6',
   volume: 'volume-high',
   lock: 'lock',

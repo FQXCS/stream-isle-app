@@ -4,7 +4,7 @@
  * 音视频字幕信息卡、简介折叠、剧集季集导航（仅 Series）、演员横滑行、相似推荐行、
  * 底部文件信息卡；「更多」菜单承载下载与已看标记（参考稿）。
  * 数据经 DetailService；聚焦即刷新（useFocusEffect，覆盖播放返回/标记已看后的变化）。
- * 点播放流程：getResumePositionMs 判定 → 弹 ResumeDialog → resolve → navigate Player
+ * 点播放流程：按「断点续播」设置取断点（关闭/无效 → 0）→ resolve → navigate Player
  * （会话携带 itemType/seriesId 供自动连播判定，04 §4.4）；PLAYBACK_UNSUPPORTED 就地 toast。
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -33,7 +33,6 @@ import { CastRow } from '@/page/item/components/CastRow';
 import { EpisodeList } from '@/page/item/components/EpisodeList';
 import { HeroHeader } from '@/page/item/components/HeroHeader';
 import { MediaFileCard, MediaInfoSection } from '@/page/item/components/MediaInfoSection';
-import { ResumeDialog } from '@/page/item/components/ResumeDialog';
 import { SimilarRow } from '@/page/item/components/SimilarRow';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { bookSizeService } from '@/service/BookSizeService';
@@ -43,23 +42,12 @@ import { itemActionService } from '@/service/ItemActionService';
 import { markService } from '@/service/MarkService';
 import { playbackService } from '@/service/PlaybackService';
 import { useDownloadStore } from '@/store/downloadStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { getResumePositionMs, toResumeSource, type ResumeSource } from '@/util/resume';
 import { formatClock, formatRuntime } from '@/util/format';
 import { formatBytes } from '@/util/formatBytes';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-/** 待续播目标（弹窗上下文：断点归属哪个条目；连播判定字段随会话下传，04 §4.4） */
-interface ResumeTarget {
-  itemId: string;
-  resumeMs: number;
-  /** 播放页控制层标题（02 §4.12「标题 · S1E2 集名」） */
-  name: string;
-  /** 条目类型（Episode 时播完自动连播，04 §4.4） */
-  itemType: MediaDetail['type'];
-  /** Episode 所属剧集 id（getNextUp 匹配用） */
-  seriesId?: string;
-}
 
 /** toast 错误提示（文案一律取 ERROR_MESSAGE_MAP 唯一出处；04 §4.2 操作级失败 → Toast） */
 function toastError(err: unknown): void {
@@ -130,6 +118,7 @@ export function ItemDetailScreen() {
   const itemId = route.params.itemId;
   const navigation = useNavigation<NavigationProp>();
   const t = useTheme();
+  const resumePlaybackEnabled = useSettingsStore((state) => state.resumePlaybackEnabled);
 
   const [detail, setDetail] = useState<MediaDetail | null>(null);
   const [error, setError] = useState<AppError | null>(null);
@@ -142,7 +131,6 @@ export function ItemDetailScreen() {
   // 初始 true：剧集页首次选中季（loadDetail 异步回填 selectedSeasonId）拉取期间展示加载态；
   // 每次置位在事件处理器（季切换）或异步路径完成
   const [episodesLoading, setEpisodesLoading] = useState(true);
-  const [resumeTarget, setResumeTarget] = useState<ResumeTarget | null>(null);
   const [overviewExpanded, setOverviewExpanded] = useState(false);
   const [seasonPickerOpen, setSeasonPickerOpen] = useState(false);
   const [marking, setMarking] = useState(false);
@@ -255,7 +243,6 @@ export function ItemDetailScreen() {
         const session = await playbackService.resolve(target.itemId, {
           startPositionMs: target.startPositionMs,
         });
-        setResumeTarget(null);
         navigation.navigate(ROUTES.PLAYER, {
           // 会话标题（02 §4.12 控制层「标题 · S1E2 集名」）+ 连播判定字段（04 §4.4）：
           // itemType/seriesId 由详情页拼好传入，播完 EPISODE 分支据此走 getNextUp
@@ -267,7 +254,6 @@ export function ItemDetailScreen() {
           },
         });
       } catch (err) {
-        setResumeTarget(null);
         toastError(err);
       }
     },
@@ -276,20 +262,13 @@ export function ItemDetailScreen() {
 
   const beginPlay = useCallback(
     (target: ResumeSource & { id: string; name: string; type: MediaDetail['type']; seriesId?: string }) => {
-      const resumeMs = getResumePositionMs(target);
-      if (resumeMs !== null) {
-        setResumeTarget({
-          itemId: target.id,
-          resumeMs,
-          name: target.name,
-          itemType: target.type,
-          seriesId: target.seriesId,
-        });
-        return;
-      }
+      // 「断点续播」关闭或断点无效（已看完/过短/接近片尾）→ 从头播；不再弹选择框
+      const resumeMs = useSettingsStore.getState().resumePlaybackEnabled
+        ? getResumePositionMs(target)
+        : null;
       void resolveAndPlay({
         itemId: target.id,
-        startPositionMs: 0,
+        startPositionMs: resumeMs ?? 0,
         name: target.name,
         itemType: target.type,
         seriesId: target.seriesId,
@@ -527,7 +506,13 @@ export function ItemDetailScreen() {
     detail.type === 'Trailer' ||
     detail.type === 'MusicVideo';
   const selectedSeason = seasons.find((season) => season.id === selectedSeasonId) ?? null;
-  const resumeMs = getResumePositionMs(toResumeSource(detail));
+  // 「断点续播」关闭时主按钮不再显示续播时间（与实际起播行为一致）
+  const resumeMs = resumePlaybackEnabled ? getResumePositionMs(toResumeSource(detail)) : null;
+  // 续播按钮底色进度：已看时长占片长比例（无时长/无断点时不填充）
+  const resumeRatio =
+    resumeMs !== null && detail.runtimeMs !== undefined && detail.runtimeMs > 0
+      ? Math.min(1, resumeMs / detail.runtimeMs)
+      : 0;
   // Series 无媒体流（对 Series id 发 PlaybackInfo 必然空 MediaSources → PLAYBACK_UNSUPPORTED），
   // 主按钮改为「播放第一集」：当前选中季优先第一个未看集，无集（未加载完/空季）时不渲染主按钮
   const firstPlayableEpisode = isSeries
@@ -590,6 +575,16 @@ export function ItemDetailScreen() {
                 })
               }
             >
+              {/* 已看进度底色（宽度 = 断点/片长），点击后从该位置继续 */}
+              {resumeMs !== null && resumeRatio > 0 && (
+                <View
+                  pointerEvents="none"
+                  style={[
+                    styles.playProgressFill,
+                    { width: `${resumeRatio * 100}%`, backgroundColor: t.accentSoft },
+                  ]}
+                />
+              )}
               <AppIcon name="play" size={18} color={t.textPrimary} />
               <Text style={playButtonTextStyle}>
                 {resumeMs !== null ? `从 ${formatClock(resumeMs)} 继续` : '播放'}
@@ -710,29 +705,6 @@ export function ItemDetailScreen() {
         itemList={moreMenu?.itemList ?? []}
         onClose={() => setMoreMenu(null)}
       />
-      {resumeTarget !== null && (
-        <ResumeDialog
-          resumeMs={resumeTarget.resumeMs}
-          onResume={() =>
-            void resolveAndPlay({
-              itemId: resumeTarget.itemId,
-              startPositionMs: resumeTarget.resumeMs,
-              name: resumeTarget.name,
-              itemType: resumeTarget.itemType,
-              seriesId: resumeTarget.seriesId,
-            })
-          }
-          onRestart={() =>
-            void resolveAndPlay({
-              itemId: resumeTarget.itemId,
-              startPositionMs: 0,
-              name: resumeTarget.name,
-              itemType: resumeTarget.itemType,
-              seriesId: resumeTarget.seriesId,
-            })
-          }
-        />
-      )}
     </View>
   );
 }
@@ -810,7 +782,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 28,
     borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
   },
+  playProgressFill: { position: 'absolute', left: 0, top: 0, bottom: 0 },
   playButtonText: { fontSize: FONT_SIZE.title, fontWeight: '600' },
   iconRow: {
     flexDirection: 'row',
