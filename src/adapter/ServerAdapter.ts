@@ -124,6 +124,9 @@ export interface ServerAdapter {
   /** M4：DELETE /Users/{uid}/FavoriteItems/{itemId} */
   unmarkFavorite(userId: string, itemId: string): Promise<void>;
 
+  /** 收藏态查询（GET /Users/{uid}/Items/{itemId}?Fields=UserData，仅供迷你条收藏按钮） */
+  getItemFavorite(userId: string, itemId: string): Promise<boolean>;
+
   /** 删除服务器条目（库页长按菜单；DELETE /Items/{itemId}，需该用户具备删除权限） */
   deleteItem(itemId: string): Promise<void>;
 

@@ -8,6 +8,7 @@ import type { AudioItem, PlaybackSession } from '@/adapter/model';
 import TrackPlayer, { Event, PlaybackState, RepeatMode } from '@rntp/player';
 import { getActiveAdapter } from '@/service/adapterProvider';
 import { AudioService } from '@/service/AudioService';
+import { showCenterToast, showToast } from '@/component/Toast';
 import { usePlayerStore } from '@/store/playerStore';
 
 /**
@@ -74,6 +75,7 @@ jest.mock('@rntp/player', () => {
 
 jest.mock('@/component/Toast', () => ({
   showToast: jest.fn(),
+  showCenterToast: jest.fn(),
 }));
 
 jest.mock('@/infra/mediaCaps', () => ({
@@ -218,6 +220,48 @@ describe('playQueue / addToQueue（会话 id 规则，§4.4）', () => {
     expect(playQueueId).not.toBe(firstId);
     expect(appendId).toBe(playQueueId);
     expect(usePlayerStore.getState().audio.queueLength).toBe(2);
+  });
+
+  it('addToQueue 去重：跳过原生队列已有曲目与入参自身重复项，仅追加新增项', async () => {
+    const service = makeService();
+    await service.playQueue([song('a'), song('b')], 0);
+    (TrackPlayer.getQueue as jest.Mock).mockReturnValueOnce([MEDIA_OF('a'), MEDIA_OF('b')]);
+    const addedCount = await service.addToQueue([song('b'), song('c'), song('c')]);
+    expect(addedCount).toBe(1);
+    const added = (TrackPlayer.addMediaItems as jest.Mock).mock.calls[0][0];
+    expect(added.map((item: { mediaId?: string }) => item.mediaId)).toEqual(['c']);
+    expect(usePlayerStore.getState().audio.queueLength).toBe(3);
+    expect(showCenterToast).toHaveBeenCalledWith('已添加至播放队列');
+  });
+
+  it('addToQueue 全为已有曲目：不追加、长度不变并提示', async () => {
+    const service = makeService();
+    await service.playQueue([song('a')], 0);
+    (TrackPlayer.getQueue as jest.Mock).mockReturnValueOnce([MEDIA_OF('a')]);
+    await expect(service.addToQueue([song('a')])).resolves.toBe(0);
+    expect(TrackPlayer.addMediaItems).not.toHaveBeenCalled();
+    expect(usePlayerStore.getState().audio.queueLength).toBe(1);
+    expect(showToast).toHaveBeenCalledWith('歌曲已在播放队列中');
+    expect(showCenterToast).not.toHaveBeenCalled();
+  });
+});
+
+describe('clearQueueKeepCurrent（清空队列保留当前曲）', () => {
+  it('仅移除当前曲以外的条目，不 clear、不停止播放，长度归 1', async () => {
+    const service = makeService();
+    await service.playQueue([song('a'), song('b'), song('c')], 1);
+    (TrackPlayer.getQueue as jest.Mock).mockReturnValueOnce([
+      MEDIA_OF('a'),
+      MEDIA_OF('b'),
+      MEDIA_OF('c'),
+    ]);
+    (TrackPlayer.getActiveMediaItemIndex as jest.Mock).mockReturnValueOnce(1);
+    await service.clearQueueKeepCurrent();
+    expect(TrackPlayer.removeMediaItems).toHaveBeenNthCalledWith(1, 2, 3);
+    expect(TrackPlayer.removeMediaItems).toHaveBeenNthCalledWith(2, 0, 1);
+    expect(TrackPlayer.clear).not.toHaveBeenCalled();
+    expect(usePlayerStore.getState().audio.queueLength).toBe(1);
+    expect(usePlayerStore.getState().audio.shuffle).toBe(false);
   });
 });
 

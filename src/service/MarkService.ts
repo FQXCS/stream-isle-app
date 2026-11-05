@@ -41,6 +41,12 @@ export class MarkService {
       await adapter.unmarkFavorite(userId, itemId);
     }
   }
+
+  /** 查询条目收藏态（迷你条队列仅剩当前曲时的收藏按钮） */
+  async isFavorite(itemId: string): Promise<boolean> {
+    const adapter = getActiveAdapter();
+    return adapter.getItemFavorite(requireUserId(), itemId);
+  }
 }
 
 /** 全局单例 */

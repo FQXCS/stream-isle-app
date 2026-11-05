@@ -1,23 +1,26 @@
 /**
- * 艺人/作者列表 Tab：圆形头像行，点击进 AlbumDetail(artist)。
+ * 艺人/作者 Tab：与「专辑」Tab 相同的三列海报网格 + 分页，点击进 AlbumDetail(artist)。
  */
 import { useCallback } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import type { MediaLibraryItem } from '@/adapter/model';
 import { EmptyView } from '@/component/EmptyView';
 import { ErrorView } from '@/component/ErrorView';
+import { useMiniPlayerPadding } from '@/component/MiniPlayer';
+import { PosterCard } from '@/component/PosterCard';
 import { useTheme } from '@/component/useTheme';
+import { GRID_COLUMNS } from '@/constant/browse';
 import { ROUTES } from '@/constant/navigation';
+import { SPACING, type ThemeTokens } from '@/constant/theme';
 import { AppError } from '@/infra/error';
-import { ArtistList } from '@/page/library/components/ArtistList';
 import { usePagedLoad } from '@/page/library/components/usePagedLoad';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { fetchMusicArtists } from '@/service/BrowseService';
 import type { LibrarySortState } from '@/store/libraryViewStore';
-import { type ThemeTokens } from '@/constant/theme';
 
 type ArtistNavigation = NativeStackNavigationProp<RootStackParamList>;
 
@@ -31,6 +34,7 @@ export function ArtistListTab({ libraryId, sort, emptyTitle = '暂无艺人' }: 
   const t = useTheme();
   const styles = createStyles(t);
   const navigation = useNavigation<ArtistNavigation>();
+  const miniPlayerPadding = useMiniPlayerPadding();
   const state = usePagedLoad<MediaLibraryItem>(
     useCallback(
       (page) => fetchMusicArtists(libraryId, page, sort),
@@ -53,13 +57,31 @@ export function ArtistListTab({ libraryId, sort, emptyTitle = '暂无艺人' }: 
     return <EmptyView title={emptyTitle} />;
   }
   return (
-    <ArtistList
-      items={state.itemList}
-      onPressItem={(item) =>
-        navigation.navigate(ROUTES.ALBUM_DETAIL, { kind: 'artist', itemId: item.id })
-      }
+    <FlashList
+      data={state.itemList}
+      numColumns={GRID_COLUMNS}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }: { item: MediaLibraryItem }) => (
+        <Pressable
+          style={styles.gridCell}
+          onPress={() =>
+            navigation.navigate(ROUTES.ALBUM_DETAIL, { kind: 'artist', itemId: item.id })
+          }
+        >
+          <PosterCard item={item} />
+        </Pressable>
+      )}
       onEndReached={state.loadMore}
-      footer={state.loading && state.page > 0 ? <ActivityIndicator color={t.accent} /> : null}
+      onEndReachedThreshold={0.5}
+      ListFooterComponent={
+        state.loading && state.page > 0 ? (
+          <ActivityIndicator style={styles.footer} color={t.accent} />
+        ) : null
+      }
+      contentContainerStyle={[
+        styles.gridContent,
+        { paddingBottom: SPACING.xl + miniPlayerPadding },
+      ]}
     />
   );
 }
@@ -67,4 +89,7 @@ export function ArtistListTab({ libraryId, sort, emptyTitle = '暂无艺人' }: 
 const createStyles = (t: ThemeTokens) =>
   StyleSheet.create({
     loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: t.bg },
+    gridContent: { paddingHorizontal: SPACING.s, paddingBottom: SPACING.xl },
+    gridCell: { flex: 1, paddingHorizontal: SPACING.xs, paddingBottom: SPACING.m },
+    footer: { paddingVertical: SPACING.l },
   });

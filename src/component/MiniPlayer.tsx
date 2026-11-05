@@ -7,7 +7,8 @@
  * 停止（关闭播放/迷你条）+ 队列；所有控制用主题 accent。
  * 交互：仅曲名区可左右拖拽（封面不可拖），拖动时当前曲名跟手、下一首/上一首名称从两侧滑入；
  * 拖到预览名称露出足够长度后松手才切歌，未达阈值松手回弹；点击曲名/封面进 NowPlaying；
- * 队列按钮直达队列面板。
+ * 队列按钮原地弹半屏队列面板（QueueSheet），不进入 NowPlaying；
+ * 队列仅剩当前曲时该位置变为收藏按钮（空心未收藏 / 实心红已收藏，点击切换）。
  * 定位：Tab 页紧贴底部菜单栏上沿（菜单栏高度 = bottom-tabs 默认 49 + 安全区底）；
  * 无菜单栏的 Root Stack 页紧贴屏幕下边框（安全区落差转成条内 padding）。
  */
@@ -28,6 +29,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { AppIcon } from '@/component/AppIcon';
+import { FavoriteButton } from '@/component/FavoriteButton';
+import { QueueSheet } from '@/component/QueueSheet';
 import { SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { MINI_PLAYER_HIDDEN_ROUTES, ROUTES } from '@/constant/navigation';
@@ -191,19 +194,13 @@ export function MiniPlayer() {
   const displaySubtitle =
     switching && pendingPreview !== null ? pendingPreview.artist : subtitle;
 
-  const navigateNowPlaying = (openQueue: boolean) => {
+  const openNowPlaying = () => {
     // 已在 NowPlaying 则忽略（该页本就不显示迷你条，双保险）
     if (navigationRef.current?.getCurrentRoute()?.name === ROUTES.NOW_PLAYING) {
       return;
     }
-    if (openQueue) {
-      navigationRef.current?.navigate(ROUTES.NOW_PLAYING, { openQueue: true });
-      return;
-    }
     navigationRef.current?.navigate(ROUTES.NOW_PLAYING);
   };
-
-  const openNowPlaying = () => navigateNowPlaying(false);
   const skipNext = () => {
     setPendingPreview(adjacent.next ?? null);
     void audioService.next();
@@ -376,18 +373,45 @@ export function MiniPlayer() {
         >
           <AppIcon name="stop" size={20} color={t.accent} />
         </Pressable>
-        <Pressable
-          hitSlop={8}
-          style={styles.control}
-          onPress={() => navigateNowPlaying(true)}
-          accessibilityLabel="播放队列"
-        >
-          <AppIcon name="playlist" size={22} color={t.accent} />
-        </Pressable>
+        {queueLength === 1 ? (
+          <FavoriteButton
+            key={currentTrack.id}
+            trackId={currentTrack.id}
+            style={queueButtonStyle.control}
+          />
+        ) : (
+          <QueueButton color={t.accent} />
+        )}
       </View>
     </View>
   );
 }
+
+/**
+ * 队列按钮 + 半屏队列弹层：弹层状态收在子组件里，随迷你条一起卸载——
+ * 播放会话结束（迷你条返回 null）时弹层显隐自动复位，下次起播不会残留。
+ */
+function QueueButton({ color }: { color: string }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <>
+      <Pressable
+        hitSlop={8}
+        style={queueButtonStyle.control}
+        onPress={() => setVisible(true)}
+        accessibilityLabel="播放队列"
+      >
+        <AppIcon name="playlist" size={22} color={color} />
+      </Pressable>
+      <QueueSheet visible={visible} onClose={() => setVisible(false)} />
+    </>
+  );
+}
+
+/** 队列按钮与条内其他控制键同内距（独立静态样式，供子组件复用） */
+const queueButtonStyle = StyleSheet.create({
+  control: { paddingHorizontal: SPACING.xs },
+});
 
 const createStyles = (t: ThemeTokens) =>
   StyleSheet.create({

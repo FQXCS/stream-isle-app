@@ -227,17 +227,25 @@ export function RootNavigator() {
               component={PlayerScreen}
               options={{ headerShown: false }}
             />
-            {/* M5：专辑/艺术家/歌单详情三态 */}
+            {/* M5：专辑/艺术家/歌单详情三态；标题加载后由页内 setOptions 换成实际名称 */}
             <RootStack.Screen
               name={ROUTES.ALBUM_DETAIL}
               component={AlbumDetailScreen}
-              options={{ headerBackTitle: '返回' }}
+              options={({ route }) => ({
+                title:
+                  route.params.kind === 'artist'
+                    ? '艺人'
+                    : route.params.kind === 'playlist'
+                      ? '播放列表'
+                      : '专辑',
+                headerBackTitle: '返回',
+              })}
             />
-            {/* M5：Now Playing 全屏页（大封面/进度/模式/队列面板） */}
+            {/* M5：Now Playing 全屏页（大封面/进度/模式/队列面板）；进出走底部上滑/下滑 */}
             <RootStack.Screen
               name={ROUTES.NOW_PLAYING}
               component={NowPlayingScreen}
-              options={{ headerShown: false }}
+              options={{ headerShown: false, animation: 'slide_from_bottom' }}
             />
             {/* M5：照片查看器（全屏沉浸黑底） */}
             <RootStack.Screen

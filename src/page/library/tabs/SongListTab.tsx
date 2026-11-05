@@ -1,5 +1,5 @@
 /**
- * 歌曲列表 Tab：全部歌曲/已看/未看（filters 由 TabSpec 提供），点歌从当前片段起播入队。
+ * 歌曲列表 Tab：全部歌曲/已看/未看（filters 由 TabSpec 提供），点单曲仅该曲入队播放。
  */
 import { useCallback } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
@@ -35,14 +35,12 @@ export function SongListTab({ libraryId, sort, filters }: SongListTabProps) {
     )
   );
 
-  const handlePressSong = useCallback(
-    (song: AudioItem, index: number) => {
-      void audioService.playQueue(state.itemList, index).catch(() => {
-        showToast(errorMessageOf('UNKNOWN'), 'error');
-      });
-    },
-    [state.itemList]
-  );
+  const handlePressSong = useCallback((song: AudioItem) => {
+    // 点单曲仅该曲入队，不自动把整个列表带入队列
+    void audioService.playQueue([song], 0).catch(() => {
+      showToast(errorMessageOf('UNKNOWN'), 'error');
+    });
+  }, []);
 
   if (state.errorCode !== null && state.itemList.length === 0) {
     return <ErrorView error={new AppError(state.errorCode)} onRetry={state.retry} />;

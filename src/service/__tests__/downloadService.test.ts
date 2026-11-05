@@ -248,6 +248,57 @@ describe('DownloadService（06 §6.1 DownloadService 行）', () => {
     expect(dao.rows.size).toBe(0);
   });
 
+  it('音频下载：不调用视频 resolve，取详情媒体源并走 /Audio 静态原流', async () => {
+    const dao = makeFakeDao();
+    let startedUrl = '';
+    fsMock.mockImplementation((url: string) => {
+      startedUrl = url;
+      return {
+        downloadAsync: () =>
+          Promise.resolve({ status: 200, uri: 'file:///docs/downloads/srv-1/m1/media.mp3' }),
+        pauseAsync: () => Promise.resolve({ resumeData: null }),
+        cancelAsync: () => Promise.resolve(),
+      };
+    });
+    const resolveItem = jest.fn();
+    const service = new DownloadService({
+      resolveItem,
+      loadDetail: () =>
+        Promise.resolve(
+          makeDetail({
+            type: 'Audio',
+            name: '歌曲甲',
+            mediaSourceList: [
+              {
+                id: 'mediasource_1',
+                name: '',
+                container: 'mp3',
+                supportsDirectPlay: false,
+                supportsTranscoding: true,
+                sizeBytes: 2048,
+              },
+            ],
+          })
+        ),
+      loadPosterUrl: () => 'http://srv/Items/m1/Images/Primary',
+      dao,
+      freeDiskBytes: () => Promise.resolve(10 * 1024 * 1024 * 1024),
+      nowFn: () => 1,
+    });
+    await service.startDownload({
+      id: 'm1',
+      type: 'Audio',
+      name: '歌曲甲',
+      userData: { played: false, playCount: 0, favorite: false, playbackPositionMs: 0 },
+    });
+    expect(resolveItem).not.toHaveBeenCalled();
+    const row = await dao.getDownload('srv-1', 'm1');
+    expect(row).toMatchObject({ itemType: 'Audio', mediaSourceId: 'mediasource_1', container: 'mp3' });
+    await flushAsync();
+    expect(startedUrl).toContain('/Audio/m1/stream?static=true');
+    expect(startedUrl).toContain('MediaSourceId=mediasource_1');
+  });
+
   it('空间不足 → DOWNLOAD_NO_SPACE 且不落库', async () => {
     const dao = makeFakeDao();
     const service = makeService(dao, makeSession(), 512 * 1024 * 1024);

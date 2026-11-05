@@ -1,13 +1,12 @@
 /**
- * 队列面板（05 文档 §4.10/§4.11）：NowPlaying 内近全屏上拉面板。
+ * 队列面板（05 文档 §4.10/§4.11）：NowPlaying 与全局队列弹层（QueueSheet）复用。
  * 头部：模式图标 + 「列表循环（N 首）」+ 清空/收起；行：曲名 + 「艺人 - 专辑」+ 当前曲均衡器 + 移除。
  * 队列真源在 track-player 原生侧，仅面板打开时 getQueueSnapshot 拉全量（不进 store）；
  * 拖动 → moveInQueue，删除 → removeFromQueue，点击行 → skipToIndex（UI 不直呼 TrackPlayer.*）。
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import DraggableFlatList, { type DragEndParams } from 'react-native-draggable-flatlist';
-import { useFocusEffect } from '@react-navigation/native';
 
 import { AppIcon } from '@/component/AppIcon';
 import { useTheme } from '@/component/useTheme';
@@ -20,12 +19,11 @@ import { QueueRow } from '@/page/nowplaying/components/QueueRow';
 /** 行 key：同曲可能在队列出现多次，拼接快照序号避免 key 冲突（key 随行数据移动） */
 type QueueEntry = AudioQueueEntry & { key: string };
 
-interface QueuePanelProps {
-  /** 清空队列完成（页面据此收起面板并退出 NowPlaying） */
-  onCleared?: () => void;
+function toEntryList(snapshot: AudioQueueEntry[]): QueueEntry[] {
+  return snapshot.map((entry, index) => ({ ...entry, key: `${index}:${entry.id}` }));
 }
 
-export function QueuePanel({ onCleared }: QueuePanelProps) {
+export function QueuePanel() {
   const t = useTheme();
   const styles = createStyles(t);
   const repeatMode = usePlayerStore((state) => state.audio.repeatMode);
@@ -41,15 +39,23 @@ export function QueuePanel({ onCleared }: QueuePanelProps) {
 
   const reload = useCallback(async () => {
     const snapshot = await audioService.getQueueSnapshot();
-    setEntryList(snapshot.map((entry, index) => ({ ...entry, key: `${index}:${entry.id}` })));
+    setEntryList(toEntryList(snapshot));
   }, []);
 
-  // 面板挂载/聚焦时重拉全量队列（真源在 track-player 原生侧）
-  useFocusEffect(
-    useCallback(() => {
-      void reload();
-    }, [reload])
-  );
+  // 面板挂载时重拉全量队列（真源在 track-player 原生侧）；不依赖导航聚焦，
+  // 便于同一面板在 NowPlaying 与根级队列弹层（QueueSheet）中复用
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const snapshot = await audioService.getQueueSnapshot();
+      if (!cancelled) {
+        setEntryList(toEntryList(snapshot));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleDragEnd = useCallback((params: DragEndParams<QueueEntry>) => {
     // 长按拖动 → moveInQueue（from → to 逐项映射，播放顺序即时跟随）
@@ -81,19 +87,19 @@ export function QueuePanel({ onCleared }: QueuePanelProps) {
     void audioService.cyclePlaybackMode();
   }, []);
 
-  /** 清空队列：二次确认 → stop() 停止播放并清空 → 页面退出 NowPlaying */
+  /** 清空队列：二次确认 → 仅移除当前曲以外的条目，保留当前播放与迷你条 → 刷新列表 */
   const handleClear = useCallback(() => {
-    Alert.alert('清空队列', '将停止播放并清空当前队列。', [
+    Alert.alert('清空队列', '将移除当前歌曲以外的队列歌曲，当前播放不中断。', [
       { text: '取消', style: 'cancel' },
       {
         text: '清空',
         style: 'destructive',
         onPress: () => {
-          void audioService.stop().then(() => onCleared?.());
+          void audioService.clearQueueKeepCurrent().then(() => void reload());
         },
       },
     ]);
-  }, [onCleared]);
+  }, [reload]);
 
   return (
     <View style={styles.container}>

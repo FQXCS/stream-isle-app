@@ -2,7 +2,7 @@
  * 专辑/歌单/艺术家详情三态页（M5 文档 §4.12，kind 路由参数区分；设计文档 §10.2 AlbumDetail）。
  * - album：封面 + 「艺人 · 年份 · N 首 · 总时长」+ 三按钮 + 曲目列表；
  * - playlist：同布局、按服务端顺序（无艺人行）；
- * - artist：头像 + 简介（折叠）+ 专辑网格（点击进本页 album 态）+ 热门歌曲。
+ * - artist：与专辑同款头部（封面 + 名称 + 统计）+ 三按钮（热门歌曲）+ 简介 + 专辑网格 + 热门歌曲。
  * 三按钮语义（设计文档 §7.5 / 05 §4.12 入队语义表）：
  * 播放全部 = 整单入队从第 1 首起播；随机播放 = 整单打乱入队从随机第 1 首起播；加入队列 = 追加队尾。
  */
@@ -54,7 +54,7 @@ export function AlbumDetailScreen() {
   );
 }
 
-/** 整单三按钮（album/playlist 共用） */
+/** 整单三按钮（album/playlist/artist 共用） */
 function ActionRow({
   trackList,
 }: {
@@ -100,6 +100,7 @@ function ActionRow({
 function AlbumPlaylistBody({ kind, itemId }: { kind: 'album' | 'playlist'; itemId: string }) {
   const t = useTheme();
   const styles = createStyles(t);
+  const navigation = useNavigation<DetailNavigationProp>();
   const [detail, setDetail] = useState<AlbumDetailModel | null>(null);
   const [errorCode, setErrorCode] = useState<AppErrorCode | null>(null);
   const currentTrackId = usePlayerStore((state) => state.audio.currentTrack?.id ?? null);
@@ -116,6 +117,8 @@ function AlbumPlaylistBody({ kind, itemId }: { kind: 'album' | 'playlist'; itemI
         .then((model) => {
           if (!cancelled) {
             setDetail(model);
+            // 系统导航栏标题跟随条目名称（路由默认标题只是「专辑/播放列表」）
+            navigation.setOptions({ title: model.name });
             setErrorCode(null);
           }
         })
@@ -127,7 +130,7 @@ function AlbumPlaylistBody({ kind, itemId }: { kind: 'album' | 'playlist'; itemI
       return () => {
         cancelled = true;
       };
-    }, [kind, itemId])
+    }, [kind, itemId, navigation])
   );
 
   const totalDurationMs = useMemo(
@@ -135,16 +138,10 @@ function AlbumPlaylistBody({ kind, itemId }: { kind: 'album' | 'playlist'; itemI
     [detail]
   );
 
-  const handlePressSong = useCallback(
-    (song: AudioItem, index: number) => {
-      if (detail === null) {
-        return;
-      }
-      // 所在列表（整单）入队，从被点曲起播（05 §4.12）
-      void audioService.playQueue(detail.trackList, index).catch(() => undefined);
-    },
-    [detail]
-  );
+  const handlePressSong = useCallback((song: AudioItem) => {
+    // 点单曲仅该曲入队（整单播放走上方「播放全部」）
+    void audioService.playQueue([song], 0).catch(() => undefined);
+  }, []);
 
   if (errorCode !== null) {
     return <ErrorView error={new AppError(errorCode)} />;
@@ -190,15 +187,16 @@ function AlbumPlaylistBody({ kind, itemId }: { kind: 'album' | 'playlist'; itemI
           key={track.id}
           song={track}
           indexNumber={track.indexNumber ?? index + 1}
+          showDivider={index < detail.trackList.length - 1}
           active={track.id === currentTrackId}
-          onPress={() => handlePressSong(track, index)}
+          onPress={() => handlePressSong(track)}
         />
       ))}
     </ScrollView>
   );
 }
 
-/** 艺术家态主体：头像 + 简介 + 专辑网格 + 热门歌曲 */
+/** 艺术家态主体：与专辑详情同款头部 + 三按钮（热门歌曲）+ 简介 + 专辑网格 + 热门歌曲 */
 function ArtistDetailBody({ artistId }: { artistId: string }) {
   const t = useTheme();
   const styles = createStyles(t);
@@ -219,6 +217,8 @@ function ArtistDetailBody({ artistId }: { artistId: string }) {
         .then((model) => {
           if (!cancelled) {
             setDetail(model);
+            // 系统导航栏标题跟随艺人名称（路由默认标题只是「艺人」）
+            navigation.setOptions({ title: model.name });
             setErrorCode(null);
           }
         })
@@ -230,19 +230,13 @@ function ArtistDetailBody({ artistId }: { artistId: string }) {
       return () => {
         cancelled = true;
       };
-    }, [artistId])
+    }, [artistId, navigation])
   );
 
-  const handlePressSong = useCallback(
-    (song: AudioItem, index: number) => {
-      if (detail === null) {
-        return;
-      }
-      // 热门歌曲列表整列入队，从被点曲起播（上限 HOT_SONGS_LIMIT）
-      void audioService.playQueue(detail.hotSongList, index).catch(() => undefined);
-    },
-    [detail]
-  );
+  const handlePressSong = useCallback((song: AudioItem) => {
+    // 点单曲仅该曲入队，不把热门歌曲整列带入队列
+    void audioService.playQueue([song], 0).catch(() => undefined);
+  }, []);
 
   if (errorCode !== null) {
     return <ErrorView error={new AppError(errorCode)} />;
@@ -251,21 +245,40 @@ function ArtistDetailBody({ artistId }: { artistId: string }) {
     return <LoadingView />;
   }
 
+  const metaLine =
+    [
+      detail.albumList.length > 0 ? `${detail.albumList.length} 张专辑` : undefined,
+      detail.hotSongList.length > 0
+        ? `${Math.min(detail.hotSongList.length, HOT_SONGS_LIMIT)} 首热门歌曲`
+        : undefined,
+    ]
+      .filter((part) => part !== undefined)
+      .join(' · ') || undefined;
+
   return (
     <ScrollView
       style={styles.fill}
       contentContainerStyle={[styles.content, { paddingBottom: SPACING.xl + miniPlayerPadding }]}
     >
-      <View style={styles.artistHeader}>
+      <View style={styles.header}>
         {detail.avatarImageUrl !== undefined ? (
-          <Image source={{ uri: detail.avatarImageUrl }} style={styles.avatar} contentFit="cover" transition={200} />
+          <Image
+            source={{ uri: detail.avatarImageUrl }}
+            style={styles.cover}
+            contentFit="cover"
+            transition={200}
+          />
         ) : (
-          <View style={[styles.avatar, styles.coverFallback]}>
+          <View style={[styles.cover, styles.coverFallback]}>
             <AppIcon name="audio" size={32} color={t.textSecondary} />
           </View>
         )}
-        <Text style={styles.title}>{detail.name}</Text>
+        <View style={styles.headerText}>
+          <Text style={styles.title}>{detail.name}</Text>
+          {metaLine !== undefined && <Text style={styles.meta}>{metaLine}</Text>}
+        </View>
       </View>
+      {detail.hotSongList.length > 0 && <ActionRow trackList={detail.hotSongList} />}
       {detail.overview !== undefined && detail.overview !== '' && (
         <Pressable onPress={() => setOverviewExpanded((value) => !value)}>
           <Text style={styles.overview} numberOfLines={overviewExpanded ? undefined : 3}>
@@ -314,8 +327,9 @@ function ArtistDetailBody({ artistId }: { artistId: string }) {
               key={song.id}
               song={song}
               indexNumber={index + 1}
+              showDivider={index < detail.hotSongList.length - 1}
               active={song.id === currentTrackId}
-              onPress={() => handlePressSong(song, index)}
+              onPress={() => handlePressSong(song)}
             />
           ))}
         </>
@@ -364,13 +378,6 @@ const createStyles = (t: ThemeTokens) =>
     paddingVertical: SPACING.s,
   },
   secondaryButtonText: { color: t.textPrimary, fontSize: FONT_SIZE.body },
-  artistHeader: { alignItems: 'center', gap: SPACING.s, padding: SPACING.m },
-  avatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: t.surface,
-  },
   overview: { color: t.textSecondary, fontSize: FONT_SIZE.body, paddingHorizontal: SPACING.m },
   sectionTitle: {
     color: t.textPrimary,

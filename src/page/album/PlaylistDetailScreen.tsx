@@ -56,17 +56,16 @@ export function PlaylistDetailScreen() {
           name: item.name,
           runtimeMs: item.runtimeMs,
           coverImageUrl: item.posterImageUrl,
+          favorite: item.userData.favorite,
         })),
     [state.itemList]
   );
   const allAudio = state.itemList.length > 0 && audioList.length === state.itemList.length;
 
-  const handlePressSong = useCallback(
-    (_song: AudioItem, index: number) => {
-      void audioService.playQueue(audioList, index).catch(() => undefined);
-    },
-    [audioList]
-  );
+  const handlePressSong = useCallback((song: AudioItem) => {
+    // 点单曲仅该曲入队，不把整个歌单带入队列
+    void audioService.playQueue([song], 0).catch(() => undefined);
+  }, []);
 
   if (state.errorCode !== null && state.itemList.length === 0) {
     return <ErrorView error={new AppError(state.errorCode)} onRetry={state.retry} />;

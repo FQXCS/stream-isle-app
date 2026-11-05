@@ -242,6 +242,8 @@ export interface AudioItem {
   runtimeMs?: number;
   /** 封面（条目 Primary，maxWidth=AUDIO_ARTWORK_MAX_WIDTH；通知栏 artwork 与迷你条共用） */
   coverImageUrl?: string;
+  /** 收藏态（列表接口带 Fields=UserData；列表行收藏按钮初始值） */
+  favorite?: boolean;
 }
 
 /** 相册条目（相册网格行） */

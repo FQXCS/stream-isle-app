@@ -31,7 +31,7 @@ import { AppError, errorMessageOf } from '@/infra/error';
 import { getActiveAdapter } from '@/service/adapterProvider';
 import { playbackService } from '@/service/PlaybackService';
 import { AudioReporting, type AudioReportingHost } from '@/service/AudioReporting';
-import { showToast } from '@/component/Toast';
+import { showCenterToast, showToast } from '@/component/Toast';
 import { useAccountStore } from '@/store/accountStore';
 import { usePlayerStore } from '@/store/playerStore';
 import { combinedPlaybackMode, type PlaybackModeEnum } from '@/util/playbackMode';
@@ -213,8 +213,8 @@ export class AudioService {
   }
 
   /**
-   * 重置队列并从 startIndex 起播——专辑/歌单/艺术家热门/列表点歌的统一入口
-   * （设计文档 §7.5：点单曲 = 该曲入队并连播所在列表后续）；每次调用生成新 playSessionId。
+   * 重置队列并从 startIndex 起播——整单播放（播放全部/随机）与单曲点播的统一入口；
+   * 单曲点播由调用方传单元素列表（不再自动带入所在列表）。每次调用生成新 playSessionId。
    */
   async playQueue(trackList: AudioItem[], startIndex: number): Promise<void> {
     try {
@@ -237,35 +237,90 @@ export class AudioService {
     usePlayerStore.getState().setAudioState({ queueLength: trackList.length, shuffle: false });
   }
 
-  /** 追加到队尾（专辑/歌单「加入队列」按钮）；队列非空沿用活跃 playSessionId，为空生成新值（§4.4） */
-  async addToQueue(trackList: AudioItem[]): Promise<void> {
+  /** 追加到队尾（专辑/歌单「加入队列」按钮）；返回实际新增曲目数（去重后）。 */
+  async addToQueue(trackList: AudioItem[]): Promise<number> {
     try {
       await this.ensureSetup();
     } catch (error) {
       showToast(errorMessageOf(this.errorCodeOf(error)), 'error');
-      return;
+      return 0;
+    }
+    // 去重：以原生队列为真源，跳过已在队列中的曲目（同时过滤入参自身重复项），
+    // 反复「加入队列」不会让同一首歌堆积
+    const existingIds = new Set(
+      TrackPlayer.getQueue()
+        .map((item) => item.mediaId)
+        .filter((id): id is string => id !== undefined)
+    );
+    const newTrackList = trackList.filter((audio) => {
+      if (existingIds.has(audio.id)) {
+        return false;
+      }
+      existingIds.add(audio.id);
+      return true;
+    });
+    if (newTrackList.length === 0) {
+      showToast('歌曲已在播放队列中');
+      return 0;
     }
     const queueEmpty = this.activePlaySessionId === null;
     const playSessionId = queueEmpty ? newUid() : this.activePlaySessionId;
     if (playSessionId === null) {
-      return;
+      return 0;
     }
-    const trackListResolved = await this.resolveTrackList(trackList, playSessionId);
+    const trackListResolved = await this.resolveTrackList(newTrackList, playSessionId);
     this.activePlaySessionId = playSessionId;
+    // 无条件回填映射：队列中的曲目被移除后再加入时，元数据与原序基线都要恢复
+    const orderedIds = new Set(this.originalTrackIdOrder);
     trackListResolved.audioList.forEach((item) => {
-      if (!this.audioItemById.has(item.id)) {
-        this.audioItemById.set(item.id, item);
+      this.audioItemById.set(item.id, item);
+      if (!orderedIds.has(item.id)) {
+        orderedIds.add(item.id);
         this.originalTrackIdOrder.push(item.id);
       }
     });
     TrackPlayer.addMediaItems(trackListResolved.mediaItems);
     const previousLength = usePlayerStore.getState().audio.queueLength;
-    usePlayerStore.getState().setAudioState({ queueLength: previousLength + trackList.length });
+    usePlayerStore.getState().setAudioState({ queueLength: previousLength + newTrackList.length });
     // 队列已空时追加：追加完从队首起播（否则用户无反馈）
     if (queueEmpty) {
       TrackPlayer.skipToIndex(0);
       await TrackPlayer.play();
     }
+    showCenterToast('已添加至播放队列');
+    return newTrackList.length;
+  }
+
+  /**
+   * 清空队列但保留当前曲（05 §4.11 改版）：移除当前曲以外的全部条目，播放不中断、
+   * 迷你条不消失；队列只剩当前曲，长度镜像为 1，随机基线同步收敛。
+   */
+  async clearQueueKeepCurrent(): Promise<void> {
+    const currentIndex = TrackPlayer.getActiveMediaItemIndex();
+    const queue = TrackPlayer.getQueue();
+    if (currentIndex === null || currentIndex < 0 || queue.length === 0) {
+      return;
+    }
+    const currentId = queue[currentIndex]?.mediaId;
+    // 先删当前曲之后的项，再删之前的项（前段删除不改变当前曲索引）
+    if (currentIndex < queue.length - 1) {
+      TrackPlayer.removeMediaItems(currentIndex + 1, queue.length);
+    }
+    if (currentIndex > 0) {
+      TrackPlayer.removeMediaItems(0, currentIndex);
+    }
+    if (currentId !== undefined) {
+      const currentAudio = this.audioItemById.get(currentId);
+      this.audioItemById.clear();
+      if (currentAudio !== undefined) {
+        this.audioItemById.set(currentId, currentAudio);
+      }
+      // 随机基线只保留当前曲；队列仅一项时随机态无意义，复位为关
+      this.originalTrackIdOrder = [currentId];
+    } else {
+      this.originalTrackIdOrder = [];
+    }
+    usePlayerStore.getState().setAudioState({ queueLength: 1, shuffle: false });
   }
 
   /** 队列快照（05 §4.5：队列全量仅在队列页打开时拉取；UI 不直呼 TrackPlayer，唯一入口约束） */

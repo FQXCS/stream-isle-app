@@ -32,6 +32,7 @@ export type AppIconName =
   | 'account'
   | 'star'
   | 'refresh'
+  | 'info'
   // 底部 Tab
   | 'home'
   | 'library'
@@ -48,6 +49,7 @@ export type AppIconName =
   | 'repeatOne'
   | 'shuffle'
   | 'playlist'
+  | 'playlistPlus'
   | 'lyrics'
   | 'bitrate'
   | 'brightness'
@@ -106,6 +108,7 @@ const ICON_GLYPH_MAP: Record<AppIconName, MciName> = {
   account: 'account',
   star: 'star',
   refresh: 'refresh',
+  info: 'information-outline',
   home: 'home',
   library: 'library',
   search: 'magnify',
@@ -120,6 +123,7 @@ const ICON_GLYPH_MAP: Record<AppIconName, MciName> = {
   repeatOne: 'repeat-once',
   shuffle: 'shuffle',
   playlist: 'playlist-music',
+  playlistPlus: 'playlist-plus',
   lyrics: 'script-text-outline',
   bitrate: 'speedometer',
   brightness: 'brightness-6',

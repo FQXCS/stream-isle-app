@@ -7,21 +7,28 @@
  * 页面数据全部来自 playerStore.audio + useProgress（每秒订阅，不进 store），无独立请求。
  * 封面态沿用媒体沉浸页固定深色（06 §4.6.1），无封面态跟随主题 token。
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
 import { Image } from 'expo-image';
 import { useProgress } from '@rntp/player';
-import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { setStatusBarStyle } from 'expo-status-bar';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AnchorMenu, type AnchorMenuItem, type AnchorRect } from '@/component/AnchorMenu';
 import { AppIcon } from '@/component/AppIcon';
 import { EmptyView } from '@/component/EmptyView';
+import { FavoriteButton } from '@/component/FavoriteButton';
+import { showToast } from '@/component/Toast';
 import { useResolvedScheme, useTheme } from '@/component/useTheme';
 import { MODE_HINT_DURATION_MS } from '@/constant/audio';
+import { ROUTES } from '@/constant/navigation';
 import { COLORS, SPACING } from '@/constant/theme';
+import { AppError, errorMessageOf } from '@/infra/error';
 import { audioService } from '@/service/AudioService';
+import { downloadService } from '@/service/DownloadService';
+import { itemActionService } from '@/service/ItemActionService';
 import { usePlayerStore } from '@/store/playerStore';
 import { formatClock } from '@/util/format';
 import { SeekBar } from '@/page/player/components/SeekBar';
@@ -34,6 +41,12 @@ import { SeekDragArea } from '@/page/nowplaying/components/SeekDragArea';
 
 type NowPlayingNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+/** 操作失败 Toast（文案取 ERROR_MESSAGE_MAP 唯一出处） */
+function toastError(err: unknown): void {
+  const code = err instanceof AppError ? err.code : 'UNKNOWN';
+  showToast(errorMessageOf(code), 'error');
+}
+
 /** 封面左右留白（参考稿封面约占屏宽 76%，比页面 24 内距再收 16） */
 const COVER_HORIZONTAL_MARGIN = SPACING.xl + SPACING.l;
 /** 封面占屏高比例上限（矮屏按高度收缩，保证歌词区与控制行可见） */
@@ -45,15 +58,20 @@ const PLAY_BUTTON_SIZE = 64;
 
 export function NowPlayingScreen() {
   const navigation = useNavigation<NowPlayingNavigationProp>();
-  const route = useRoute<{ key: string; name: string; params?: { openQueue?: boolean } }>();
   const insets = useSafeAreaInsets();
   const scheme = useResolvedScheme();
   const t = useTheme();
   const { width, height } = useWindowDimensions();
   const currentTrack = usePlayerStore((state) => state.audio.currentTrack);
   const status = usePlayerStore((state) => state.audio.status);
-  // 迷你条「队列」按钮直达：路由参数决定进页即展开队列面板
-  const [queueVisible, setQueueVisible] = useState(route.params?.openQueue === true);
+  // 队列面板显隐（页内控制行「队列」按钮切换；迷你条的队列按钮走根级 QueueSheet）
+  const [queueVisible, setQueueVisible] = useState(false);
+  /** 右上角「更多」菜单（下载/删除/详情） */
+  const [moreMenu, setMoreMenu] = useState<{
+    anchor: AnchorRect;
+    itemList: AnchorMenuItem[];
+  } | null>(null);
+  const moreRef = useRef<ComponentRef<typeof View> | null>(null);
   /** 播放模式切换提示文案（null = 不显示；2s 后自动清空） */
   const [modeHint, setModeHint] = useState<string | null>(null);
   const modeHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -116,6 +134,59 @@ export function NowPlayingScreen() {
     Math.min(width - COVER_HORIZONTAL_MARGIN * 2, height * COVER_HEIGHT_RATIO)
   );
 
+  /** 下载当前曲（音乐下载走静态原流；无权限/重复等失败统一 Toast） */
+  const handleDownload = () => {
+    void downloadService
+      .startDownload({
+        id: currentTrack.id,
+        type: 'Audio',
+        name: currentTrack.name,
+        posterImageUrl: currentTrack.coverImageUrl,
+        runtimeMs: currentTrack.runtimeMs,
+        userData: { played: false, playCount: 0, favorite: false, playbackPositionMs: 0 },
+      })
+      .then(() => showToast(`已加入下载队列：${currentTrack.name}`))
+      .catch(toastError);
+  };
+
+  /** 删除当前曲：服务器删除成功后停止播放并离开播放页 */
+  const handleDelete = () => {
+    Alert.alert('删除媒体', `确定从服务器删除「${currentTrack.name}」吗？此操作不可撤销。`, [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '删除',
+        style: 'destructive',
+        onPress: () => {
+          void itemActionService
+            .deleteItem(currentTrack.id)
+            .then(() => {
+              showToast('已删除');
+              void audioService.stop();
+              navigation.goBack();
+            })
+            .catch(toastError);
+        },
+      },
+    ]);
+  };
+
+  const handleOpenDetail = () => {
+    navigation.navigate(ROUTES.ITEM, { itemId: currentTrack.id });
+  };
+
+  const openMoreMenu = () => {
+    moreRef.current?.measureInWindow((x, y, width, height) => {
+      setMoreMenu({
+        anchor: { x, y, width, height },
+        itemList: [
+          { key: 'download', label: '下载', icon: 'download', onPress: handleDownload },
+          { key: 'delete', label: '删除', icon: 'trash', tone: 'danger', onPress: handleDelete },
+          { key: 'detail', label: '详情', icon: 'info', onPress: handleOpenDetail },
+        ],
+      });
+    });
+  };
+
   // 页面 tone：封面态固定深色（白字），无封面态取当前主题 token
   const textPrimary = hasCover ? COLORS.textPrimary : t.textPrimary;
   const textSecondary = hasCover ? COLORS.textSecondary : t.textSecondary;
@@ -145,8 +216,15 @@ export function NowPlayingScreen() {
             <AppIcon name="chevronDown" size={26} color={textPrimary} />
           </Pressable>
           <Text style={[styles.headerTitle, { color: textPrimary }]}>正在播放</Text>
-          {/* 与左侧图标等宽的占位，保证标题居中 */}
-          <View style={styles.headerSpacer} />
+          {/* 更多：下载 / 删除 / 详情（点击后按按钮矩形锚定弹出菜单） */}
+          <Pressable
+            ref={moreRef}
+            hitSlop={8}
+            onPress={openMoreMenu}
+            accessibilityLabel="更多操作"
+          >
+            <AppIcon name="more" size={26} color={textPrimary} />
+          </Pressable>
         </View>
 
         <View style={styles.coverWrap}>
@@ -180,14 +258,25 @@ export function NowPlayingScreen() {
         </View>
 
         <View style={styles.titleBlock}>
-          <Text style={[styles.title, { color: textPrimary }]} numberOfLines={1}>
-            {currentTrack.name}
-          </Text>
-          {currentTrack.artistName !== undefined && (
-            <Text style={[styles.artist, { color: textSecondary }]} numberOfLines={1}>
-              {currentTrack.artistName}
-            </Text>
-          )}
+          <View style={styles.titleRow}>
+            <View style={styles.titleText}>
+              <Text style={[styles.title, { color: textPrimary }]} numberOfLines={1}>
+                {currentTrack.name}
+              </Text>
+              {currentTrack.artistName !== undefined && (
+                <Text style={[styles.artist, { color: textSecondary }]} numberOfLines={1}>
+                  {currentTrack.artistName}
+                </Text>
+              )}
+            </View>
+            {/* 收藏：紧贴曲名右侧；切歌后按 trackId 重新查询收藏态 */}
+            <FavoriteButton
+              key={currentTrack.id}
+              trackId={currentTrack.id}
+              size={24}
+              inactiveColor={textPrimary}
+            />
+          </View>
         </View>
 
         {/* 常驻歌词区：水平拖动沿用视频播放页 seek 手势（拖动中 HUD 预览，松手才 seek） */}
@@ -283,16 +372,15 @@ export function NowPlayingScreen() {
               { paddingBottom: insets.bottom, backgroundColor: t.surface },
             ]}
           >
-            <QueuePanel
-              onCleared={() => {
-                // 清空队列即停止播放并复位 audio 切片：收起面板并退出 NowPlaying
-                setQueueVisible(false);
-                navigation.goBack();
-              }}
-            />
+            <QueuePanel />
           </View>
         </>
       )}
+      <AnchorMenu
+        anchor={moreMenu?.anchor ?? null}
+        itemList={moreMenu?.itemList ?? []}
+        onClose={() => setMoreMenu(null)}
+      />
     </View>
   );
 }
@@ -308,7 +396,6 @@ const styles = StyleSheet.create({
     height: 44,
   },
   headerTitle: { fontSize: 15, fontWeight: '600' },
-  headerSpacer: { width: 26 },
   coverWrap: { alignItems: 'center', marginTop: SPACING.s },
   cover: {
     elevation: 16,
@@ -324,6 +411,9 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   titleBlock: { alignSelf: 'stretch', marginTop: SPACING.l },
+  /** 曲名区 + 右侧收藏：收藏贴曲名行，标题超长省略 */
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.m },
+  titleText: { flex: 1 },
   title: { fontSize: 24, fontWeight: '700' },
   artist: { fontSize: 14, marginTop: 6 },
   /** 歌词区占满剩余高度（矮屏可压缩，最小保留两行歌词） */

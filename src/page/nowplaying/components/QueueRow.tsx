@@ -9,6 +9,7 @@ import { AppIcon } from '@/component/AppIcon';
 import { useTheme } from '@/component/useTheme';
 import { SPACING, type ThemeTokens } from '@/constant/theme';
 import type { AudioQueueEntry } from '@/service/AudioService';
+import { PlayingIndicator } from '@/page/nowplaying/components/PlayingIndicator';
 
 interface QueueRowProps {
   entry: AudioQueueEntry;
@@ -51,7 +52,7 @@ export function QueueRow({
             </Text>
           )}
         </View>
-        {active && <AppIcon name="equalizer" size={18} color={t.accent} />}
+        {active && <PlayingIndicator />}
         <Pressable
           hitSlop={12}
           style={styles.removeButton}

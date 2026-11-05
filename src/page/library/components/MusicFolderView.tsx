@@ -1,7 +1,7 @@
 /**
  * 音乐库文件夹区（目录浏览）：Items?Recursive=false 逐级浏览，返回键回上一级（不设面包屑）。
  * 目录内是子文件夹/专辑时，用与视频库文件夹页一致的三列网格（FolderCard / PosterCard）；
- * 目录内是歌曲时用 SongRow 行列表（点歌 = 当前已加载歌曲从该曲起播）。
+ * 目录内是歌曲时用 SongRow 行列表（点单曲 = 仅该曲入队播放）。
  */
 import { useCallback, useMemo } from 'react';
 import { useNavigation } from '@react-navigation/native';
@@ -38,6 +38,7 @@ function toAudioItem(item: MediaLibraryItem): AudioItem {
     name: item.name,
     runtimeMs: item.runtimeMs,
     coverImageUrl: item.posterImageUrl,
+    favorite: item.userData.favorite,
   };
 }
 
@@ -78,6 +79,11 @@ export function MusicFolderView({ folderId, onOpenFolder, sortBy, sortOrder }: M
     () => state.itemList.filter((item) => item.type === 'Audio').map(toAudioItem),
     [state.itemList]
   );
+  /** 目录内歌曲序号（混合列表只对 Audio 编号，序号按歌曲在目录中的顺序） */
+  const songNumberById = useMemo(
+    () => new Map(songList.map((song, index) => [song.id, index + 1])),
+    [songList]
+  );
   // 子文件夹/专辑项（网格模式的数据源）
   const folderLikeList = useMemo(
     () => visibleList.filter((item) => item.type !== 'Audio'),
@@ -86,18 +92,12 @@ export function MusicFolderView({ folderId, onOpenFolder, sortBy, sortOrder }: M
   // 纯目录层用三列网格（与视频库一致）；含歌曲的目录用行列表
   const gridMode = folderLikeList.length > 0 && songList.length === 0;
 
-  const handlePressSong = useCallback(
-    (song: AudioItem) => {
-      const index = songList.findIndex((item) => item.id === song.id);
-      if (index < 0) {
-        return;
-      }
-      void audioService.playQueue(songList, index).catch(() => {
-        showToast(errorMessageOf('UNKNOWN'), 'error');
-      });
-    },
-    [songList]
-  );
+  const handlePressSong = useCallback((song: AudioItem) => {
+    // 点单曲仅该曲入队，不把整个已加载片段带入队列
+    void audioService.playQueue([song], 0).catch(() => {
+      showToast(errorMessageOf('UNKNOWN'), 'error');
+    });
+  }, []);
 
   /** 子文件夹 / 专辑 / 歌单的点击 */
   const handlePressEntry = useCallback(
@@ -161,7 +161,16 @@ export function MusicFolderView({ folderId, onOpenFolder, sortBy, sortOrder }: M
       keyExtractor={(item) => item.id}
       renderItem={({ item }: { item: MediaLibraryItem }) => {
         if (item.type === 'Audio') {
-          return <SongRow song={toAudioItem(item)} onPress={() => handlePressSong(toAudioItem(item))} />;
+          const song = toAudioItem(item);
+          const number = songNumberById.get(song.id);
+          return (
+            <SongRow
+              song={song}
+              indexNumber={number}
+              showDivider={number !== undefined && number < songList.length}
+              onPress={() => handlePressSong(song)}
+            />
+          );
         }
         const isFolder = item.type === 'Folder';
         const rowIcon: AppIconName = isFolder

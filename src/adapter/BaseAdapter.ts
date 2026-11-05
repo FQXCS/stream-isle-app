@@ -1293,6 +1293,18 @@ export abstract class BaseAdapter implements ServerAdapter {
     });
   }
 
+  /** 收藏态查询（迷你条队列仅剩当前曲时的收藏按钮）：只拉 UserData，避免整条详情 */
+  async getItemFavorite(userId: string, itemId: string): Promise<boolean> {
+    const data = await this.api.request<{ UserData?: { IsFavorite?: boolean } }>({
+      method: 'GET',
+      url: this.urlOf(
+        `/Users/${userId}/Items/${itemId}?${this.buildQuery({ Fields: 'UserData' })}`
+      ),
+      headers: this.buildHeaders(this.token),
+    });
+    return data.UserData?.IsFavorite === true;
+  }
+
   /** 取消收藏：DELETE /Users/{userId}/FavoriteItems/{itemId} */
   async unmarkFavorite(userId: string, itemId: string): Promise<void> {
     await this.api.request({
@@ -1362,6 +1374,7 @@ export abstract class BaseAdapter implements ServerAdapter {
       coverImageUrl: tag
         ? this.buildImageUrl(id, 'Primary', AUDIO_ARTWORK_MAX_WIDTH, tag)
         : undefined,
+      favorite: item.UserData?.IsFavorite === true,
     };
     return audio;
   }
@@ -1494,7 +1507,7 @@ export abstract class BaseAdapter implements ServerAdapter {
           SortBy: sortParamOf(this.flavor, sort?.sortBy ?? 'SORT_NAME'),
           SortOrder: SORT_ORDER_PARAM_MAP[sort?.sortOrder ?? 'ASC'],
           Filters: filters?.length ? filters.join(',') : undefined,
-          Fields: 'PrimaryImageAspectRatio,ChildCount',
+          Fields: 'PrimaryImageAspectRatio,ChildCount,UserData',
           StartIndex: String(this.startIndexOfPage(page)),
           Limit: String(PAGE_SIZE),
           ImageTypeLimit: '1',
@@ -1523,7 +1536,7 @@ export abstract class BaseAdapter implements ServerAdapter {
           Recursive: 'true',
           SortBy: 'ParentIndexNumber,IndexNumber,SortName',
           SortOrder: 'Ascending,Ascending,Ascending',
-          Fields: 'PrimaryImageAspectRatio',
+          Fields: 'PrimaryImageAspectRatio,UserData',
           ImageTypeLimit: '1',
         })}`
       ),
@@ -1532,29 +1545,39 @@ export abstract class BaseAdapter implements ServerAdapter {
     return (data.Items ?? []).map((item) => this.translateAudioItem(item));
   }
 
-  /** 艺术家的专辑网格：AlbumArtistIds={artistId}&IncludeItemTypes=MusicAlbum（设计文档 §7.5） */
+  /**
+   * 艺术家的专辑网格：优先 AlbumArtistIds（专辑艺人维度，设计文档 §7.5）；
+   * 为空时回退 ArtistIds（无 AlbumArtist 标签的音乐库，专辑只挂在曲目艺人上）。
+   */
   async getArtistAlbums(
     userId: string,
     artistId: string,
     page: number
   ): Promise<Paged<MediaLibraryItem>> {
-    const data = await this.api.request<ItemsResponse>({
-      method: 'GET',
-      url: this.urlOf(
-        `/Users/${userId}/Items?${this.buildQuery({
-          AlbumArtistIds: artistId,
-          IncludeItemTypes: 'MusicAlbum',
-          Recursive: 'true',
-          SortBy: 'SortName',
-          SortOrder: 'Ascending',
-          Fields: 'PrimaryImageAspectRatio,ChildCount',
-          StartIndex: String(this.startIndexOfPage(page)),
-          Limit: String(PAGE_SIZE),
-          ImageTypeLimit: '1',
-        })}`
-      ),
-      headers: this.buildHeaders(this.token),
-    });
+    const requestAlbums = (filterKey: 'AlbumArtistIds' | 'ArtistIds') =>
+      this.api.request<ItemsResponse>({
+        method: 'GET',
+        url: this.urlOf(
+          `/Users/${userId}/Items?${this.buildQuery({
+            [filterKey]: artistId,
+            IncludeItemTypes: 'MusicAlbum',
+            Recursive: 'true',
+            SortBy: 'SortName',
+            SortOrder: 'Ascending',
+            Fields: 'PrimaryImageAspectRatio,ChildCount',
+            StartIndex: String(this.startIndexOfPage(page)),
+            Limit: String(PAGE_SIZE),
+            ImageTypeLimit: '1',
+          })}`
+        ),
+        headers: this.buildHeaders(this.token),
+      });
+    const primary = await requestAlbums('AlbumArtistIds');
+    // 仅首页做回退（艺人详情只消费首页；后续页沿用首次命中的维度）
+    const data =
+      (primary.Items ?? []).length > 0 || page > 0
+        ? primary
+        : await requestAlbums('ArtistIds');
     return {
       items: (data.Items ?? []).flatMap((item) => {
         const translated = this.translateListItem(item);
@@ -1566,26 +1589,31 @@ export abstract class BaseAdapter implements ServerAdapter {
   }
 
   /**
-   * 艺术家热门歌曲：AlbumArtistIds 过滤 + SortBy=PlayCount 降序 + Limit=HOT_SONGS_LIMIT。
-   * 「热门」= 服务端播放次数；新库全 0 时退化为服务端次级排序（05 文档 §4.3）。
+   * 艺术家热门歌曲：优先按「曲目艺人」ArtistIds 过滤（Emby Web 艺人页同口径；
+   * 未写 AlbumArtist 标签的曲目只挂在 ArtistIds 上），为空再回退 AlbumArtistIds。
+   * SortBy=PlayCount 降序 + Limit=HOT_SONGS_LIMIT。
    */
   async getArtistHotSongs(userId: string, artistId: string): Promise<AudioItem[]> {
-    const data = await this.api.request<ItemsResponse>({
-      method: 'GET',
-      url: this.urlOf(
-        `/Users/${userId}/Items?${this.buildQuery({
-          AlbumArtistIds: artistId,
-          IncludeItemTypes: 'Audio',
-          Recursive: 'true',
-          SortBy: 'PlayCount',
-          SortOrder: 'Descending',
-          Limit: String(HOT_SONGS_LIMIT),
-          Fields: 'PrimaryImageAspectRatio',
-          ImageTypeLimit: '1',
-        })}`
-      ),
-      headers: this.buildHeaders(this.token),
-    });
+    const requestSongs = (filterKey: 'AlbumArtistIds' | 'ArtistIds') =>
+      this.api.request<ItemsResponse>({
+        method: 'GET',
+        url: this.urlOf(
+          `/Users/${userId}/Items?${this.buildQuery({
+            [filterKey]: artistId,
+            IncludeItemTypes: 'Audio',
+            Recursive: 'true',
+            SortBy: 'PlayCount',
+            SortOrder: 'Descending',
+            Limit: String(HOT_SONGS_LIMIT),
+            Fields: 'PrimaryImageAspectRatio,UserData',
+            ImageTypeLimit: '1',
+          })}`
+        ),
+        headers: this.buildHeaders(this.token),
+      });
+    const primary = await requestSongs('ArtistIds');
+    const data =
+      (primary.Items ?? []).length > 0 ? primary : await requestSongs('AlbumArtistIds');
     return (data.Items ?? []).map((item) => this.translateAudioItem(item));
   }
 
@@ -1599,7 +1627,7 @@ export abstract class BaseAdapter implements ServerAdapter {
       url: this.urlOf(
         `/Playlists/${playlistId}/Items?${this.buildQuery({
           UserId: userId,
-          Fields: 'PrimaryImageAspectRatio',
+          Fields: 'PrimaryImageAspectRatio,UserData',
           ImageTypeLimit: '1',
         })}`
       ),

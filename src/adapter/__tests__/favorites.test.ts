@@ -59,6 +59,22 @@ describe('adapter 收藏（POST/DELETE /Users/{uid}/FavoriteItems/{itemId}，04 
     expect(headers['X-Emby-Token']).toBe('tok-1');
   });
 
+  it('getItemFavorite：GET Items/{id}?Fields=UserData 并解析 IsFavorite', async () => {
+    const { adapter, api } = makeAdapter('EMBY', async () => ({
+      UserData: { IsFavorite: true },
+    }));
+    await expect(adapter.getItemFavorite('u1', 'item1')).resolves.toBe(true);
+    expect(api.request.mock.calls[0][0]).toMatchObject({
+      method: 'GET',
+      url: 'http://srv/Users/u1/Items/item1?Fields=UserData',
+    });
+  });
+
+  it('getItemFavorite：响应无 UserData 时按未收藏处理', async () => {
+    const { adapter } = makeAdapter('JELLYFIN', async () => ({}));
+    await expect(adapter.getItemFavorite('u1', 'item1')).resolves.toBe(false);
+  });
+
   it('markPlayed/unmarkPlayed 既有成对签名不回退（POST/DELETE PlayedItems）', async () => {
     const { adapter, api } = makeAdapter('JELLYFIN');
     await adapter.markPlayed('u1', 'ep1');

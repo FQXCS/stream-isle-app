@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 覆盖 react-native-screens 的 slide_from_bottom 退场时长（与入场保持同值） -->
+<translate xmlns:android="http://schemas.android.com/apk/res/android"
+    android:fromYDelta="0%"
+    android:toYDelta="100%"
+    android:duration="220" />

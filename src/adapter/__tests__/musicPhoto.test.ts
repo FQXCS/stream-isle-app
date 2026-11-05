@@ -56,6 +56,19 @@ describe('音乐四区查询', () => {
     const url = api.request.mock.calls[0][0].url as string;
     expect(url).toContain('SortBy=AlbumArtist');
     expect(url).toContain('SortOrder=Descending');
+    expect(url).toContain('Fields=PrimaryImageAspectRatio%2CChildCount%2CUserData');
+  });
+
+  it('音频列表翻译：UserData.IsFavorite → AudioItem.favorite（行内收藏按钮初始态）', async () => {
+    const { adapter } = makeAdapter('EMBY', {
+      Items: [
+        { Id: 'a1', Type: 'Audio', Name: '歌甲', UserData: { IsFavorite: true } },
+        { Id: 'a2', Type: 'Audio', Name: '歌乙', UserData: { IsFavorite: false } },
+      ],
+      TotalRecordCount: 2,
+    });
+    const list = await adapter.getArtistHotSongs('u1', 'art-1');
+    expect(list.map((item) => item.favorite)).toEqual([true, false]);
   });
 
   it('getMusicArtists：排序透传，缺省仍为 SortName 升序', async () => {
@@ -136,23 +149,27 @@ describe('专辑/艺术家/歌单详情查询', () => {
     expect(url).not.toContain('&Limit=');
   });
 
-  it('getArtistAlbums：AlbumArtistIds 过滤 + IncludeItemTypes=MusicAlbum', async () => {
+  it('getArtistAlbums：优先 AlbumArtistIds，空结果回退 ArtistIds + IncludeItemTypes=MusicAlbum', async () => {
     const { adapter, api } = makeAdapter('EMBY');
     await adapter.getArtistAlbums('u1', 'art-1', 0);
-    const url = api.request.mock.calls[0][0].url as string;
-    expect(url).toContain('AlbumArtistIds=art-1');
-    expect(url).toContain('IncludeItemTypes=MusicAlbum');
+    const primaryUrl = api.request.mock.calls[0][0].url as string;
+    const fallbackUrl = api.request.mock.calls[1][0].url as string;
+    expect(primaryUrl).toContain('AlbumArtistIds=art-1');
+    expect(fallbackUrl).toContain('ArtistIds=art-1');
+    expect(primaryUrl).toContain('IncludeItemTypes=MusicAlbum');
   });
 
-  it('getArtistHotSongs：SortBy=PlayCount 降序 + Limit=20', async () => {
+  it('getArtistHotSongs：优先 ArtistIds，空结果回退 AlbumArtistIds；SortBy=PlayCount 降序 + Limit=20', async () => {
     const { adapter, api } = makeAdapter('EMBY');
     await adapter.getArtistHotSongs('u1', 'art-1');
-    const url = api.request.mock.calls[0][0].url as string;
-    expect(url).toContain('AlbumArtistIds=art-1');
-    expect(url).toContain('IncludeItemTypes=Audio');
-    expect(url).toContain('SortBy=PlayCount');
-    expect(url).toContain('SortOrder=Descending');
-    expect(url).toContain('Limit=20');
+    const primaryUrl = api.request.mock.calls[0][0].url as string;
+    const fallbackUrl = api.request.mock.calls[1][0].url as string;
+    expect(primaryUrl).toContain('ArtistIds=art-1');
+    expect(fallbackUrl).toContain('AlbumArtistIds=art-1');
+    expect(primaryUrl).toContain('IncludeItemTypes=Audio');
+    expect(primaryUrl).toContain('SortBy=PlayCount');
+    expect(primaryUrl).toContain('SortOrder=Descending');
+    expect(primaryUrl).toContain('Limit=20');
   });
 
   it('getPlaylistItems：专用端点 /Playlists/{id}/Items?UserId=（保证歌单自定义顺序）', async () => {

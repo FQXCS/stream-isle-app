@@ -129,12 +129,24 @@ export class DownloadService {
     }
     // 决策判定走完整 DeviceProfile（与播放同源，M2 语义一致）；详情快照提供元数据与 sizeBytes/container
     const detail = await this.loadDetail(userId, item.id);
-    const session = await this.resolveItem(item.id);
-    if (session.playMethod !== 'DirectPlay') {
-      throw new AppError('DOWNLOAD_UNAVAILABLE');
+    // 音频：universal 端点对音频恒不走 DirectPlay（DeviceProfile 只声明视频直连），
+    // 下载改走静态原流，媒体源直接取详情快照（Emby/Jellyfin 同构）
+    let mediaSourceId: string;
+    if (item.type === 'Audio') {
+      const audioSource = detail.mediaSourceList[0];
+      if (audioSource === undefined) {
+        throw new AppError('DOWNLOAD_UNAVAILABLE');
+      }
+      mediaSourceId = audioSource.id;
+    } else {
+      const session = await this.resolveItem(item.id);
+      if (session.playMethod !== 'DirectPlay') {
+        throw new AppError('DOWNLOAD_UNAVAILABLE');
+      }
+      mediaSourceId = session.mediaSourceId;
     }
     const source =
-      detail.mediaSourceList.find((media) => media.id === session.mediaSourceId) ??
+      detail.mediaSourceList.find((media) => media.id === mediaSourceId) ??
       detail.mediaSourceList[0];
     const sizeBytes = source?.sizeBytes;
     if (sizeBytes !== undefined) {
@@ -152,7 +164,7 @@ export class DownloadService {
       serverId,
       userId,
       itemId: item.id,
-      mediaSourceId: session.mediaSourceId,
+      mediaSourceId,
       itemType: detail.type,
       title: detail.name,
       subtitle: buildRowSubtitle(detail, item),
@@ -421,9 +433,9 @@ export class DownloadService {
   }
 
   /**
-   * 下载 URL（06 文档 §4.4.2）：{base}/Videos/{id}/stream?static=true&MediaSourceId=…&api_key=…
-   * 与 PlaybackSource.url 同模板（设计文档 §6.1/§8.1）——resolve 的 URL 含 token 不落库，
-   * 起任务（含续传/重试）时按快照行重建。Token 内存未命中回源 secure-store
+   * 下载 URL（06 文档 §4.4.2）：视频 {base}/Videos/{id}/stream，音频 {base}/Audio/{id}/stream，
+   * 均 static=true + MediaSourceId + api_key。与 PlaybackSource.url 同模板——resolve 的 URL
+   * 含 token 不落库，起任务（含续传/重试）时按快照行重建。Token 内存未命中回源 secure-store
    * （getToken，与 OfflineProgressService.buildAdapterFor 同款）——冷启动仅预热活跃账号，
    * 非活跃账号的排队任务重启后也能取到 Token；缺失按可读失败收敛。
    */
@@ -437,7 +449,7 @@ export class DownloadService {
       throw new Error('下载凭据缺失，请重新登录该服务器后重试');
     }
     const url =
-      `${server.baseUrl}/Videos/${row.itemId}/stream?static=true` +
+      `${server.baseUrl}/${row.itemType === 'Audio' ? 'Audio' : 'Videos'}/${row.itemId}/stream?static=true` +
       `&MediaSourceId=${encodeURIComponent(row.mediaSourceId)}&api_key=${encodeURIComponent(token)}`;
     console.log('[下载] 开始下载:', sanitizedForLog(url));
     return url;
