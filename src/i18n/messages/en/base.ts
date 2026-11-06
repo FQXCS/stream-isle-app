@@ -28,6 +28,7 @@ export const enBase: Record<keyof typeof zhBase, Message> = {
   'nav.artist': 'Artist',
   'nav.playlist': 'Playlist',
   'nav.album': 'Album',
+  'nav.person': 'Person',
   'nav.libraryDisplayTitle': 'Library tabs · {flavor}',
   'nav.tabCategories': 'Tabs',
   'nav.sortOptions': 'Sort options',

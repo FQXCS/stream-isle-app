@@ -27,6 +27,7 @@ export const zhBase = {
   'nav.artist': '艺人',
   'nav.playlist': '播放列表',
   'nav.album': '专辑',
+  'nav.person': '人物',
   'nav.libraryDisplayTitle': '库页配置 · {flavor}',
   'nav.tabCategories': 'Tab 分类',
   'nav.sortOptions': '排序项',

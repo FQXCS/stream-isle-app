@@ -250,7 +250,7 @@ export function RootNavigator() {
             <RootStack.Screen
               name={ROUTES.PERSON}
               component={PersonScreen}
-              options={{ headerBackTitle: tr('nav.back') }}
+              options={{ title: tr('nav.person'), headerBackTitle: tr('nav.back') }}
             />
             {/* M2 播放页：全屏黑底自绘控制层，隐藏系统导航栏（横屏由页内锁定） */}
             <RootStack.Screen
@@ -288,13 +288,13 @@ export function RootNavigator() {
             <RootStack.Screen
               name={ROUTES.HISTORY}
               component={HistoryScreen}
-              options={{ headerBackTitle: tr('nav.back') }}
+              options={{ title: tr('settings.history'), headerBackTitle: tr('nav.back') }}
             />
             {/* M6：下载管理（离线任务列表 + 本地播放入口，06 §4.10） */}
             <RootStack.Screen
               name={ROUTES.DOWNLOADS}
               component={DownloadsScreen}
-              options={{ headerBackTitle: tr('nav.back') }}
+              options={{ title: tr('settings.downloads'), headerBackTitle: tr('nav.back') }}
             />
             {/* 收录类型二级页：继续观看/观看历史分别多选（类型集不同） */}
             <RootStack.Screen
@@ -398,33 +398,41 @@ export function RootNavigator() {
             <RootStack.Screen
               name={ROUTES.SERVER_ADD}
               component={AddServerScreen}
-              options={{ headerBackTitle: tr('nav.back') }}
+              options={{ title: tr('server.addServer'), headerBackTitle: tr('nav.back') }}
             />
             <RootStack.Screen
               name={ROUTES.SERVER_ROUTES}
               component={ServerRoutesScreen}
-              options={{ headerBackTitle: tr('nav.back') }}
+              options={{ title: tr('server.routesTitle'), headerBackTitle: tr('nav.back') }}
             />
             <RootStack.Screen
               name={ROUTES.SERVER_SORT}
               component={ServerSortScreen}
-              options={{ headerBackTitle: tr('nav.back') }}
+              options={{ title: tr('server.sortTitle'), headerBackTitle: tr('nav.back') }}
             />
             <RootStack.Screen
               name={ROUTES.SERVER_ROUTE_EDIT}
               component={ServerRouteEditScreen}
-              options={{ headerBackTitle: tr('nav.back') }}
+              options={{ title: tr('server.addBackupRoute'), headerBackTitle: tr('nav.back') }}
             />
             {/* 登录页：同服务器多账号 / 401 重登（modal 呈现，成功后原地 pop） */}
             <RootStack.Screen
               name={ROUTES.ONBOARDING_CONNECT}
               component={OnboardingConnectScreen}
-              options={{ presentation: 'modal', headerBackTitle: tr('nav.back') }}
+              options={{
+                title: tr('server.connectTitle'),
+                presentation: 'modal',
+                headerBackTitle: tr('nav.back'),
+              }}
             />
             <RootStack.Screen
               name={ROUTES.ONBOARDING_LOGIN}
               component={OnboardingLoginScreen}
-              options={{ presentation: 'modal', headerBackTitle: tr('nav.back') }}
+              options={{
+                title: tr('server.loginTitle'),
+                presentation: 'modal',
+                headerBackTitle: tr('nav.back'),
+              }}
             />
         </RootStack.Navigator>
       </NavigationContainer>
