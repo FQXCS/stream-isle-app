@@ -45,6 +45,7 @@ import {
   DEFAULT_SUBTITLE_LANGUAGE,
   SEEK_FULL_WIDTH_SECONDS,
 } from '@/constant/playback';
+import { useImmersiveAccent } from '@/component/useTheme';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
 import { AudioTrackMenu } from '@/page/player/components/AudioTrackMenu';
 import { ResolutionMenu } from '@/page/player/components/ResolutionMenu';
@@ -85,6 +86,7 @@ function autoSelectSubtitleStreamIndex(session: PlaybackSession): number | null 
 }
 
 export function PlayerScreen() {
+  const immersiveAccent = useImmersiveAccent();
   const route = useRoute<{ key: string; name: string; params: { session: PlaybackSession } }>();
   const navigation = useNavigation<NavigationProp>();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
@@ -841,7 +843,7 @@ export function PlayerScreen() {
       {/* 加载态（重启浮层自带转圈与文案，同时成立时避免叠出两个圈） */}
       {status === 'loading' && !isRestartingSession && (
         <View style={styles.centerLayer} pointerEvents="none">
-          <ActivityIndicator color={COLORS.accent} size="large" />
+          <ActivityIndicator color={immersiveAccent.accent} size="large" />
         </View>
       )}
       {/* 错误态 + 重试（02 §4.14：从出错位置继续而非从头；转码文案区分，03 §4.11） */}
@@ -850,11 +852,11 @@ export function PlayerScreen() {
           <Text style={styles.errorText}>
             {session.playMethod === 'Transcode' ? '转码播放失败，请重试' : '播放出错，请重试'}
           </Text>
-          <Pressable style={styles.retryButton} onPress={retry}>
-            <Text style={styles.retryText}>重试</Text>
+          <Pressable style={[styles.retryButton, { backgroundColor: immersiveAccent.accent }]} onPress={retry}>
+            <Text style={[styles.retryText, { color: immersiveAccent.accentOn }]}>重试</Text>
           </Pressable>
-          <Pressable style={styles.retryButton} onPress={exitPlayer}>
-            <Text style={styles.retryText}>退出播放</Text>
+          <Pressable style={[styles.retryButton, { backgroundColor: immersiveAccent.accent }]} onPress={exitPlayer}>
+            <Text style={[styles.retryText, { color: immersiveAccent.accentOn }]}>退出播放</Text>
           </Pressable>
         </View>
       )}
@@ -893,10 +895,9 @@ const styles = StyleSheet.create({
   },
   errorText: { color: COLORS.textPrimary, fontSize: FONT_SIZE.title },
   retryButton: {
-    backgroundColor: COLORS.accent,
     borderRadius: COLORS.posterRadius,
     paddingHorizontal: SPACING.xl,
     paddingVertical: SPACING.s,
   },
-  retryText: { color: COLORS.textPrimary, fontSize: FONT_SIZE.body },
+  retryText: { fontSize: FONT_SIZE.body },
 });

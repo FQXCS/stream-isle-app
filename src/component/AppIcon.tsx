@@ -1,11 +1,79 @@
 /**
- * 应用图标统一入口：语义名 → MaterialCommunityIcons（图标库优先）。
- * 图标库确无匹配时才在此登记自绘 SVG 兜底；业务组件不要直接 import 图标族。
+ * 应用图标统一入口：语义名 → Phosphor 图标（线性 + 可切 fill 权重）。
+ * 业务组件不要直接 import 图标族；新增图标扩展 AppIconName 与 GLYPH_MAP。
+ * 图标按模块按需引入（Phosphor 全量 1500+，避免 Metro 把整包打进 bundle）。
  */
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import type { ComponentProps } from 'react';
-
-type MciName = ComponentProps<typeof MaterialCommunityIcons>['name'];
+import type { Icon, IconWeight } from 'phosphor-react-native';
+import { ArrowClockwise } from 'phosphor-react-native/src/icons/ArrowClockwise';
+import { ArrowDown } from 'phosphor-react-native/src/icons/ArrowDown';
+import { ArrowLeft } from 'phosphor-react-native/src/icons/ArrowLeft';
+import { ArrowUp } from 'phosphor-react-native/src/icons/ArrowUp';
+import { ArrowsDownUp } from 'phosphor-react-native/src/icons/ArrowsDownUp';
+import { ArrowsLeftRight } from 'phosphor-react-native/src/icons/ArrowsLeftRight';
+import { BookOpen } from 'phosphor-react-native/src/icons/BookOpen';
+import { Books } from 'phosphor-react-native/src/icons/Books';
+import { Broadcast } from 'phosphor-react-native/src/icons/Broadcast';
+import { Broom } from 'phosphor-react-native/src/icons/Broom';
+import { CaretDown } from 'phosphor-react-native/src/icons/CaretDown';
+import { CaretLeft } from 'phosphor-react-native/src/icons/CaretLeft';
+import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
+import { CaretUp } from 'phosphor-react-native/src/icons/CaretUp';
+import { Check } from 'phosphor-react-native/src/icons/Check';
+import { CircleIcon } from 'phosphor-react-native/src/icons/Circle';
+import { ClockCounterClockwise } from 'phosphor-react-native/src/icons/ClockCounterClockwise';
+import { DotsSixVertical } from 'phosphor-react-native/src/icons/DotsSixVertical';
+import { DotsThree } from 'phosphor-react-native/src/icons/DotsThree';
+import { DownloadSimple } from 'phosphor-react-native/src/icons/DownloadSimple';
+import { Equalizer } from 'phosphor-react-native/src/icons/Equalizer';
+import { Eye } from 'phosphor-react-native/src/icons/Eye';
+import { EyeSlash } from 'phosphor-react-native/src/icons/EyeSlash';
+import { FileText } from 'phosphor-react-native/src/icons/FileText';
+import { FilmReel } from 'phosphor-react-native/src/icons/FilmReel';
+import { FilmSlate } from 'phosphor-react-native/src/icons/FilmSlate';
+import { Flag } from 'phosphor-react-native/src/icons/Flag';
+import { Folder } from 'phosphor-react-native/src/icons/Folder';
+import { Folders } from 'phosphor-react-native/src/icons/Folders';
+import { GameController } from 'phosphor-react-native/src/icons/GameController';
+import { Gauge } from 'phosphor-react-native/src/icons/Gauge';
+import { GearSix } from 'phosphor-react-native/src/icons/GearSix';
+import { HardDrives } from 'phosphor-react-native/src/icons/HardDrives';
+import { Headphones } from 'phosphor-react-native/src/icons/Headphones';
+import { Heart } from 'phosphor-react-native/src/icons/Heart';
+import { House } from 'phosphor-react-native/src/icons/House';
+import { Images } from 'phosphor-react-native/src/icons/Images';
+import { Info } from 'phosphor-react-native/src/icons/Info';
+import { ListPlus } from 'phosphor-react-native/src/icons/ListPlus';
+import { LockSimple } from 'phosphor-react-native/src/icons/LockSimple';
+import { LockSimpleOpen } from 'phosphor-react-native/src/icons/LockSimpleOpen';
+import { MagnifyingGlass } from 'phosphor-react-native/src/icons/MagnifyingGlass';
+import { Monitor } from 'phosphor-react-native/src/icons/Monitor';
+import { MusicNotes } from 'phosphor-react-native/src/icons/MusicNotes';
+import { Package } from 'phosphor-react-native/src/icons/Package';
+import { Pause } from 'phosphor-react-native/src/icons/Pause';
+import { PencilSimple } from 'phosphor-react-native/src/icons/PencilSimple';
+import { Play } from 'phosphor-react-native/src/icons/Play';
+import { Plus } from 'phosphor-react-native/src/icons/Plus';
+import { Queue } from 'phosphor-react-native/src/icons/Queue';
+import { Radio } from 'phosphor-react-native/src/icons/Radio';
+import { RadioButton } from 'phosphor-react-native/src/icons/RadioButton';
+import { Repeat } from 'phosphor-react-native/src/icons/Repeat';
+import { RepeatOnce } from 'phosphor-react-native/src/icons/RepeatOnce';
+import { Shuffle } from 'phosphor-react-native/src/icons/Shuffle';
+import { SkipBack } from 'phosphor-react-native/src/icons/SkipBack';
+import { SkipForward } from 'phosphor-react-native/src/icons/SkipForward';
+import { SpeakerHigh } from 'phosphor-react-native/src/icons/SpeakerHigh';
+import { Star } from 'phosphor-react-native/src/icons/Star';
+import { Stop } from 'phosphor-react-native/src/icons/Stop';
+import { Subtitles } from 'phosphor-react-native/src/icons/Subtitles';
+import { Sun } from 'phosphor-react-native/src/icons/Sun';
+import { Television } from 'phosphor-react-native/src/icons/Television';
+import { TextAa } from 'phosphor-react-native/src/icons/TextAa';
+import { Trash } from 'phosphor-react-native/src/icons/Trash';
+import { Tray } from 'phosphor-react-native/src/icons/Tray';
+import { User } from 'phosphor-react-native/src/icons/User';
+import { Video } from 'phosphor-react-native/src/icons/Video';
+import { VideoCamera } from 'phosphor-react-native/src/icons/VideoCamera';
+import { X } from 'phosphor-react-native/src/icons/X';
 
 export type AppIconName =
   // 导航 / 通用
@@ -33,6 +101,7 @@ export type AppIconName =
   | 'star'
   | 'refresh'
   | 'info'
+  | 'empty'
   // 底部 Tab
   | 'home'
   | 'library'
@@ -85,99 +154,96 @@ export type AppIconName =
   | 'folder'
   | 'mixed';
 
-const ICON_GLYPH_MAP: Record<AppIconName, MciName> = {
-  back: 'chevron-left',
-  more: 'dots-horizontal',
-  close: 'close',
-  check: 'check',
-  plus: 'plus',
-  edit: 'pencil',
-  eye: 'eye',
-  eyeOff: 'eye-off',
-  routes: 'swap-horizontal',
-  radioChecked: 'radiobox-marked',
-  radioUnchecked: 'radiobox-blank',
-  chevronRight: 'chevron-right',
-  chevronUp: 'chevron-up',
-  chevronDown: 'chevron-down',
-  arrowLeft: 'arrow-left',
-  arrowUp: 'arrow-up',
-  arrowDown: 'arrow-down',
-  sort: 'sort-variant',
-  dragHandle: 'drag-vertical',
-  history: 'history',
-  account: 'account',
-  star: 'star',
-  refresh: 'refresh',
-  info: 'information-outline',
-  home: 'home',
-  library: 'library',
-  search: 'magnify',
-  server: 'server',
-  settings: 'cog',
-  play: 'play',
-  pause: 'pause',
-  stop: 'stop',
-  skipPrevious: 'skip-previous',
-  skipNext: 'skip-next',
-  repeat: 'repeat',
-  repeatOne: 'repeat-once',
-  shuffle: 'shuffle',
-  playlist: 'playlist-music',
-  playlistPlus: 'playlist-plus',
-  lyrics: 'script-text-outline',
-  bitrate: 'speedometer',
-  resolution: 'monitor',
-  brightness: 'brightness-6',
-  volume: 'volume-high',
-  lock: 'lock',
-  unlock: 'lock-open',
-  heart: 'heart',
-  heartOutline: 'heart-outline',
-  flag: 'flag',
-  flagOutline: 'flag-outline',
-  download: 'download',
-  trash: 'delete',
-  broom: 'broom',
-  equalizer: 'equalizer',
-  video: 'video',
-  audio: 'music-note',
-  subtitle: 'subtitles',
-  file: 'file-document',
-  movie: 'movie-open',
-  tv: 'television-classic',
-  audiobook: 'headphones',
-  musicVideo: 'microphone-variant',
-  photo: 'image-multiple',
-  book: 'bookshelf',
-  boxset: 'package-variant-closed',
-  game: 'gamepad-variant',
-  liveTv: 'broadcast',
-  channel: 'radio',
-  trailer: 'filmstrip',
-  folder: 'folder',
-  mixed: 'folder-multiple',
+/** 语义名 → 图标组件 + 默认权重（未标注为 regular 线性） */
+interface GlyphSpec {
+  Glyph: Icon;
+  weight?: IconWeight;
+}
+
+const GLYPH_MAP: Record<AppIconName, GlyphSpec> = {
+  back: { Glyph: CaretLeft },
+  more: { Glyph: DotsThree, weight: 'bold' },
+  close: { Glyph: X },
+  check: { Glyph: Check, weight: 'bold' },
+  plus: { Glyph: Plus },
+  edit: { Glyph: PencilSimple },
+  eye: { Glyph: Eye },
+  eyeOff: { Glyph: EyeSlash },
+  routes: { Glyph: ArrowsLeftRight },
+  radioChecked: { Glyph: RadioButton },
+  radioUnchecked: { Glyph: CircleIcon },
+  chevronRight: { Glyph: CaretRight },
+  chevronUp: { Glyph: CaretUp },
+  chevronDown: { Glyph: CaretDown },
+  arrowLeft: { Glyph: ArrowLeft },
+  arrowUp: { Glyph: ArrowUp },
+  arrowDown: { Glyph: ArrowDown },
+  sort: { Glyph: ArrowsDownUp },
+  dragHandle: { Glyph: DotsSixVertical },
+  history: { Glyph: ClockCounterClockwise },
+  account: { Glyph: User },
+  star: { Glyph: Star, weight: 'fill' },
+  refresh: { Glyph: ArrowClockwise },
+  info: { Glyph: Info },
+  empty: { Glyph: Tray },
+  home: { Glyph: House },
+  library: { Glyph: Books },
+  search: { Glyph: MagnifyingGlass },
+  server: { Glyph: HardDrives },
+  settings: { Glyph: GearSix },
+  play: { Glyph: Play, weight: 'fill' },
+  pause: { Glyph: Pause, weight: 'fill' },
+  stop: { Glyph: Stop, weight: 'fill' },
+  skipPrevious: { Glyph: SkipBack, weight: 'fill' },
+  skipNext: { Glyph: SkipForward, weight: 'fill' },
+  repeat: { Glyph: Repeat },
+  repeatOne: { Glyph: RepeatOnce },
+  shuffle: { Glyph: Shuffle },
+  playlist: { Glyph: Queue },
+  playlistPlus: { Glyph: ListPlus },
+  lyrics: { Glyph: TextAa },
+  bitrate: { Glyph: Gauge },
+  resolution: { Glyph: Monitor },
+  brightness: { Glyph: Sun },
+  volume: { Glyph: SpeakerHigh },
+  lock: { Glyph: LockSimple },
+  unlock: { Glyph: LockSimpleOpen },
+  heart: { Glyph: Heart, weight: 'fill' },
+  heartOutline: { Glyph: Heart },
+  flag: { Glyph: Flag, weight: 'fill' },
+  flagOutline: { Glyph: Flag },
+  download: { Glyph: DownloadSimple },
+  trash: { Glyph: Trash },
+  broom: { Glyph: Broom },
+  equalizer: { Glyph: Equalizer },
+  video: { Glyph: Video },
+  audio: { Glyph: MusicNotes },
+  subtitle: { Glyph: Subtitles },
+  file: { Glyph: FileText },
+  movie: { Glyph: FilmSlate },
+  tv: { Glyph: Television },
+  audiobook: { Glyph: Headphones },
+  musicVideo: { Glyph: VideoCamera },
+  photo: { Glyph: Images },
+  book: { Glyph: BookOpen },
+  boxset: { Glyph: Package },
+  game: { Glyph: GameController },
+  liveTv: { Glyph: Broadcast },
+  channel: { Glyph: Radio },
+  trailer: { Glyph: FilmReel },
+  folder: { Glyph: Folder },
+  mixed: { Glyph: Folders },
 };
 
 interface AppIconProps {
   name: AppIconName;
   size?: number;
   color?: string;
+  /** 覆盖默认权重（如底部 Tab 选中态传 fill） */
+  weight?: IconWeight;
 }
 
-export function AppIcon({ name, size = 24, color = '#FFFFFF' }: AppIconProps) {
-  return (
-    <MaterialCommunityIcons
-      name={ICON_GLYPH_MAP[name]}
-      size={size}
-      color={color}
-      allowFontScaling={false}
-      accessible={false}
-    />
-  );
-}
-
-/** 冷启动预热图标字体，避免首屏图标空一帧 */
-export async function preloadAppIcons(): Promise<void> {
-  await MaterialCommunityIcons.loadFont();
+export function AppIcon({ name, size = 24, color = '#FFFFFF', weight }: AppIconProps) {
+  const { Glyph, weight: defaultWeight } = GLYPH_MAP[name];
+  return <Glyph size={size} color={color} weight={weight ?? defaultWeight ?? 'regular'} />;
 }

@@ -17,10 +17,10 @@ Stream Isle Mobile：**仅 Android** 的 Emby/Jellyfin 通用客户端（对标 
 
 ## UI 图标规范（编码时按此执行）
 
-- **图标库优先**：UI 图标统一使用 `@expo/vector-icons` 的 **MaterialCommunityIcons**。若 MaterialCommunityIcons 确无所需图标，先询问是否引入其他图标族（如 Ionicons / MaterialIcons），不要自行新增图标族。
-- **统一入口**：业务组件一律通过 `src/component/AppIcon.tsx` 的语义名使用（`<AppIcon name="play" size={20} color={t.textPrimary} />`），不直接在页面/组件里 import 图标族；新增图标扩展 `AppIconName` 与 `ICON_GLYPH_MAP`。经确认引入其他图标族时，同样必须收口到 `AppIcon`，不得在业务代码直接 import。
+- **图标库优先**：UI 图标统一使用 **Phosphor**（`phosphor-react-native`，线性风格，支持 `regular` / `fill` 等权重）。若 Phosphor 确无所需图标，先询问是否引入其他图标族，不要自行新增图标族。
+- **统一入口**：业务组件一律通过 `src/component/AppIcon.tsx` 的语义名使用（`<AppIcon name="play" size={20} color={t.textPrimary} />`），不直接在页面/组件里 import 图标族；新增图标扩展 `AppIconName` 与 `GLYPH_MAP`（图标按模块按需引入，避免整包打进 bundle）。选中态/播放控制可用 `weight` 切换实心（如底部 Tab 选中传 `fill`）。经确认引入其他图标族时，同样必须收口到 `AppIcon`，不得在业务代码直接 import。
 - **emoji / Unicode 可保留**：现有 emoji / Unicode 图标（如文件夹无图占位 📁）不强制迁移；新增图标优先使用图标库。
-- **SVG 兜底**：仅当 MaterialCommunityIcons 与已确认引入的其他图标族均无匹配图标时，才允许用 `react-native-svg` 自绘；自绘必须注册进 `AppIcon`（语义名 + 映射），禁止在业务组件内联 `<Svg>`，并在提交说明注明「图标库无匹配，自绘注册 AppIcon」。
+- **SVG 兜底**：仅当 Phosphor 与已确认引入的其他图标族均无匹配图标时，才允许用 `react-native-svg` 自绘；自绘必须注册进 `AppIcon`（语义名 + 映射），禁止在业务组件内联 `<Svg>`，并在提交说明注明「图标库无匹配，自绘注册 AppIcon」。
 - **尺寸/颜色**：尺寸随场景（14–16 次级信息 / 18–20 按钮 / 22–24 导航与工具栏 / 32–64 大号占位）；颜色取主题 token（普通页面用 `useTheme()`，Player / PhotoViewer / NowPlaying 沉浸页用固定 `COLORS`），不硬编码色值（既有 `#FFFFFF` 沉浸口径除外）。
 - **无障碍**：`AppIcon` 默认 `accessible={false}`，纯图标按钮必须提供 `accessibilityLabel`，避免 TalkBack 丢失语义或朗读私用区字符。
 - **非图标例外**：文字首字头像、SeekBar/进度条、二维码、媒体图片与库图保持现状。

@@ -353,11 +353,11 @@ export function MiniPlayer() {
           }}
           accessibilityLabel={isPlaying ? '暂停' : '播放'}
         >
-          <View style={[styles.playCircle, { borderColor: t.accent }]}>
+          <View style={[styles.playCircle, { backgroundColor: t.accent }]}>
             {switching ? (
-              <ActivityIndicator size="small" color={t.accent} />
+              <ActivityIndicator size="small" color={t.accentOn} />
             ) : (
-              <AppIcon name={isPlaying ? 'pause' : 'play'} size={16} color={t.accent} />
+              <AppIcon name={isPlaying ? 'pause' : 'play'} size={16} color={t.accentOn} />
             )}
           </View>
         </Pressable>
@@ -371,7 +371,7 @@ export function MiniPlayer() {
           }}
           accessibilityLabel="停止播放并关闭迷你条"
         >
-          <AppIcon name="stop" size={20} color={t.accent} />
+          <AppIcon name="stop" size={20} color={t.textSecondary} />
         </Pressable>
         {queueLength === 1 ? (
           <FavoriteButton
@@ -380,7 +380,7 @@ export function MiniPlayer() {
             style={queueButtonStyle.control}
           />
         ) : (
-          <QueueButton color={t.accent} />
+          <QueueButton color={t.textSecondary} />
         )}
       </View>
     </View>
@@ -428,7 +428,7 @@ const createStyles = (t: ThemeTokens) =>
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: t.separator,
     },
-    cover: { width: 44, height: 44, borderRadius: 8, backgroundColor: t.bg },
+    cover: { width: 44, height: 44, borderRadius: 10, backgroundColor: t.surfaceSunken },
     /** 切换等待期封面骨架（呼吸透明度由 coverSkeletonStyle 驱动；用 separator 保证浅色下可见） */
     coverSkeleton: { backgroundColor: t.separator },
     coverFallback: { alignItems: 'center', justifyContent: 'center' },
@@ -446,10 +446,9 @@ const createStyles = (t: ThemeTokens) =>
     subtitle: { color: t.textSecondary, fontSize: 12, marginTop: 2 },
     control: { paddingHorizontal: SPACING.xs },
     playCircle: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
-      borderWidth: 1.5,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
       alignItems: 'center',
       justifyContent: 'center',
     },

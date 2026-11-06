@@ -7,6 +7,7 @@
  */
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { useImmersiveAccent } from '@/component/useTheme';
 import type { SubtitleTrack } from '@/adapter/model';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
 
@@ -21,12 +22,13 @@ interface SubtitleMenuProps {
 }
 
 export function SubtitleMenu({ tracks, activeStreamIndex, onSelect, onClose }: SubtitleMenuProps) {
+  const { accent, accentSoft } = useImmersiveAccent();
   return (
     <View style={styles.panel}>
       <Text style={styles.panelTitle}>字幕</Text>
       <ScrollView style={styles.list} nestedScrollEnabled>
         <Pressable
-          style={[styles.row, activeStreamIndex === null && styles.rowActive]}
+          style={[styles.row, activeStreamIndex === null && { backgroundColor: accentSoft }]}
           onPress={() => onSelect(null)}
         >
           <Text style={styles.rowText}>关闭</Text>
@@ -38,7 +40,7 @@ export function SubtitleMenu({ tracks, activeStreamIndex, onSelect, onClose }: S
           return (
             <Pressable
               key={track.streamIndex}
-              style={[styles.row, active && styles.rowActive, unavailable && styles.rowDisabled]}
+              style={[styles.row, active && { backgroundColor: accentSoft }, unavailable && styles.rowDisabled]}
               disabled={unavailable}
               onPress={() => onSelect(track)}
             >
@@ -49,8 +51,8 @@ export function SubtitleMenu({ tracks, activeStreamIndex, onSelect, onClose }: S
                 {track.title ?? `字幕 ${track.streamIndex + 1}`}
               </Text>
               <View style={styles.badges}>
-                {track.isDefault ? <Text style={styles.badge}>默认</Text> : null}
-                {track.isForced ? <Text style={styles.badge}>强制</Text> : null}
+                {track.isDefault ? <Text style={[styles.badge, { color: accent }]}>默认</Text> : null}
+                {track.isForced ? <Text style={[styles.badge, { color: accent }]}>强制</Text> : null}
                 {track.burnIn ? <Text style={[styles.badge, styles.badgeBurnIn]}>需转码</Text> : null}
                 {track.format ? <Text style={styles.badgeMuted}>{track.format}</Text> : null}
                 {unavailable ? <Text style={styles.badgeMuted}>不可外挂</Text> : null}
@@ -89,12 +91,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.s,
     borderRadius: 8,
   },
-  rowActive: { backgroundColor: 'rgba(76,141,255,0.25)' },
   rowDisabled: { opacity: 0.45 },
   rowText: { color: COLORS.textPrimary, fontSize: FONT_SIZE.body, flexShrink: 1 },
   rowTextDisabled: { color: COLORS.textSecondary },
   badges: { flexDirection: 'row', gap: SPACING.xs, flexShrink: 0 },
-  badge: { color: COLORS.accent, fontSize: FONT_SIZE.body - 3 },
+  badge: { fontSize: FONT_SIZE.body - 3 },
   badgeBurnIn: { color: COLORS.warning },
   badgeMuted: { color: COLORS.textSecondary, fontSize: FONT_SIZE.body - 3 },
   closeButton: {

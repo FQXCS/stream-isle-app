@@ -15,7 +15,7 @@ import { SortableSettingsList } from '@/component/SortableSettingsList';
 import { useTheme } from '@/component/useTheme';
 import { tabsOfFlavor } from '@/constant/libraryTabs';
 import { SORT_CHAIN, SORT_OPTION_META, SORT_SETS } from '@/constant/sortCatalog';
-import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { FONT_SIZE, CARD_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useLibraryDisplayStore } from '@/store/libraryDisplayStore';
 import { resolveTabSortOptions } from '@/util/libraryConfig';
 
@@ -162,12 +162,12 @@ const createStyles = (t: ThemeTokens) =>
     hintText: { color: t.textSecondary, fontSize: FONT_SIZE.body - 1 },
     card: {
       backgroundColor: t.surface,
-      borderRadius: POSTER_RADIUS,
+      borderRadius: CARD_RADIUS,
       paddingHorizontal: SPACING.l,
     },
     rowCard: {
       backgroundColor: t.surface,
-      borderRadius: POSTER_RADIUS,
+      borderRadius: CARD_RADIUS,
       overflow: 'hidden',
       marginBottom: SPACING.s,
     },

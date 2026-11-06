@@ -5,7 +5,13 @@
  */
 import { Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
-import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import {
+  CARD_RADIUS,
+  FLOATING_SHADOW,
+  FONT_SIZE,
+  SPACING,
+  type ThemeTokens,
+} from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { AppIcon, type AppIconName } from '@/component/AppIcon';
 
@@ -109,15 +115,11 @@ const createStyles = (t: ThemeTokens) =>
     panel: {
       position: 'absolute',
       paddingVertical: PANEL_PADDING,
-      borderRadius: POSTER_RADIUS,
+      borderRadius: CARD_RADIUS,
       backgroundColor: t.surfaceElevated,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.separator,
-      elevation: 12,
-      shadowColor: '#000000',
-      shadowOpacity: 0.25,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 8 },
+      ...FLOATING_SHADOW,
     },
     item: {
       height: ITEM_HEIGHT,

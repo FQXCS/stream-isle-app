@@ -14,7 +14,7 @@ import Animated, {
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AppIcon } from '@/component/AppIcon';
-import { POSTER_RADIUS, FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
+import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 
 /** Toast 类型：info 常规反馈 / error 操作失败（红底） */
@@ -175,13 +175,15 @@ const createStyles = (t: ThemeTokens) =>
     alignSelf: 'center',
     maxWidth: '80%',
     backgroundColor: t.surface,
-    borderRadius: POSTER_RADIUS,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.separator,
     paddingHorizontal: SPACING.l,
     paddingVertical: SPACING.s,
     elevation: 8,
   },
   toastError: { backgroundColor: t.danger },
-  text: { color: t.textPrimary, fontSize: FONT_SIZE.body },
+  text: { color: t.textPrimary, fontSize: FONT_SIZE.body, fontWeight: '500' },
   /** 居中动作提示：固定深色 HUD（两套主题一致，不随页面明暗变化） */
   centerHost: {
     position: 'absolute',

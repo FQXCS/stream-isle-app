@@ -5,6 +5,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { AudioTrack } from '@/adapter/model';
+import { useImmersiveAccent } from '@/component/useTheme';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
 import { formatChannels } from '@/util/format';
 
@@ -17,6 +18,7 @@ interface AudioTrackMenuProps {
 }
 
 export function AudioTrackMenu({ tracks, activeStreamIndex, onSelect, onClose }: AudioTrackMenuProps) {
+  const { accent, accentSoft } = useImmersiveAccent();
   return (
     <View style={styles.panel}>
       <Text style={styles.panelTitle}>音轨</Text>
@@ -27,7 +29,7 @@ export function AudioTrackMenu({ tracks, activeStreamIndex, onSelect, onClose }:
           return (
             <Pressable
               key={track.streamIndex}
-              style={[styles.row, active && styles.rowActive]}
+              style={[styles.row, active && { backgroundColor: accentSoft }]}
               onPress={() => onSelect(track)}
             >
               <Text style={styles.rowText} numberOfLines={1}>
@@ -36,7 +38,7 @@ export function AudioTrackMenu({ tracks, activeStreamIndex, onSelect, onClose }:
               <View style={styles.badges}>
                 {track.codec ? <Text style={styles.badgeMuted}>{track.codec}</Text> : null}
                 {channelText ? <Text style={styles.badgeMuted}>{channelText}</Text> : null}
-                {track.isDefault ? <Text style={styles.badge}>默认</Text> : null}
+                {track.isDefault ? <Text style={[styles.badge, { color: accent }]}>默认</Text> : null}
               </View>
             </Pressable>
           );
@@ -72,10 +74,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.s,
     borderRadius: 8,
   },
-  rowActive: { backgroundColor: 'rgba(76,141,255,0.25)' },
   rowText: { color: COLORS.textPrimary, fontSize: FONT_SIZE.body, flexShrink: 1 },
   badges: { flexDirection: 'row', gap: SPACING.xs, flexShrink: 0 },
-  badge: { color: COLORS.accent, fontSize: FONT_SIZE.body - 3 },
+  badge: { fontSize: FONT_SIZE.body - 3 },
   badgeMuted: { color: COLORS.textSecondary, fontSize: FONT_SIZE.body - 3 },
   closeButton: {
     alignItems: 'center',

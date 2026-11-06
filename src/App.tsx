@@ -13,7 +13,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet, View } from 'react-native';
 
 import { RootNavigator } from '@/page/navigation/RootNavigator';
-import { preloadAppIcons } from '@/component/AppIcon';
 import { useResolvedScheme, useTheme } from '@/component/useTheme';
 import { syncTlsBypassHosts } from '@/infra/tlsBypass';
 import { downloadService } from '@/service/DownloadService';
@@ -50,8 +49,6 @@ export default function App() {
       syncTlsBypassHosts(useSettingsStore.getState().allowInsecureTls);
       // 3) 预热活跃账号 Token 进内存（getActiveAdapter 同步组装认证头的前提）
       await warmupActiveToken();
-      // 3.5) 预热图标字体（首屏图标不空帧；失败不阻断启动，组件挂载时会再加载）
-      await preloadAppIcons().catch(() => undefined);
       if (cancelled) {
         return;
       }
@@ -72,8 +69,8 @@ export default function App() {
   }, []);
 
   if (!bootstrapped) {
-    // 启动引导期最小空屏（冷启动毫秒级，无需加载动画）
-    return <View style={styles.boot} />;
+    // 启动引导期最小空屏（冷启动毫秒级，无需加载动画；底色跟随主题避免闪屏）
+    return <View style={[styles.boot, { backgroundColor: t.bg }]} />;
   }
 
   return (
@@ -90,5 +87,5 @@ export default function App() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  boot: { flex: 1, backgroundColor: '#0B0F14' },
+  boot: { flex: 1 },
 });

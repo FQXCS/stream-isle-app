@@ -1,6 +1,6 @@
 /**
- * 分段控件（库页视图/筛选切换，参考稿样式）：
- * 整条圆角外框 + 等分段落 + 段间分隔线，选中段为主色淡底 + 主色文字。
+ * 分段控件（库页视图/筛选切换）：
+ * 胶囊轨道 + 滑块式选中段（白底轻阴影），未选中为次级灰字。
  * 选项为互斥单选；库页最多 5 段（标签简短时等分可容纳），更多选项应改用菜单/弹层。
  */
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -30,14 +30,13 @@ export function SegmentedControl<T extends string>({
   const styles = createStyles(t);
   return (
     <View style={styles.container}>
-      {optionList.map((option, index) => {
+      {optionList.map((option) => {
         const active = option.value === value;
         return (
           <Pressable
             key={option.value}
             style={({ pressed }) => [
               styles.segment,
-              index > 0 && styles.divider,
               active && styles.segmentActive,
               pressed && styles.pressed,
             ]}
@@ -62,21 +61,26 @@ const createStyles = (t: ThemeTokens) =>
       marginHorizontal: SPACING.m,
       marginTop: SPACING.s,
       marginBottom: SPACING.s,
-      borderWidth: 1,
-      borderColor: t.separator,
-      borderRadius: 10,
-      overflow: 'hidden',
-      backgroundColor: t.surface,
+      padding: 3,
+      borderRadius: 999,
+      backgroundColor: t.surfaceSunken,
     },
     segment: {
       flex: 1,
-      height: 36,
+      height: 34,
+      borderRadius: 999,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    divider: { borderLeftWidth: 1, borderLeftColor: t.separator },
-    segmentActive: { backgroundColor: t.accentSoft },
+    segmentActive: {
+      backgroundColor: t.surface,
+      shadowColor: '#0A2A33',
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 1 },
+      elevation: 1,
+    },
     pressed: { opacity: 0.7 },
-    label: { color: t.textSecondary, fontSize: FONT_SIZE.body },
-    labelActive: { color: t.accent, fontWeight: '600' },
+    label: { color: t.textSecondary, fontSize: FONT_SIZE.body - 1, fontWeight: '500' },
+    labelActive: { color: t.textPrimary, fontWeight: '700' },
   });

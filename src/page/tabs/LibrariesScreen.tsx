@@ -34,7 +34,7 @@ import { useMiniPlayerPadding } from '@/component/MiniPlayer';
 import { useTheme } from '@/component/useTheme';
 import { MEDIA_CARD_HEIGHT } from '@/constant/browse';
 import { ROUTES } from '@/constant/navigation';
-import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { LibraryTile } from '@/page/tabs/components/LibraryTile';
 import { ResumeRow } from '@/page/tabs/components/ResumeRow';
@@ -266,6 +266,9 @@ export function LibrariesScreen() {
     return (
       <>
         <View style={[styles.fill, styles.guestBox, { backgroundColor: t.bg }]}>
+          <View style={styles.guestIconBox}>
+            <AppIcon name="server" size={30} color={t.accent} />
+          </View>
           <Text style={styles.guestTitle}>媒体库是空的</Text>
           <Text style={styles.guestHint}>
             添加 Emby / Jellyfin 服务器后，继续观看与最近添加会出现在这里
@@ -332,7 +335,31 @@ export function LibrariesScreen() {
         }
       >
         <View style={styles.header}>
-          {/* 左上角：媒体库服务器切换（当前服务器名 + 下拉） */}
+          {/* 大标题 + 右侧搜索/历史入口（亮色下建立页面层级） */}
+          <View style={styles.headerTop}>
+            <Text style={styles.pageTitle}>媒体库</Text>
+            <View style={styles.headerActions}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="搜索"
+                hitSlop={8}
+                onPress={() => navigation.navigate(ROUTES.SEARCH)}
+                style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
+              >
+                <AppIcon name="search" size={22} color={t.textPrimary} />
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="观看历史"
+                hitSlop={8}
+                onPress={() => navigation.navigate(ROUTES.HISTORY)}
+                style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
+              >
+                <AppIcon name="history" size={22} color={t.textPrimary} />
+              </Pressable>
+            </View>
+          </View>
+          {/* 媒体库服务器切换（当前服务器名 + 下拉） */}
           <Pressable
             ref={serverPillRef}
             accessibilityRole="button"
@@ -356,27 +383,6 @@ export function LibrariesScreen() {
               <AppIcon name="chevronDown" size={16} color={t.textSecondary} />
             </View>
           </Pressable>
-          {/* 头部右侧：搜索（原底部 Tab 移入）+ 观看历史 */}
-          <View style={styles.headerActions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="搜索"
-              hitSlop={8}
-              onPress={() => navigation.navigate(ROUTES.SEARCH)}
-              style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
-            >
-              <AppIcon name="search" size={22} color={t.textPrimary} />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="观看历史"
-              hitSlop={8}
-              onPress={() => navigation.navigate(ROUTES.HISTORY)}
-              style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
-            >
-              <AppIcon name="history" size={22} color={t.textPrimary} />
-            </Pressable>
-          </View>
         </View>
       {pageEmpty ? (
         <EmptyView title="媒体库暂无内容" subtitle="添加服务器后，继续观看与最近添加会出现在这里" />
@@ -450,22 +456,34 @@ export function LibrariesScreen() {
 const createStyles = (t: ThemeTokens) =>
   StyleSheet.create({
     fill: { flex: 1 },
-    content: { paddingTop: SPACING.xl, paddingBottom: SPACING.xl, gap: SPACING.l },
-    header: {
+    content: { paddingTop: SPACING.l, paddingBottom: SPACING.xl, gap: SPACING.l },
+    header: { paddingHorizontal: SPACING.l, gap: SPACING.m },
+    headerTop: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: SPACING.l,
     },
-    headerTitle: { color: t.textPrimary, fontSize: FONT_SIZE.header, fontWeight: '700' },
-    headerActions: { flexDirection: 'row', alignItems: 'center', gap: SPACING.s },
-    headerButton: { padding: SPACING.s },
-    /** 服务器切换胶囊（左上角） */
+    pageTitle: {
+      color: t.textPrimary,
+      fontSize: FONT_SIZE.display,
+      fontWeight: '700',
+      letterSpacing: -0.3,
+    },
+    headerActions: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs },
+    headerButton: {
+      padding: SPACING.s,
+      borderRadius: 999,
+      backgroundColor: t.surface,
+    },
+    /** 服务器切换胶囊（标题下方） */
     serverPill: {
       flexDirection: 'row',
       alignItems: 'center',
-      maxWidth: '62%',
+      alignSelf: 'flex-start',
+      maxWidth: '72%',
       backgroundColor: t.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.separator,
       borderRadius: 999,
       paddingHorizontal: SPACING.m,
       paddingVertical: SPACING.s,
@@ -479,16 +497,26 @@ const createStyles = (t: ThemeTokens) =>
     },
     serverPillChevron: { marginLeft: SPACING.xs },
     guestBox: { alignItems: 'center', justifyContent: 'center', gap: SPACING.m, padding: SPACING.xl },
-    guestTitle: { color: t.textPrimary, fontSize: FONT_SIZE.header, fontWeight: '700' },
+    guestIconBox: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: t.accentSoft,
+      marginBottom: SPACING.xs,
+    },
+    guestTitle: { color: t.textPrimary, fontSize: FONT_SIZE.section, fontWeight: '700' },
     guestHint: {
       color: t.textSecondary,
       fontSize: FONT_SIZE.body,
       textAlign: 'center',
       lineHeight: 20,
+      maxWidth: 300,
     },
     guestButton: {
       backgroundColor: t.accent,
-      borderRadius: POSTER_RADIUS,
+      borderRadius: 999,
       paddingHorizontal: SPACING.xl,
       paddingVertical: SPACING.m,
       marginTop: SPACING.s,
@@ -502,8 +530,13 @@ const createStyles = (t: ThemeTokens) =>
       justifyContent: 'space-between',
       paddingHorizontal: SPACING.l,
     },
-    sectionTitle: { color: t.textPrimary, fontSize: FONT_SIZE.title, fontWeight: '700' },
+    sectionTitle: {
+      color: t.textPrimary,
+      fontSize: FONT_SIZE.section,
+      fontWeight: '700',
+      letterSpacing: -0.2,
+    },
     moreButton: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-    moreText: { color: t.textSecondary, fontSize: FONT_SIZE.body },
+    moreText: { color: t.accent, fontSize: FONT_SIZE.body - 1, fontWeight: '500' },
     libraryRow: { paddingHorizontal: SPACING.l, gap: SPACING.m },
   });

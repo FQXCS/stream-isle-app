@@ -1,11 +1,13 @@
 /**
  * 单选弹层（04 文档 §4.5 新建）：底部弹出的互斥单选项列表（用户切换/字幕语言等）。
  * Modal + 选项行；当前选中项高亮。泛型 key 支持字符串取值（含 "default" 这类空值键）。
+ * 视觉：24 圆角面板 + 顶部抓手 + 行间发丝线，选中项尾部圆形对勾；可选色点用于配色方案。
  */
-import { Modal, Pressable, StyleSheet, Text } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppIcon } from '@/component/AppIcon';
-import { POSTER_RADIUS, FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
+import { FONT_SIZE, SHEET_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 
 interface RadioOptionSheetProps<K extends string> {
@@ -14,8 +16,8 @@ interface RadioOptionSheetProps<K extends string> {
   visible: boolean;
   /** 当前选中 key */
   selectedKey: K;
-  /** 选项（key 互斥） */
-  optionList: readonly { key: K; label: string }[];
+  /** 选项（key 互斥；swatchColor 可选，用于配色方案色点） */
+  optionList: readonly { key: K; label: string; swatchColor?: string }[];
   onSelect: (key: K) => void;
   onClose: () => void;
 }
@@ -30,27 +32,45 @@ export function RadioOptionSheet<K extends string>({
 }: RadioOptionSheetProps<K>) {
   const t = useTheme();
   const styles = createStyles(t);
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       {/* 半透明遮罩点击关闭；面板吃掉点击（no-op）防止冒泡误关 */}
       <Pressable style={styles.mask} onPress={onClose}>
-        <Pressable style={styles.panel} onPress={() => undefined}>
+        <Pressable
+          style={[styles.panel, { paddingBottom: SPACING.l + insets.bottom }]}
+          onPress={() => undefined}
+        >
+          <View style={styles.grabber} />
           <Text style={styles.title}>{title}</Text>
-          {optionList.map((option) => {
+          {optionList.map((option, index) => {
             const active = option.key === selectedKey;
             return (
               <Pressable
                 key={option.key}
-                style={({ pressed }) => [styles.optionRow, pressed && styles.pressed]}
+                style={({ pressed }) => [
+                  styles.optionRow,
+                  index > 0 && styles.optionDivider,
+                  pressed && styles.pressed,
+                ]}
                 onPress={() => {
                   onSelect(option.key);
                   onClose();
                 }}
               >
-                <Text style={[styles.optionText, active && styles.optionTextActive]}>
-                  {option.label}
-                </Text>
-                {active && <AppIcon name="check" size={14} color={t.accent} />}
+                <View style={styles.optionLeft}>
+                  {option.swatchColor !== undefined && (
+                    <View style={[styles.optionSwatch, { backgroundColor: option.swatchColor }]} />
+                  )}
+                  <Text style={[styles.optionText, active && styles.optionTextActive]}>
+                    {option.label}
+                  </Text>
+                </View>
+                {active && (
+                  <View style={styles.checkCircle}>
+                    <AppIcon name="check" size={12} color={t.accent} />
+                  </View>
+                )}
               </Pressable>
             );
           })}
@@ -62,30 +82,56 @@ export function RadioOptionSheet<K extends string>({
 
 const createStyles = (t: ThemeTokens) =>
   StyleSheet.create({
-  mask: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  panel: {
-    backgroundColor: t.surface,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    padding: SPACING.l,
-    gap: SPACING.s,
-  },
-  title: {
-    color: t.textPrimary,
-    fontSize: FONT_SIZE.title,
-    fontWeight: '700',
-    marginBottom: SPACING.s,
-  },
-  optionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: SPACING.m,
-    paddingHorizontal: SPACING.m,
-    borderRadius: POSTER_RADIUS,
-    backgroundColor: t.bg,
-  },
-  pressed: { opacity: 0.7 },
-  optionText: { color: t.textPrimary, fontSize: FONT_SIZE.body },
-  optionTextActive: { color: t.accent },
-});
+    mask: { flex: 1, backgroundColor: t.scrim, justifyContent: 'flex-end' },
+    panel: {
+      backgroundColor: t.surface,
+      borderTopLeftRadius: SHEET_RADIUS,
+      borderTopRightRadius: SHEET_RADIUS,
+      paddingHorizontal: SPACING.xl,
+      paddingTop: SPACING.s,
+    },
+    grabber: {
+      alignSelf: 'center',
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: t.separator,
+      marginTop: SPACING.xs,
+      marginBottom: SPACING.m,
+    },
+    title: {
+      color: t.textPrimary,
+      fontSize: FONT_SIZE.section,
+      fontWeight: '700',
+      marginBottom: SPACING.xs,
+    },
+    optionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      minHeight: 54,
+    },
+    optionDivider: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.separator,
+    },
+    pressed: { opacity: 0.6 },
+    optionLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
+    optionSwatch: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.separator,
+    },
+    optionText: { color: t.textPrimary, fontSize: FONT_SIZE.title - 1 },
+    optionTextActive: { color: t.accent, fontWeight: '600' },
+    checkCircle: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: t.accentSoft,
+    },
+  });

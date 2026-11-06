@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-labelledby="siTitle siDesc">
+  <title id="siTitle">Stream Isle</title>
+  <desc id="siDesc">白底棕榈岛图标，右上角为珊瑚色小播放徽章，底部三道水纹。</desc>
+  <defs>
+    <radialGradient id="siBadge" cx=".35" cy=".3" r=".85">
+      <stop offset="0" stop-color="#FFE7A8"/>
+      <stop offset=".58" stop-color="#FFA05B"/>
+      <stop offset="1" stop-color="#F2674E"/>
+    </radialGradient>
+    <linearGradient id="siLeafA" x1=".1" y1="0" x2=".8" y2="1">
+      <stop offset="0" stop-color="#6EE7B7"/>
+      <stop offset=".55" stop-color="#10B981"/>
+      <stop offset="1" stop-color="#047857"/>
+    </linearGradient>
+    <linearGradient id="siLeafB" x1=".1" y1="0" x2=".8" y2="1">
+      <stop offset="0" stop-color="#86EFAC"/>
+      <stop offset=".6" stop-color="#22C55E"/>
+      <stop offset="1" stop-color="#15803D"/>
+    </linearGradient>
+    <linearGradient id="siTrunk" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#B97A45"/>
+      <stop offset="1" stop-color="#7C4520"/>
+    </linearGradient>
+    <linearGradient id="siSand" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FEF3C7"/>
+      <stop offset=".45" stop-color="#FCD34D"/>
+      <stop offset="1" stop-color="#E9A23B"/>
+    </linearGradient>
+    <linearGradient id="siWave1" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0EA5E9" stop-opacity="0"/>
+      <stop offset=".2" stop-color="#0EA5E9"/>
+      <stop offset=".8" stop-color="#0EA5E9"/>
+      <stop offset="1" stop-color="#0EA5E9" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="siWave2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#67E8F9" stop-opacity="0"/>
+      <stop offset=".22" stop-color="#67E8F9" stop-opacity=".95"/>
+      <stop offset=".78" stop-color="#67E8F9" stop-opacity=".95"/>
+      <stop offset="1" stop-color="#67E8F9" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="siWave3" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#A5B4FC" stop-opacity="0"/>
+      <stop offset=".22" stop-color="#A5B4FC" stop-opacity=".9"/>
+      <stop offset=".78" stop-color="#A5B4FC" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#A5B4FC" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="siBadgeMask">
+      <rect width="1024" height="1024" fill="#fff"/>
+      <path d="M 724 250 L 824 300 L 724 350 Z" fill="#000" stroke="#000" stroke-width="22" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+
+  <rect width="1024" height="1024" fill="#FFFFFF"/>
+
+  <circle cx="760" cy="300" r="104" fill="url(#siBadge)" mask="url(#siBadgeMask)"/>
+  <path d="M 500 744 C 512 640 496 540 470 430 L 436 442 C 466 548 476 646 462 744 Z" fill="url(#siTrunk)"/>
+  <g fill="url(#siLeafA)">
+    <path d="M 456 400 C 520 350 600 344 668 372 C 600 406 520 420 456 400 Z"/>
+    <path d="M 456 400 C 472 322 522 266 592 238 C 574 308 528 366 456 400 Z"/>
+    <path d="M 456 400 C 398 334 336 306 264 314 C 318 366 380 394 456 400 Z"/>
+  </g>
+  <g fill="url(#siLeafB)">
+    <path d="M 456 400 C 386 384 318 398 266 438 C 330 462 400 446 456 400 Z"/>
+    <path d="M 456 400 C 514 442 552 500 560 570 C 498 530 468 466 456 400 Z"/>
+  </g>
+  <circle cx="456" cy="400" r="22" fill="#7C4520"/>
+  <path d="M 262 744 C 288 684 382 642 512 642 C 642 642 736 684 762 744 C 760 796 650 822 512 822 C 374 822 264 796 262 744 Z" fill="url(#siSand)"/>
+  <path d="M 140 774 C 288 720 384 826 512 774 C 640 722 736 828 884 774" fill="none" stroke="url(#siWave1)" stroke-width="26" stroke-linecap="round"/>
+  <path d="M 172 836 C 310 784 394 884 512 836 C 630 788 714 888 852 836" fill="none" stroke="url(#siWave2)" stroke-width="18" stroke-linecap="round"/>
+  <path d="M 212 898 C 332 852 404 944 512 898 C 620 852 692 944 812 898" fill="none" stroke="url(#siWave3)" stroke-width="14" stroke-linecap="round"/>
+</svg>

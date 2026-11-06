@@ -178,6 +178,6 @@ const createStyles = (t: ThemeTokens) =>
     paddingVertical: SPACING.m,
   },
   secondaryButtonText: { color: t.textPrimary, fontSize: FONT_SIZE.body },
-  primaryButtonText: { color: t.textPrimary, fontSize: FONT_SIZE.body, fontWeight: '600' },
+  primaryButtonText: { color: t.accentOn, fontSize: FONT_SIZE.body, fontWeight: '600' },
   pressed: { opacity: 0.7 },
 });

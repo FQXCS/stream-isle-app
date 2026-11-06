@@ -7,7 +7,7 @@ import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { useTheme } from '@/component/useTheme';
 import { HISTORY_TYPE_OPTIONS, RESUME_TYPE_OPTIONS } from '@/constant/browse';
-import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { FONT_SIZE, CARD_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useSettingsStore } from '@/store/settingsStore';
 
 export function MediaTypeSettingsScreen() {
@@ -74,7 +74,7 @@ const createStyles = (t: ThemeTokens) =>
     },
     card: {
       backgroundColor: t.surface,
-      borderRadius: POSTER_RADIUS,
+      borderRadius: CARD_RADIUS,
       paddingHorizontal: SPACING.l,
     },
     row: {

@@ -3,6 +3,8 @@
  * （system × 双系统方案、light、dark）。
  */
 import {
+  ACCENT_SCHEMES,
+  ACCENT_SCHEME_LIST,
   DARK_TOKENS,
   LIGHT_TOKENS,
   resolveTokens,
@@ -23,9 +25,33 @@ describe('resolveTokens 三态（06 §6.1 theme 行）', () => {
     expect(Object.keys(LIGHT_TOKENS).sort()).toEqual(Object.keys(DARK_TOKENS).sort());
   });
 
-  it('深色为默认基调：bg 为深色底；浅色正文对浅背景有对比（非白底白字）', () => {
-    expect(DARK_TOKENS.bg).toBe('#0B0F14');
+  it('亮色优先：浅色 bg 为浅底且正文有对比；深色保持深底', () => {
+    expect(DARK_TOKENS.bg).toBe('#0A1418');
+    expect(LIGHT_TOKENS.bg).toBe('#F5F7F8');
     expect(LIGHT_TOKENS.textPrimary).not.toBe(LIGHT_TOKENS.bg);
     expect(LIGHT_TOKENS.textSecondary).not.toBe(LIGHT_TOKENS.bg);
+  });
+
+  it('配色方案只覆盖强调色三件套，绿色只保留翡翠', () => {
+    const blue = resolveTokens('light', 'dark', 'BLUE');
+    expect(blue.accent).toBe(ACCENT_SCHEMES.BLUE.light.accent);
+    expect(blue.accentOn).toBe(ACCENT_SCHEMES.BLUE.light.accentOn);
+    expect(blue.accentSoft).toBe(ACCENT_SCHEMES.BLUE.light.accentSoft);
+    expect(blue.bg).toBe(LIGHT_TOKENS.bg);
+    expect(blue.surface).toBe(LIGHT_TOKENS.surface);
+
+    const labels = ACCENT_SCHEME_LIST.map((scheme) => scheme.label);
+    expect(labels).toContain('翡翠');
+    expect(labels).not.toContain('翠玉');
+    expect(labels).not.toContain('翠绿');
+  });
+
+  it('深色主题使用同一方案的暗色主色', () => {
+    expect(resolveTokens('dark', 'light', 'BERRY').accent).toBe(
+      ACCENT_SCHEMES.BERRY.dark.accent
+    );
+    expect(resolveTokens('system', 'dark', 'CARAMEL').accent).toBe(
+      ACCENT_SCHEMES.CARAMEL.dark.accent
+    );
   });
 });

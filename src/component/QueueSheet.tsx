@@ -9,7 +9,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/component/useTheme';
-import type { ThemeTokens } from '@/constant/theme';
+import { SHEET_RADIUS, type ThemeTokens } from '@/constant/theme';
 import { QueuePanel } from '@/page/nowplaying/components/QueuePanel';
 
 interface QueueSheetProps {
@@ -57,8 +57,8 @@ const createStyles = (t: ThemeTokens) =>
     panel: {
       height: '55%',
       backgroundColor: t.surface,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
+      borderTopLeftRadius: SHEET_RADIUS,
+      borderTopRightRadius: SHEET_RADIUS,
       overflow: 'hidden',
     },
   });

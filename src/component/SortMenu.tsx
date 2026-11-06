@@ -19,7 +19,13 @@ import {
 
 import type { SortByEnum } from '@/adapter/model';
 import { SORT_OPTIONS, type SortOption } from '@/constant/browse';
-import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import {
+  CARD_RADIUS,
+  FLOATING_SHADOW,
+  FONT_SIZE,
+  SPACING,
+  type ThemeTokens,
+} from '@/constant/theme';
 import { AppIcon } from '@/component/AppIcon';
 import { useTheme } from '@/component/useTheme';
 
@@ -135,14 +141,10 @@ const createStyles = (t: ThemeTokens) =>
     },
     panel: {
       minWidth: 148,
-      borderRadius: POSTER_RADIUS,
+      borderRadius: CARD_RADIUS,
       backgroundColor: t.surfaceElevated,
       overflow: 'hidden',
-      elevation: 8,
-      shadowColor: '#000000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
+      ...FLOATING_SHADOW,
     },
     panelScroll: { flexGrow: 0, flexShrink: 1 },
     panelContent: { paddingVertical: SPACING.xs },

@@ -16,6 +16,7 @@ import type { PhotoItem } from '@/adapter/model';
 import { AppIcon } from '@/component/AppIcon';
 import { showToast } from '@/component/Toast';
 import { PHOTO_PAGE_SIZE, PHOTO_VIEWER_PRELOAD_REMAINING } from '@/constant/photo';
+import { useImmersiveAccent } from '@/component/useTheme';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
 import { errorMessageOf } from '@/infra/error';
 import { photoService } from '@/service/PhotoService';
@@ -181,6 +182,7 @@ function HeaderComponent({
   onClose: () => void;
   viewingOriginal: boolean;
 }) {
+  const { accent } = useImmersiveAccent();
   return (
     <View style={styles.header}>
       <Pressable hitSlop={8} onPress={onClose} accessibilityLabel="关闭">
@@ -193,7 +195,7 @@ function HeaderComponent({
         {photo?.takenAtMs !== undefined && (
           <Text style={styles.takenAt}>{formatDate(photo.takenAtMs)}</Text>
         )}
-        {viewingOriginal && <Text style={styles.originalBadge}>原图</Text>}
+        {viewingOriginal && <Text style={[styles.originalBadge, { color: accent }]}>原图</Text>}
       </View>
     </View>
   );
@@ -249,7 +251,7 @@ const styles = StyleSheet.create({
   headerCenter: { flex: 1, gap: 2 },
   fileName: { color: COLORS.textPrimary, fontSize: FONT_SIZE.body },
   takenAt: { color: COLORS.textSecondary, fontSize: FONT_SIZE.body },
-  originalBadge: { color: COLORS.accent, fontSize: FONT_SIZE.body },
+  originalBadge: { fontSize: FONT_SIZE.body },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',

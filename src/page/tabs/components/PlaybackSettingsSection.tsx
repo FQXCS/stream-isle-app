@@ -13,7 +13,13 @@ import {
   RESOLUTION_TIER_MAP,
   type ResolutionTierKey,
 } from '@/constant/resolution';
-import { POSTER_RADIUS, FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
+import {
+  CARD_RADIUS,
+  CARD_SHADOW,
+  FONT_SIZE,
+  SPACING,
+  type ThemeTokens,
+} from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { useSettingsStore } from '@/store/settingsStore';
 
@@ -92,13 +98,31 @@ const createStyles = (t: ThemeTokens) =>
   StyleSheet.create({
   card: {
     backgroundColor: t.surface,
-    borderRadius: POSTER_RADIUS,
-    padding: SPACING.l,
-    gap: SPACING.m,
+    borderRadius: CARD_RADIUS,
+    paddingHorizontal: SPACING.l,
+    paddingVertical: SPACING.s,
+    gap: 2,
+    ...CARD_SHADOW,
   },
-  groupTitle: { color: t.textPrimary, fontSize: FONT_SIZE.title, fontWeight: '700' },
-  switchRowWrap: { flexDirection: 'row', alignItems: 'center', gap: SPACING.m },
-  rowTextWrap: { flex: 1, gap: 2 },
-  rowLabel: { color: t.textPrimary, fontSize: FONT_SIZE.body },
-  rowDescription: { color: t.textSecondary, fontSize: FONT_SIZE.body - 2 },
+  groupTitle: {
+    color: t.textTertiary,
+    fontSize: FONT_SIZE.caption + 1,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+    marginTop: SPACING.xs,
+  },
+  switchRowWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.m,
+    minHeight: 52,
+    paddingVertical: SPACING.s + 2,
+  },
+  rowTextWrap: { flex: 1, gap: 3 },
+  rowLabel: { color: t.textPrimary, fontSize: FONT_SIZE.title - 1, fontWeight: '500' },
+  rowDescription: {
+    color: t.textTertiary,
+    fontSize: FONT_SIZE.caption,
+    lineHeight: 16,
+  },
 });

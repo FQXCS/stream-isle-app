@@ -6,6 +6,7 @@
  */
 import { SETTINGS_STORE_KEY } from '@/constant/storage';
 import { mmkv } from '@/infra/storage';
+import { DEFAULT_ACCENT_SCHEME, ACCENT_SCHEME_LIST } from '@/constant/theme';
 import { useSettingsStore } from '@/store/settingsStore';
 
 const mockSyncTlsBypassHosts = jest.fn();
@@ -133,6 +134,16 @@ describe('settingsStore（继续观看/观看历史收录类型）', () => {
     expect(typeof useSettingsStore.getState().actions.toggleHistoryType).toBe('function');
     expect(useSettingsStore.getState().resumeTypeList).toEqual(['Movie', 'Episode', 'Video']);
   });
+
+  it('v1 迁移：旧快照「跟随系统」切到亮色，显式深色/浅色保持不动', async () => {
+    mmkv.set(SETTINGS_STORE_KEY, JSON.stringify({ state: { themeMode: 'system' }, version: 0 }));
+    await useSettingsStore.persist.rehydrate();
+    expect(useSettingsStore.getState().themeMode).toBe('light');
+
+    mmkv.set(SETTINGS_STORE_KEY, JSON.stringify({ state: { themeMode: 'dark' }, version: 0 }));
+    await useSettingsStore.persist.rehydrate();
+    expect(useSettingsStore.getState().themeMode).toBe('dark');
+  });
 });
 
 describe('settingsStore（M3 播放设置四字段，03 §4.7.2）', () => {
@@ -179,5 +190,26 @@ describe('settingsStore（M3 播放设置四字段，03 §4.7.2）', () => {
     expect(snapshot).toContain('"maxResolutionTier":"FHD"');
     expect(snapshot).toContain('"allowHevcDirectPlay":false');
     expect(snapshot).toContain('"autoDowngradeOnCellular":false');
+  });
+});
+
+describe('settingsStore（配色方案）', () => {
+  beforeEach(() => {
+    useSettingsStore.setState({ accentScheme: DEFAULT_ACCENT_SCHEME });
+    mmkv.clearAll();
+  });
+
+  it('默认翡翠，且列表里绿色只保留翡翠', () => {
+    expect(DEFAULT_ACCENT_SCHEME).toBe('EMERALD');
+    expect(useSettingsStore.getState().accentScheme).toBe('EMERALD');
+    const labels = ACCENT_SCHEME_LIST.map((scheme) => scheme.label);
+    expect(labels).toEqual(['翡翠', '雾蓝', '靛紫', '珊瑚', '墨黑', '莓果', '焦糖']);
+  });
+
+  it('setAccentScheme 写入并持久化', () => {
+    useSettingsStore.getState().actions.setAccentScheme('BERRY');
+    expect(useSettingsStore.getState().accentScheme).toBe('BERRY');
+    const snapshot = mmkv.getString(SETTINGS_STORE_KEY) ?? '';
+    expect(snapshot).toContain('"accentScheme":"BERRY"');
   });
 });

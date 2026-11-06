@@ -19,7 +19,7 @@ import {
   type SubtitleLangOption,
 } from '@/constant/subtitle';
 import { SERVER_FLAVOR_OPTIONS } from '@/constant/server';
-import { FONT_SIZE, POSTER_RADIUS, SPACING } from '@/constant/theme';
+import { ACCENT_SCHEME_OPTIONS, CARD_RADIUS, CARD_SHADOW, FONT_SIZE, SPACING } from '@/constant/theme';
 import { useMiniPlayerPadding } from '@/component/MiniPlayer';
 import { useTheme } from '@/component/useTheme';
 import type { ThemeModeEnum } from '@/constant/theme';
@@ -48,8 +48,10 @@ export function SettingsScreen() {
   const miniPadding = useMiniPlayerPadding();
   const preferredSubtitleLang = useSettingsStore((state) => state.preferredSubtitleLang);
   const themeMode = useSettingsStore((state) => state.themeMode);
+  const accentScheme = useSettingsStore((state) => state.accentScheme);
   const [subtitleSheetOpen, setSubtitleSheetOpen] = useState(false);
   const [themeSheetOpen, setThemeSheetOpen] = useState(false);
+  const [accentSheetOpen, setAccentSheetOpen] = useState(false);
 
   /** 当前选中 key：null → "default"（04 §4.5 UI 单选 key 约定） */
   const selectedSubtitleKey: SubtitleOptionKey = preferredSubtitleLang ?? 'default';
@@ -57,6 +59,7 @@ export function SettingsScreen() {
     (option) => (option.code ?? 'default') === selectedSubtitleKey
   );
   const selectedThemeOption = THEME_MODE_OPTIONS.find((option) => option.key === themeMode);
+  const selectedAccentOption = ACCENT_SCHEME_OPTIONS.find((option) => option.key === accentScheme);
 
   /** 写回 setPreferredSubtitleLang（M3 既有签名；null = 跟随默认自动选中文字幕） */
   const handleSelectSubtitle = (key: SubtitleOptionKey) => {
@@ -87,14 +90,20 @@ export function SettingsScreen() {
           />
         </View>
       </View>
-      {/* M6 外观分区（06 §4.4.5/§4.6.1）：浅色主题三态 */}
+      {/* M6 外观分区（06 §4.4.5/§4.6.1）：主题三态（默认亮色） */}
       <View style={[styles.card, { backgroundColor: t.surface }]}>
-        <Text style={[styles.groupTitle, { color: t.textPrimary }]}>外观</Text>
+        <Text style={[styles.groupTitle, { color: t.textTertiary }]}>外观</Text>
         <SettingRow
-          label="浅色主题"
-          description="媒体沉浸页（播放器/照片查看器/正在播放）固定深色"
-          value={selectedThemeOption?.label ?? '跟随系统'}
+          label="主题"
+          description="默认亮色；媒体沉浸页（播放器/照片查看器/正在播放）固定深色"
+          value={selectedThemeOption?.label ?? '浅色'}
           onPress={() => setThemeSheetOpen(true)}
+        />
+        <SettingRow
+          label="配色方案"
+          description="全局强调色，浅色与深色主题各自适配"
+          value={selectedAccentOption?.label ?? '翡翠'}
+          onPress={() => setAccentSheetOpen(true)}
         />
       </View>
       {/* 收录类型二级页入口：继续观看/观看历史分别设置（类型集不同） */}
@@ -108,7 +117,7 @@ export function SettingsScreen() {
       </View>
       {/* 库页配置入口：服务器类型直接列在设置页，进入后配置 Tab 分类/排序项 */}
       <View style={[styles.card, { backgroundColor: t.surface }]}>
-        <Text style={[styles.groupTitle, { color: t.textPrimary }]}>同类型服务器配置</Text>
+        <Text style={[styles.groupTitle, { color: t.textTertiary }]}>同类型服务器配置</Text>
         {SERVER_FLAVOR_OPTIONS.map((option) => (
           <SettingRow
             key={option.value}
@@ -137,7 +146,7 @@ export function SettingsScreen() {
       </View>
       {/* 关于分区（04 §4.5 容器；M6 增补版本 Code 与 GitHub Releases 外链，06 §4.9.3） */}
       <View style={[styles.card, { backgroundColor: t.surface }]}>
-        <Text style={[styles.groupTitle, { color: t.textPrimary }]}>关于</Text>
+        <Text style={[styles.groupTitle, { color: t.textTertiary }]}>关于</Text>
         <SettingRow label="应用名" value={CLIENT_NAME} />
         <SettingRow label="版本号" value={`${APP_VERSION} (${versionCode})`} />
         <SettingRow
@@ -164,12 +173,21 @@ export function SettingsScreen() {
       />
       {/* M6 主题三态弹层（06 §4.6.1） */}
       <RadioOptionSheet
-        title="浅色主题"
+        title="主题"
         visible={themeSheetOpen}
         selectedKey={themeMode}
         optionList={THEME_MODE_OPTIONS.map((option) => ({ key: option.key, label: option.label }))}
         onSelect={(key) => useSettingsStore.getState().actions.setThemeMode(key)}
         onClose={() => setThemeSheetOpen(false)}
+      />
+      {/* 配色方案弹层：色点 + 名称，选中即全局生效 */}
+      <RadioOptionSheet
+        title="配色方案"
+        visible={accentSheetOpen}
+        selectedKey={accentScheme}
+        optionList={ACCENT_SCHEME_OPTIONS}
+        onSelect={(key) => useSettingsStore.getState().actions.setAccentScheme(key)}
+        onClose={() => setAccentSheetOpen(false)}
       />
     </ScrollView>
   );
@@ -177,13 +195,25 @@ export function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: SPACING.l, gap: SPACING.l },
-  title: { fontSize: FONT_SIZE.header, fontWeight: '700' },
+  content: { padding: SPACING.l, gap: SPACING.m },
+  title: {
+    fontSize: FONT_SIZE.display,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    marginBottom: SPACING.xs,
+  },
   playGroup: { gap: SPACING.m },
   card: {
-    borderRadius: POSTER_RADIUS,
-    padding: SPACING.l,
-    gap: SPACING.s,
+    borderRadius: CARD_RADIUS,
+    paddingHorizontal: SPACING.l,
+    paddingVertical: SPACING.s,
+    gap: 2,
+    ...CARD_SHADOW,
   },
-  groupTitle: { fontSize: FONT_SIZE.title, fontWeight: '700' },
+  groupTitle: {
+    fontSize: FONT_SIZE.caption + 1,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+    marginTop: SPACING.xs,
+  },
 });

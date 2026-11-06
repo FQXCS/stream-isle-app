@@ -4,18 +4,20 @@
  */
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { useImmersiveAccent } from '@/component/useTheme';
 import { COLORS, FONT_SIZE } from '@/constant/theme';
 import { usePlayerStore } from '@/store/playerStore';
 
 export function SessionRestartOverlay() {
   const isRestartingSession = usePlayerStore((state) => state.isRestartingSession);
   const restartNotice = usePlayerStore((state) => state.restartNotice);
+  const { accent } = useImmersiveAccent();
   if (!isRestartingSession) {
     return null;
   }
   return (
     <View style={styles.overlay} pointerEvents="auto">
-      <ActivityIndicator color={COLORS.accent} size="large" />
+      <ActivityIndicator color={accent} size="large" />
       <Text style={styles.notice}>{restartNotice ?? ''}</Text>
     </View>
   );

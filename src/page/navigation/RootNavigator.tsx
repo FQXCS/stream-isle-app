@@ -70,14 +70,31 @@ const Tabs = createBottomTabNavigator<TabsParamList>();
 
 /** 底部三 Tab 容器（媒体库融合页/媒体服务器/设置；搜索改由媒体库页头部入口进入） */
 function TabsNavigator() {
+  const t = useTheme();
   return (
-    <Tabs.Navigator screenOptions={{ headerShown: false }}>
+    <Tabs.Navigator
+      screenOptions={{
+        headerShown: false,
+        // 选中态用实心图标 + 主色，未选中为线性灰；栏底与页面同色系
+        tabBarActiveTintColor: t.accent,
+        tabBarInactiveTintColor: t.textTertiary,
+        tabBarStyle: {
+          backgroundColor: t.surface,
+          borderTopColor: t.separator,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          elevation: 0,
+        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+      }}
+    >
       <Tabs.Screen
         name={ROUTES.TAB_LIBRARIES}
         component={LibrariesScreen}
         options={{
           title: '媒体库',
-          tabBarIcon: ({ color, size }) => <AppIcon name="library" size={size} color={color} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <AppIcon name="library" size={size} color={color} weight={focused ? 'fill' : 'regular'} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -85,7 +102,9 @@ function TabsNavigator() {
         component={MediaServerScreen}
         options={{
           title: '影视服务器',
-          tabBarIcon: ({ color, size }) => <AppIcon name="server" size={size} color={color} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <AppIcon name="server" size={size} color={color} weight={focused ? 'fill' : 'regular'} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -93,7 +112,9 @@ function TabsNavigator() {
         component={SettingsScreen}
         options={{
           title: '设置',
-          tabBarIcon: ({ color, size }) => <AppIcon name="settings" size={size} color={color} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <AppIcon name="settings" size={size} color={color} weight={focused ? 'fill' : 'regular'} />
+          ),
         }}
       />
     </Tabs.Navigator>
@@ -160,8 +181,15 @@ export function RootNavigator() {
       <NavigationContainer ref={navigationRef} theme={navigationTheme}>
         <RootStack.Navigator
           initialRouteName={ROUTES.TABS}
-          // 全局顶部导航样式：标题居中（Android 默认左对齐）
-          screenOptions={{ headerTitleAlign: 'center' }}
+          // 全局顶部导航样式：标题居中、去阴影、底色与页面一致（浅色主题下更轻盈）
+          screenOptions={{
+            headerTitleAlign: 'center',
+            headerStyle: { backgroundColor: t.bg },
+            headerShadowVisible: false,
+            headerTintColor: t.textPrimary,
+            headerTitleStyle: { fontSize: 17, fontWeight: '600', color: t.textPrimary },
+            contentStyle: { backgroundColor: t.bg },
+          }}
           // 迷你条不遮内容：非 Tab / 非沉浸页在场景底部预留条高（MiniPlayerInset 内部订阅，
           // 停止播放后自动归零；Tab 页由三个 Tab 屏幕自己的 useMiniPlayerPadding 预留）
           screenLayout={({ children, route }) =>

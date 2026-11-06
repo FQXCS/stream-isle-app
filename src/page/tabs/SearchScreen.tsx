@@ -32,7 +32,7 @@ import { searchService } from '@/service/SearchService';
 import { useDebouncedValue } from '@/util/useDebouncedValue';
 
 /** 输入框圆角 */
-const INPUT_RADIUS = 22;
+const INPUT_RADIUS = 14;
 
 export function SearchScreen() {
   const t = useTheme();
@@ -98,12 +98,13 @@ export function SearchScreen() {
     <View style={styles.container}>
       {/* 顶部圆角输入框：尾部清除按钮 / 请求中指示（04 §4.3） */}
       <View style={styles.inputWrap}>
+        <AppIcon name="search" size={18} color={t.textTertiary} />
         <TextInput
           style={styles.input}
           value={input}
           onChangeText={setInput}
           placeholder="搜索电影、剧集、人物"
-          placeholderTextColor={t.textSecondary}
+          placeholderTextColor={t.textTertiary}
           autoCapitalize="none"
           autoCorrect={false}
           returnKeyType="search"
@@ -125,7 +126,7 @@ export function SearchScreen() {
             hitSlop={8}
             accessibilityLabel="清除搜索"
           >
-            <AppIcon name="close" size={16} color={t.textSecondary} />
+            <AppIcon name="close" size={16} color={t.textTertiary} />
           </Pressable>
         ) : null}
       </View>
@@ -161,18 +162,30 @@ export function SearchScreen() {
 const createStyles = (t: ThemeTokens) =>
   StyleSheet.create({
   container: { flex: 1, backgroundColor: t.bg, padding: SPACING.l, gap: SPACING.l },
-  inputWrap: { position: 'relative', justifyContent: 'center' },
-  input: {
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.s,
     backgroundColor: t.surface,
     borderRadius: INPUT_RADIUS,
-    color: t.textPrimary,
-    fontSize: FONT_SIZE.body,
-    paddingHorizontal: SPACING.l,
-    paddingVertical: SPACING.m,
-    paddingRight: 40,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.separator,
+    paddingHorizontal: SPACING.m + 2,
+    height: 46,
   },
-  inputTail: { position: 'absolute', right: SPACING.l },
+  input: {
+    flex: 1,
+    color: t.textPrimary,
+    fontSize: FONT_SIZE.title - 1,
+    paddingVertical: 0,
+  },
+  inputTail: { paddingLeft: SPACING.xs },
   resultContent: { paddingBottom: SPACING.xl },
   section: { gap: SPACING.m, marginBottom: SPACING.l },
-  sectionTitle: { color: t.textPrimary, fontSize: FONT_SIZE.title, fontWeight: '700' },
+  sectionTitle: {
+    color: t.textPrimary,
+    fontSize: FONT_SIZE.section,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
 });

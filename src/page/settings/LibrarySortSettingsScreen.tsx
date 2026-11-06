@@ -15,7 +15,7 @@ import {
   tabsOfFlavor,
 } from '@/constant/libraryTabs';
 import { ROUTES } from '@/constant/navigation';
-import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { FONT_SIZE, CARD_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { useLibraryDisplayStore } from '@/store/libraryDisplayStore';
 import { usesPrimarySortConfig } from '@/util/libraryConfig';
@@ -101,7 +101,7 @@ const createStyles = (t: ThemeTokens) =>
     },
     card: {
       backgroundColor: t.surface,
-      borderRadius: POSTER_RADIUS,
+      borderRadius: CARD_RADIUS,
       paddingHorizontal: SPACING.l,
     },
   });

@@ -21,7 +21,7 @@ import { AppIcon } from '@/component/AppIcon';
 import { EmptyView } from '@/component/EmptyView';
 import { FavoriteButton } from '@/component/FavoriteButton';
 import { showToast } from '@/component/Toast';
-import { useResolvedScheme, useTheme } from '@/component/useTheme';
+import { useImmersiveAccent, useResolvedScheme, useTheme } from '@/component/useTheme';
 import { MODE_HINT_DURATION_MS } from '@/constant/audio';
 import { ROUTES } from '@/constant/navigation';
 import { COLORS, SPACING } from '@/constant/theme';
@@ -61,6 +61,7 @@ export function NowPlayingScreen() {
   const insets = useSafeAreaInsets();
   const scheme = useResolvedScheme();
   const t = useTheme();
+  const immersiveAccent = useImmersiveAccent();
   const { width, height } = useWindowDimensions();
   const currentTrack = usePlayerStore((state) => state.audio.currentTrack);
   const status = usePlayerStore((state) => state.audio.status);
@@ -190,7 +191,7 @@ export function NowPlayingScreen() {
   // 页面 tone：封面态固定深色（白字），无封面态取当前主题 token
   const textPrimary = hasCover ? COLORS.textPrimary : t.textPrimary;
   const textSecondary = hasCover ? COLORS.textSecondary : t.textSecondary;
-  const accent = hasCover ? COLORS.accent : t.accent;
+  const accent = hasCover ? immersiveAccent.accent : t.accent;
   const playButtonColor = hasCover ? '#FFFFFF' : t.textPrimary;
   const playIconColor = hasCover ? COLORS.bg : t.bg;
   // 浅色玻璃页白轨不可见：轨道配色跟随主题（播放页仍用默认白）

@@ -19,7 +19,14 @@ import { showToast } from '@/component/Toast';
 import { useMiniPlayerPadding } from '@/component/MiniPlayer';
 import { useTheme } from '@/component/useTheme';
 import { ROUTES } from '@/constant/navigation';
-import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { ActiveServerDot } from '@/page/tabs/components/ActiveServerDot';
+import {
+  CARD_RADIUS,
+  CARD_SHADOW,
+  FONT_SIZE,
+  SPACING,
+  type ThemeTokens,
+} from '@/constant/theme';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { refreshServerStats } from '@/service/ServerService';
 import { useAccountStore, type ServerAccount } from '@/store/accountStore';
@@ -33,12 +40,6 @@ const ADD_FLAVOR_OPTIONS: readonly { flavor: ServerFlavor; label: string }[] = [
   { flavor: 'EMBY', label: 'Emby' },
   { flavor: 'JELLYFIN', label: 'Jellyfin' },
 ];
-
-/** 卡片底色（参考稿：Emby 浅绿 / Jellyfin 浅紫，半透明叠加在主题底色上） */
-const FLAVOR_CARD_TINT: Record<ServerFlavor, string> = {
-  EMBY: 'rgba(82, 181, 75, 0.14)',
-  JELLYFIN: 'rgba(112, 88, 214, 0.14)',
-};
 
 export function MediaServerScreen() {
   const t = useTheme();
@@ -282,49 +283,57 @@ export function MediaServerScreen() {
   return (
     <View style={[styles.container, { backgroundColor: t.bg, paddingBottom: miniPadding }]}>
       <View style={styles.header}>
-        {selectMode ? (
-          <View style={styles.headerButton} />
-        ) : (
-          <Pressable
-            ref={addButtonRef}
-            accessibilityRole="button"
-            accessibilityLabel="添加服务器"
-            hitSlop={8}
-            onPress={openAddMenu}
-            style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
-          >
-            <AppIcon name="plus" size={24} color={t.textPrimary} />
-          </Pressable>
-        )}
         <Text style={styles.title}>影视服务器</Text>
-        {selectMode ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="完成"
-            hitSlop={8}
-            onPress={exitSelectMode}
-            style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
-          >
-            <Text style={[styles.doneText, { color: t.textPrimary }]}>完成</Text>
-          </Pressable>
-        ) : (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="更多操作"
-            hitSlop={8}
-            onPress={(event) =>
-              setPageAnchor({
-                x: event.nativeEvent.pageX,
-                y: event.nativeEvent.pageY,
-                width: 1,
-                height: 1,
-              })
-            }
-            style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
-          >
-            <AppIcon name="more" size={24} color={t.textPrimary} />
-          </Pressable>
-        )}
+        <View style={styles.headerActions}>
+          {selectMode ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="完成"
+              hitSlop={8}
+              onPress={exitSelectMode}
+              style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
+            >
+              <Text style={[styles.doneText, { color: t.accent }]}>完成</Text>
+            </Pressable>
+          ) : (
+            <>
+              <Pressable
+                ref={addButtonRef}
+                accessibilityRole="button"
+                accessibilityLabel="添加服务器"
+                hitSlop={8}
+                onPress={openAddMenu}
+                style={({ pressed }) => [
+                  styles.headerButton,
+                  styles.headerPill,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <AppIcon name="plus" size={22} color={t.textPrimary} />
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="更多操作"
+                hitSlop={8}
+                onPress={(event) =>
+                  setPageAnchor({
+                    x: event.nativeEvent.pageX,
+                    y: event.nativeEvent.pageY,
+                    width: 1,
+                    height: 1,
+                  })
+                }
+                style={({ pressed }) => [
+                  styles.headerButton,
+                  styles.headerPill,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <AppIcon name="more" size={22} color={t.textPrimary} />
+              </Pressable>
+            </>
+          )}
+        </View>
       </View>
 
       <FlatList
@@ -335,8 +344,11 @@ export function MediaServerScreen() {
         contentContainerStyle={[styles.listContent, selectMode && styles.listContentSelectMode]}
         ListEmptyComponent={
           <View style={styles.emptyBox}>
+            <View style={styles.emptyIconBox}>
+              <AppIcon name="server" size={30} color={t.accent} />
+            </View>
             <Text style={styles.emptyTitle}>还没有添加服务器</Text>
-            <Text style={styles.emptyHint}>点左上角「+」添加 Emby / Jellyfin 服务器</Text>
+            <Text style={styles.emptyHint}>点右上角「+」添加 Emby / Jellyfin 服务器</Text>
           </View>
         }
         renderItem={({ item }) => {
@@ -367,7 +379,7 @@ export function MediaServerScreen() {
               }
               style={({ pressed }) => [
                 styles.card,
-                { width: cardWidth, backgroundColor: FLAVOR_CARD_TINT[item.flavor] },
+                { width: cardWidth, backgroundColor: t.surface },
                 pressed && styles.pressed,
               ]}
             >
@@ -380,7 +392,7 @@ export function MediaServerScreen() {
                     <View style={[styles.selectCircle, { borderColor: t.textTertiary }]} />
                   )
                 ) : (
-                  isActive && <View style={[styles.activeDot, { backgroundColor: t.accent }]} />
+                  isActive && <ActiveServerDot />
                 )}
               </View>
               <Text style={styles.cardName} numberOfLines={1}>
@@ -393,9 +405,17 @@ export function MediaServerScreen() {
                 电影: {item.stats?.movieCount ?? '-'} 剧集: {item.stats?.seriesCount ?? '-'}
               </Text>
               <View style={styles.cardBottom}>
-                <Text style={styles.cardFlavor}>
-                  {item.flavor === 'EMBY' ? 'Emby' : 'Jellyfin'}
-                </Text>
+                <View style={styles.flavorRow}>
+                  <View
+                    style={[
+                      styles.flavorDot,
+                      { backgroundColor: item.flavor === 'EMBY' ? '#52B54B' : '#AA5CC3' },
+                    ]}
+                  />
+                  <Text style={styles.cardFlavor}>
+                    {item.flavor === 'EMBY' ? 'Emby' : 'Jellyfin'}
+                  </Text>
+                </View>
                 <Text style={styles.cardTime}>{formatRelativeTime(item.lastUsedAt)}</Text>
               </View>
             </Pressable>
@@ -475,33 +495,39 @@ const createStyles = (t: ThemeTokens) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: SPACING.m,
-      paddingTop: SPACING.xl,
+      paddingHorizontal: SPACING.l,
+      paddingTop: SPACING.l,
       paddingBottom: SPACING.m,
-      // 参考稿：头部做成独立条带（surface 底 + 阴影/分隔线），与内容区明显分层
-      backgroundColor: t.surface,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: t.separator,
-      elevation: 4,
-      shadowColor: '#000000',
-      shadowOpacity: 0.12,
-      shadowRadius: 3,
-      shadowOffset: { width: 0, height: 2 },
     },
+    headerActions: { flexDirection: 'row', alignItems: 'center', gap: SPACING.s },
     headerButton: { padding: SPACING.s },
+    /** 头部操作按钮（白底胶囊，与首页搜索/历史按钮同构） */
+    headerPill: {
+      borderRadius: 999,
+      backgroundColor: t.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.separator,
+    },
     doneText: { fontSize: FONT_SIZE.body, fontWeight: '600' },
-    title: { color: t.textPrimary, fontSize: FONT_SIZE.header, fontWeight: '700' },
-    listContent: { padding: SPACING.l, paddingTop: SPACING.xl, gap: SPACING.m, flexGrow: 1 },
+    title: {
+      color: t.textPrimary,
+      fontSize: FONT_SIZE.display,
+      fontWeight: '700',
+      letterSpacing: -0.3,
+    },
+    listContent: { padding: SPACING.l, paddingTop: SPACING.m, gap: SPACING.m, flexGrow: 1 },
     /** 编辑模式下底部工具条占位，避免最后一行卡片被挡 */
     listContentSelectMode: { paddingBottom: 190 },
     column: { gap: SPACING.m },
     card: {
-      borderRadius: POSTER_RADIUS,
+      borderRadius: CARD_RADIUS,
       padding: SPACING.l,
       gap: SPACING.xs,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.separator,
+      ...CARD_SHADOW,
     },
     cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    activeDot: { width: 8, height: 8, borderRadius: 4 },
     selectCircle: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5 },
     selectFooter: {
       position: 'absolute',
@@ -532,18 +558,35 @@ const createStyles = (t: ThemeTokens) =>
     selectAction: { fontSize: FONT_SIZE.body, fontWeight: '600' },
     selectCount: { fontSize: FONT_SIZE.body },
     selectSide: { minWidth: 64 },
-    cardName: { color: t.textPrimary, fontSize: FONT_SIZE.title, fontWeight: '700' },
-    cardUrl: { color: t.textSecondary, fontSize: FONT_SIZE.body - 1 },
-    cardStats: { color: t.textSecondary, fontSize: FONT_SIZE.body - 1 },
+    cardName: { color: t.textPrimary, fontSize: FONT_SIZE.title, fontWeight: '700', marginTop: 2 },
+    cardUrl: { color: t.textTertiary, fontSize: FONT_SIZE.caption },
+    cardStats: { color: t.textSecondary, fontSize: FONT_SIZE.caption },
     cardBottom: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       marginTop: SPACING.m,
     },
-    cardFlavor: { color: t.textSecondary, fontSize: FONT_SIZE.body - 1, fontWeight: '600' },
-    cardTime: { color: t.textSecondary, fontSize: FONT_SIZE.body - 1 },
-    emptyBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: SPACING.s, paddingTop: '40%' },
+    flavorRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    flavorDot: { width: 7, height: 7, borderRadius: 4 },
+    cardFlavor: { color: t.textSecondary, fontSize: FONT_SIZE.caption, fontWeight: '600' },
+    cardTime: { color: t.textTertiary, fontSize: FONT_SIZE.caption },
+    emptyBox: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: SPACING.s,
+      paddingTop: '40%',
+    },
+    emptyIconBox: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: t.accentSoft,
+      marginBottom: SPACING.xs,
+    },
     emptyTitle: { color: t.textPrimary, fontSize: FONT_SIZE.title, fontWeight: '600' },
-    emptyHint: { color: t.textSecondary, fontSize: FONT_SIZE.body },
+    emptyHint: { color: t.textSecondary, fontSize: FONT_SIZE.body - 2 },
     pressed: { opacity: 0.7 },
   });

@@ -189,8 +189,9 @@ const createStyles = (t: ThemeTokens) =>
     section: { marginTop: SPACING.l },
     sectionTitle: {
       color: t.textPrimary,
-      fontSize: FONT_SIZE.title,
-      fontWeight: '600',
+      fontSize: FONT_SIZE.section,
+      fontWeight: '700',
+      letterSpacing: -0.2,
       paddingHorizontal: SPACING.l,
       marginBottom: SPACING.s,
     },

@@ -58,7 +58,7 @@ export function PosterCard({
     >
       <View
         ref={posterBoxRef}
-        style={[styles.posterBox, { backgroundColor: t.surface, aspectRatio }]}
+        style={[styles.posterBox, { backgroundColor: t.surfaceSunken, aspectRatio }]}
       >
         {item.posterImageUrl !== undefined ? (
           <Image
@@ -72,7 +72,7 @@ export function PosterCard({
         ) : (
           <View style={[styles.poster, styles.posterFallback]}>
             {/* 无封面：按条目类型显示图标（电影/剧集/音乐/照片…各用各的语义图标） */}
-            <AppIcon name={mediaIconOf(item.type)} size={32} color={t.textSecondary} />
+            <AppIcon name={mediaIconOf(item.type)} size={30} color={t.textTertiary} />
           </View>
         )}
         {item.userData.played && (
@@ -92,7 +92,7 @@ export function PosterCard({
             <AppIcon
               name={item.userData.favorite ? 'heart' : 'heartOutline'}
               size={14}
-              color={t.accent}
+              color={item.userData.favorite ? t.danger : t.textSecondary}
             />
           </Pressable>
         )}
@@ -120,7 +120,7 @@ export function PosterCard({
 }
 
 const styles = StyleSheet.create({
-  card: { flex: 1, gap: 4 },
+  card: { flex: 1, gap: 6 },
   posterBox: {
     borderRadius: POSTER_RADIUS,
     overflow: 'hidden',
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(255,255,255,0.92)',
   },
   /** 取消收藏淡化置灰（不移除卡片，避免服务端分页索引跳动，04 §4.4） */
   dimmed: { opacity: 0.4 },
@@ -159,10 +159,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 3,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.35)',
   },
-  progressFill: { height: '100%' },
+  progressFill: { height: '100%', borderTopRightRadius: 2, borderBottomRightRadius: 2 },
   progressIndeterminate: { width: '30%', opacity: 0.7 },
-  name: { fontSize: FONT_SIZE.body, fontWeight: '600' },
-  subtext: { fontSize: FONT_SIZE.body },
+  name: { fontSize: FONT_SIZE.body - 1, fontWeight: '600' },
+  subtext: { fontSize: FONT_SIZE.caption },
 });

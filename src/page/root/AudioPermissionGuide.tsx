@@ -109,7 +109,7 @@ const createStyles = (t: ThemeTokens) =>
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: t.scrim,
   },
   dialog: {
     marginHorizontal: SPACING.xl,
@@ -128,6 +128,6 @@ const createStyles = (t: ThemeTokens) =>
   },
   primaryButton: { backgroundColor: t.accent },
   secondaryButton: { backgroundColor: 'transparent' },
-  primaryText: { color: '#FFFFFF', fontSize: FONT_SIZE.body },
+  primaryText: { color: t.accentOn, fontSize: FONT_SIZE.body, fontWeight: '500' },
   secondaryText: { color: t.textSecondary, fontSize: FONT_SIZE.body },
 });

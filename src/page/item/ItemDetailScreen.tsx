@@ -529,12 +529,12 @@ export function ItemDetailScreen() {
       : baseMetaText === ''
         ? bookSizeText
         : `${baseMetaText} · ${bookSizeText}`;
-  // 参考稿播放按钮：浅色药丸 + 深色图标/文案（主题跟随 surfaceElevated）
+  // 主播放按钮：主色药丸 + accentOn 图标/文案（浅色主题下建立明确主操作）
   const playButtonStyle = [
     styles.playButton,
-    { backgroundColor: t.surfaceElevated, borderColor: t.separator },
+    { backgroundColor: t.accent, borderColor: t.accent },
   ];
-  const playButtonTextStyle = [styles.playButtonText, { color: t.textPrimary }];
+  const playButtonTextStyle = [styles.playButtonText, { color: t.accentOn }];
 
   return (
     <View style={[styles.fill, { backgroundColor: t.bg }]}>
@@ -556,7 +556,7 @@ export function ItemDetailScreen() {
                 navigation.navigate(ROUTES.BOOK_READER, { itemId: detail.id, name: detail.name })
               }
             >
-              <AppIcon name="file" size={18} color={t.textPrimary} />
+              <AppIcon name="file" size={18} color={t.accentOn} />
               <Text style={playButtonTextStyle}>阅读</Text>
             </Pressable>
           )}
@@ -581,11 +581,11 @@ export function ItemDetailScreen() {
                   pointerEvents="none"
                   style={[
                     styles.playProgressFill,
-                    { width: `${resumeRatio * 100}%`, backgroundColor: t.accentSoft },
+                    { width: `${resumeRatio * 100}%`, backgroundColor: 'rgba(255,255,255,0.24)' },
                   ]}
                 />
               )}
-              <AppIcon name="play" size={18} color={t.textPrimary} />
+              <AppIcon name="play" size={18} color={t.accentOn} />
               <Text style={playButtonTextStyle}>
                 {resumeMs !== null ? `从 ${formatClock(resumeMs)} 继续` : '播放'}
               </Text>
@@ -604,14 +604,14 @@ export function ItemDetailScreen() {
                 })
               }
             >
-              <AppIcon name="play" size={18} color={t.textPrimary} />
+              <AppIcon name="play" size={18} color={t.accentOn} />
               <Text style={playButtonTextStyle}>播放第一集</Text>
             </Pressable>
           )}
           {/* 收藏 / 已看图标（参考稿：播放按钮下方居中两枚图标） */}
           <View style={styles.iconRow}>
             <Pressable
-              style={styles.iconButton}
+              style={[styles.iconButton, { backgroundColor: t.surface, borderColor: t.separator }]}
               onPress={() => void toggleFavorite()}
               accessibilityLabel={detail.userData.favorite ? '取消收藏' : '收藏'}
             >
@@ -622,7 +622,7 @@ export function ItemDetailScreen() {
               />
             </Pressable>
             <Pressable
-              style={styles.iconButton}
+              style={[styles.iconButton, { backgroundColor: t.surface, borderColor: t.separator }]}
               onPress={togglePlayed}
               accessibilityLabel={detail.userData.played ? '标记为未观看' : '标记为已观看'}
             >
@@ -793,7 +793,14 @@ const styles = StyleSheet.create({
     gap: 40,
     marginTop: SPACING.xs,
   },
-  iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   overviewBox: { paddingHorizontal: SPACING.l, marginTop: SPACING.l },
   overview: { fontSize: FONT_SIZE.body, lineHeight: 22 },
   section: { marginTop: SPACING.l, gap: SPACING.m },

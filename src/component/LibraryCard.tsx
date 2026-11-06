@@ -51,7 +51,7 @@ export function LibraryCard({ library, onPress }: LibraryCardProps) {
         />
       ) : (
         <View style={styles.iconBox}>
-          <AppIcon name={LIBRARY_ICON_MAP[library.type]} size={28} color={t.textSecondary} />
+          <AppIcon name={LIBRARY_ICON_MAP[library.type]} size={26} color={t.textTertiary} />
         </View>
       )}
       <View style={styles.meta}>
@@ -73,13 +73,22 @@ const createStyles = (t: ThemeTokens) =>
     alignItems: 'center',
     backgroundColor: t.surface,
     borderRadius: POSTER_RADIUS,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.separator,
     padding: SPACING.m,
     gap: SPACING.m,
   },
   pressed: { opacity: 0.7 },
-  iconBox: { width: 84, height: 48, alignItems: 'center', justifyContent: 'center' },
+  iconBox: {
+    width: 84,
+    height: 48,
+    borderRadius: 10,
+    backgroundColor: t.surfaceSunken,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   // 库图多为 16:9（如照片库 640×360 拼图海报），用横向缩略图避免过度裁切
-  thumb: { width: 84, height: 48, borderRadius: 8, backgroundColor: t.bg },
+  thumb: { width: 84, height: 48, borderRadius: 10, backgroundColor: t.surfaceSunken },
   meta: { flex: 1, gap: 2 },
   name: { color: t.textPrimary, fontSize: FONT_SIZE.title, fontWeight: '600' },
   count: { color: t.textSecondary, fontSize: FONT_SIZE.body },

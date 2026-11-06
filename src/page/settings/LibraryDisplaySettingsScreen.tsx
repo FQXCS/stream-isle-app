@@ -10,7 +10,7 @@ import type { ServerFlavor } from '@/adapter/model';
 import { SettingRow } from '@/component/SettingRow';
 import { useTheme } from '@/component/useTheme';
 import { ROUTES } from '@/constant/navigation';
-import { POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { CARD_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
 import type { RootStackParamList } from '@/page/navigation/types';
 
 type SettingsNavigation = NativeStackNavigationProp<RootStackParamList>;
@@ -50,7 +50,7 @@ const createStyles = (t: ThemeTokens) =>
     content: { padding: SPACING.l, gap: SPACING.s },
     card: {
       backgroundColor: t.surface,
-      borderRadius: POSTER_RADIUS,
+      borderRadius: CARD_RADIUS,
       paddingHorizontal: SPACING.l,
     },
   });

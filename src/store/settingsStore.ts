@@ -13,7 +13,8 @@ import type { MediaItemTypeEnum } from '@/adapter/model';
 import type { ResolutionTierKey } from '@/constant/resolution';
 import { DEFAULT_RESOLUTION_TIER } from '@/constant/resolution';
 import { DEFAULT_FEED_TYPES, HISTORY_TYPE_OPTIONS, RESUME_TYPE_OPTIONS } from '@/constant/browse';
-import type { ThemeModeEnum } from '@/constant/theme';
+import type { AccentSchemeEnum, ThemeModeEnum } from '@/constant/theme';
+import { DEFAULT_ACCENT_SCHEME } from '@/constant/theme';
 import { SETTINGS_STORE_KEY } from '@/constant/storage';
 import { syncTlsBypassHosts } from '@/infra/tlsBypass';
 import { createMmkvJSONStorage } from '@/infra/storage';
@@ -38,8 +39,10 @@ interface SettingsActions {
   setPreferredSubtitleLang(lang: string | null): void;
   /** M5：电池引导已展示标记（无论用户选择与否，写 true 后不再弹，05 文档 §4.14） */
   setBatteryGuideShown(): void;
-  /** M6：浅色主题三态（system/light/dark，默认跟随系统；06 文档 §4.6.1） */
+  /** 主题三态（system/light/dark，默认亮色；06 文档 §4.6.1） */
   setThemeMode(mode: ThemeModeEnum): void;
+  /** 强调色配色方案（设置页可切换，默认翡翠；浅色/深色各有适配） */
+  setAccentScheme(scheme: AccentSchemeEnum): void;
   /** 首页继续观看收录类型多选（至少保留一项，空列表变更忽略） */
   toggleResumeType(type: MediaItemTypeEnum): void;
   /** 观看历史收录类型多选（至少保留一项，空列表变更忽略） */
@@ -61,8 +64,10 @@ interface SettingsState {
   preferredSubtitleLang: string | null;
   /** M5：电池白名单引导一次性标记（已展示不再弹，05 文档 §4.14；persist） */
   batteryGuideShown: boolean;
-  /** M6：主题模式（默认 system 跟随系统；随既有 MMKV persist 持久化，06 文档 §4.6.1） */
+  /** 主题模式（默认 light 亮色优先；随既有 MMKV persist 持久化，06 文档 §4.6.1） */
   themeMode: ThemeModeEnum;
+  /** 强调色配色方案（默认翡翠；persist） */
+  accentScheme: AccentSchemeEnum;
   /** 继续观看收录类型（默认 Movie,Episode,Video；persist） */
   resumeTypeList: MediaItemTypeEnum[];
   /** 观看历史收录类型（默认 Movie,Episode,Video；persist；较继续观看多图书/音乐） */
@@ -99,7 +104,8 @@ export const useSettingsStore = create<SettingsState>()(
       resumePlaybackEnabled: true,
       preferredSubtitleLang: null,
       batteryGuideShown: false,
-      themeMode: 'system',
+      themeMode: 'light',
+      accentScheme: DEFAULT_ACCENT_SCHEME,
       resumeTypeList: [...DEFAULT_FEED_TYPES],
       historyTypeList: [...DEFAULT_FEED_TYPES],
 
@@ -155,6 +161,10 @@ export const useSettingsStore = create<SettingsState>()(
           set({ themeMode: mode });
         },
 
+        setAccentScheme: (scheme: AccentSchemeEnum) => {
+          set({ accentScheme: scheme });
+        },
+
         toggleResumeType: (type: MediaItemTypeEnum) => {
           set((state) => {
             const next = toggleTypeInList(state.resumeTypeList, type, RESUME_TYPE_OPTIONS);
@@ -173,6 +183,15 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: SETTINGS_STORE_KEY,
       storage: createMmkvJSONStorage(),
+      version: 1,
+      // v1：默认主题切到亮色；旧快照里「跟随系统」统一迁移为 light，显式 dark/light 保持不动
+      migrate: (persistedState, version) => {
+        const persisted = (persistedState ?? {}) as Record<string, unknown>;
+        if (version < 1 && persisted.themeMode === 'system') {
+          return { ...persisted, themeMode: 'light' } as unknown as SettingsState;
+        }
+        return persistedState as SettingsState;
+      },
       // 只持久化设置字段：actions 是函数集合，JSON 序列化为 {}，回灌会清空全部 action
       partialize: (state) => ({
         allowInsecureTls: state.allowInsecureTls,
@@ -183,6 +202,7 @@ export const useSettingsStore = create<SettingsState>()(
         preferredSubtitleLang: state.preferredSubtitleLang,
         batteryGuideShown: state.batteryGuideShown,
         themeMode: state.themeMode,
+        accentScheme: state.accentScheme,
         resumeTypeList: state.resumeTypeList,
         historyTypeList: state.historyTypeList,
       }),

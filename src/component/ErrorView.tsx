@@ -5,7 +5,7 @@
  */
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { POSTER_RADIUS, FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
+import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { errorMessageOf, isRetryable, type AppError } from '@/infra/error';
 
@@ -32,7 +32,7 @@ export function ErrorView({ error, onRetry, extraAction }: ErrorViewProps) {
       )}
       {showRetry && (
         <Pressable style={styles.button} onPress={onRetry}>
-          <Text style={styles.buttonText}>重试</Text>
+          <Text style={[styles.buttonText, styles.buttonTextOnAccent]}>重试</Text>
         </Pressable>
       )}
     </View>
@@ -57,10 +57,11 @@ const createStyles = (t: ThemeTokens) =>
   },
   button: {
     backgroundColor: t.accent,
-    borderRadius: POSTER_RADIUS,
+    borderRadius: 999,
     paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING.s,
+    paddingVertical: SPACING.s + 2,
   },
   extraButton: { backgroundColor: t.surface },
-  buttonText: { color: t.textPrimary, fontSize: FONT_SIZE.body },
+  buttonText: { color: t.textPrimary, fontSize: FONT_SIZE.body, fontWeight: '500' },
+  buttonTextOnAccent: { color: t.accentOn },
 });

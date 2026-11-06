@@ -5,6 +5,10 @@
     "types": ["jest"],
     "paths": {
       "@/*": ["./src/*"],
+      // Phosphor 的 react-native 入口是 TSX 源码（icon-base 用了 RN 0.88 尚不在 Svg 类型里的
+      // className），tsc 直接检查会报错；类型指向编译产物的 d.ts（skipLibCheck 生效），
+      // Metro 运行时仍按 react-native 条件加载源码。
+      "phosphor-react-native/src/icons/*": ["./node_modules/phosphor-react-native/lib/typescript/icons/*"],
       // @rntp/player 深引用 RN 内部类型；RN 0.88 exports 不再为该路径提供类型（types: null），
       // 指向 types_generated 声明（"." 主入口的 types 分支同源）
       "react-native/Libraries/Types/CodegenTypes": ["./node_modules/react-native/types_generated/Libraries/Types/CodegenTypes.d.ts"]

@@ -40,7 +40,7 @@ export function LibraryTile({ library, onPress }: LibraryTileProps) {
             recyclingKey={library.id}
           />
         ) : (
-          <AppIcon name={LIBRARY_ICON_MAP[library.type]} size={30} color={t.textSecondary} />
+          <AppIcon name={LIBRARY_ICON_MAP[library.type]} size={30} color={t.textTertiary} />
         )}
       </View>
       <Text style={styles.name} numberOfLines={1}>
@@ -59,10 +59,10 @@ const createStyles = (t: ThemeTokens) =>
       aspectRatio: 16 / 9,
       borderRadius: POSTER_RADIUS,
       overflow: 'hidden',
-      backgroundColor: t.surface,
+      backgroundColor: t.surfaceSunken,
       alignItems: 'center',
       justifyContent: 'center',
     },
     image: { width: '100%', height: '100%' },
-    name: { color: t.textPrimary, fontSize: FONT_SIZE.body, fontWeight: '600' },
+    name: { color: t.textPrimary, fontSize: FONT_SIZE.body - 1, fontWeight: '600' },
   });

@@ -11,7 +11,7 @@ import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 
 /** 行内头像直径 */
-const AVATAR_SIZE = 28;
+const AVATAR_SIZE = 32;
 
 interface SettingRowProps {
   /** 行标签 */
@@ -60,7 +60,7 @@ export function SettingRow({ label, description, avatarUrl, value, badge, onPres
         )}
         {value !== undefined && <Text style={styles.value}>{value}</Text>}
         {(showArrow ?? onPress !== undefined) && (
-          <AppIcon name="chevronRight" size={16} color={t.textSecondary} />
+          <AppIcon name="chevronRight" size={16} color={t.textTertiary} />
         )}
       </View>
     </>
@@ -81,34 +81,38 @@ const createStyles = (t: ThemeTokens) =>
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.m,
-    paddingVertical: SPACING.s,
-    minHeight: 44,
+    paddingVertical: SPACING.s + 2,
+    minHeight: 52,
   },
-  pressed: { opacity: 0.7 },
+  pressed: { opacity: 0.6 },
   avatarBox: {
     width: AVATAR_SIZE,
     height: AVATAR_SIZE,
     borderRadius: AVATAR_SIZE / 2,
     overflow: 'hidden',
-    backgroundColor: t.bg,
+    backgroundColor: t.surfaceSunken,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatar: { width: '100%', height: '100%' },
-  textWrap: { flex: 1, gap: 2 },
-  label: { color: t.textPrimary, fontSize: FONT_SIZE.body },
-  description: { color: t.textSecondary, fontSize: FONT_SIZE.body - 2 },
+  textWrap: { flex: 1, gap: 3 },
+  label: { color: t.textPrimary, fontSize: FONT_SIZE.title - 1, fontWeight: '500' },
+  description: {
+    color: t.textTertiary,
+    fontSize: FONT_SIZE.caption,
+    lineHeight: 16,
+  },
   tail: { flexDirection: 'row', alignItems: 'center', gap: SPACING.s },
   badge: {
     color: t.accent,
     borderColor: t.accent,
     borderWidth: 1,
-    borderRadius: 6,
+    borderRadius: 999,
     paddingHorizontal: SPACING.s,
     paddingVertical: 1,
-    fontSize: FONT_SIZE.body - 3,
+    fontSize: FONT_SIZE.caption - 1,
     overflow: 'hidden',
   },
   badgeDanger: { color: t.warning, borderColor: t.warning },
-  value: { color: t.textSecondary, fontSize: FONT_SIZE.body },
+  value: { color: t.textSecondary, fontSize: FONT_SIZE.body - 1, maxWidth: 160 },
 });

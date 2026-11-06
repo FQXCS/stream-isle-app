@@ -48,7 +48,7 @@ export default {
     version: "0.1.0",
     orientation: "portrait", // 播放页横屏由 Player 页运行时锁定（M2）
     icon: "./assets/icon.png",
-    userInterfaceStyle: "dark", // 深色默认（设计文档 §10.1）；需 expo-system-ui 支持
+    userInterfaceStyle: "automatic", // 亮色默认由 settingsStore.themeMode 决定；系统方案跟随时需 automatic
     // 说明：M1 文档 §4.1 要求 newArchEnabled: false（RN 0.76 时代第三方原生模块兼容性优先），
     // 但本工程按文档「SDK 52+ 以 npx expo install 配套为准」落在 SDK 58 / RN 0.88，
     // RN 0.80+ 已移除旧架构（旧架构开关不再存在），该字段已无意义，故不写。
@@ -71,7 +71,7 @@ export default {
         "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
       ],
       adaptiveIcon: {
-        backgroundColor: "#E6F4FE",
+        backgroundColor: "#FFFFFF",
         foregroundImage: "./assets/android-icon-foreground.png",
         backgroundImage: "./assets/android-icon-background.png",
         monochromeImage: "./assets/android-icon-monochrome.png",
