@@ -162,7 +162,6 @@ export const useBrowseStore = create<BrowseState>()((set, get) => ({
           const items = reset
             ? page.items
             : dedupeById([...current.items, ...page.items]);
-          const loaded = query.startIndex + items.length;
           return {
             walls: {
               ...state.walls,
@@ -170,7 +169,8 @@ export const useBrowseStore = create<BrowseState>()((set, get) => ({
                 items,
                 total: page.total,
                 startIndex: query.startIndex,
-                status: loaded >= page.total ? 'DONE' : 'READY',
+                // items 已是「重置后的本页」或「累计合并后」的完整列表，长度即可加载总数
+                status: items.length >= page.total ? 'DONE' : 'READY',
               },
             },
           };
