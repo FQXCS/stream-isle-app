@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- 覆盖 react-native-screens 的 slide_from_bottom 入场时长（默认 config_mediumAnimTime ≈ 300ms）；
-     rns_no_animation_medium 必须保持同值，保证进场/退场同时结束 -->
-<translate xmlns:android="http://schemas.android.com/apk/res/android"
-    android:fromYDelta="100%"
-    android:toYDelta="0%"
-    android:duration="220" />
