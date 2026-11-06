@@ -17,7 +17,8 @@ import type { ServerInfo } from '@/adapter/model';
 import { ROUTES } from '@/constant/navigation';
 import { FONT_SIZE, POSTER_RADIUS, SPACING } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
-import { AppError, errorMessageOf } from '@/infra/error';
+import { useT } from '@/i18n';
+import { AppError, errorMessageKeyOf } from '@/infra/error';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { beginQuickConnect, login, saveAccount, type QuickConnectFlow } from '@/service/AuthService';
 import { useAccountStore, upstreamServerIdOf } from '@/store/accountStore';
@@ -34,6 +35,7 @@ interface SavedUser {
 
 export function OnboardingLoginScreen({ route, navigation }: Props) {
   const t = useTheme();
+  const tr = useT();
   const servers = useAccountStore((state) => state.servers);
   const routeServerInfo = route.params?.serverInfo;
   const routeServerId = route.params?.serverId;
@@ -194,20 +196,23 @@ export function OnboardingLoginScreen({ route, navigation }: Props) {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={styles.content}>
-      <Text style={[styles.title, { color: t.textPrimary }]}>登录</Text>
+      <Text style={[styles.title, { color: t.textPrimary }]}>{tr('server.loginTitle')}</Text>
       <Text style={[styles.subtitle, { color: t.textSecondary }]}>
-        {resolved.serverInfo.serverName || '未命名服务器'}（{resolved.serverInfo.flavor}）
+        {tr('server.loginServerLabel', {
+          name: resolved.serverInfo.serverName || tr('server.unnamedServer'),
+          flavor: resolved.serverInfo.flavor,
+        })}
       </Text>
       {resolved.serverInfo.versionTooLow && (
-        <Text style={[styles.warning, { color: t.warning }]}>
-          版本过低（低于 Jellyfin 10.8 / Emby 4.7），部分功能可能不可用，可继续尝试
-        </Text>
+        <Text style={[styles.warning, { color: t.warning }]}>{tr('server.versionTooLow')}</Text>
       )}
       {qcFlow === null ? (
         <>
           {resolved.savedUsers.length > 0 && (
             <View style={styles.savedBox}>
-              <Text style={[styles.savedTitle, { color: t.textSecondary }]}>已保存账号</Text>
+              <Text style={[styles.savedTitle, { color: t.textSecondary }]}>
+                {tr('server.savedAccounts')}
+              </Text>
               {resolved.savedUsers.map((user) => (
                 <Pressable
                   key={user.userId}
@@ -219,10 +224,14 @@ export function OnboardingLoginScreen({ route, navigation }: Props) {
                   onPress={() => void handlePickSavedUser(user.userId)}
                 >
                   <Text style={[styles.savedName, { color: t.textPrimary }]}>{user.userName}</Text>
-                  <Text style={[styles.savedHint, { color: t.textSecondary }]}>点击直接进入</Text>
+                  <Text style={[styles.savedHint, { color: t.textSecondary }]}>
+                    {tr('server.tapToEnter')}
+                  </Text>
                 </Pressable>
               ))}
-              <Text style={[styles.savedTitle, { color: t.textSecondary }]}>使用其他账号登录</Text>
+              <Text style={[styles.savedTitle, { color: t.textSecondary }]}>
+                {tr('server.useOtherAccount')}
+              </Text>
             </View>
           )}
           <TextInput
@@ -232,7 +241,7 @@ export function OnboardingLoginScreen({ route, navigation }: Props) {
             ]}
             value={username}
             onChangeText={setUsername}
-            placeholder="用户名"
+            placeholder={tr('server.formUsername')}
             placeholderTextColor={t.textSecondary}
             autoCapitalize="none"
             autoCorrect={false}
@@ -241,17 +250,21 @@ export function OnboardingLoginScreen({ route, navigation }: Props) {
             style={[styles.input, { backgroundColor: t.surface, color: t.textPrimary }]}
             value={password}
             onChangeText={setPassword}
-            placeholder="密码"
+            placeholder={tr('server.formPassword')}
             placeholderTextColor={t.textSecondary}
             secureTextEntry
           />
           {loginFailed && (
-            <Text style={[styles.errorText, { color: t.danger }]}>{errorMessageOf('LOGIN_FAILED')}</Text>
+            <Text style={[styles.errorText, { color: t.danger }]}>
+              {tr(errorMessageKeyOf('LOGIN_FAILED'))}
+            </Text>
           )}
           {/* M1 §4.10 错误分态：非密码类错误（网络不可达/TLS/服务器错误等）就地渲染文案
               （返工勘误：errorCode 不得只写不读——输错地址点登录必须有反馈） */}
           {errorCode !== null && !loginFailed && (
-            <Text style={[styles.errorText, { color: t.danger }]}>{errorMessageOf(errorCode)}</Text>
+            <Text style={[styles.errorText, { color: t.danger }]}>
+              {tr(errorMessageKeyOf(errorCode))}
+            </Text>
           )}
           <Pressable
             style={({ pressed }) => [
@@ -263,7 +276,7 @@ export function OnboardingLoginScreen({ route, navigation }: Props) {
             disabled={submitting || username === '' || password === ''}
           >
             <Text style={[styles.primaryButtonText, { color: t.accentOn }]}>
-              {submitting ? '登录中…' : '登录'}
+              {submitting ? tr('server.signingIn') : tr('server.loginTitle')}
             </Text>
           </Pressable>
           {/* M6：Quick Connect 入口（06 §4.3.3；登录表单下方） */}
@@ -275,10 +288,14 @@ export function OnboardingLoginScreen({ route, navigation }: Props) {
             ]}
             onPress={handleStartQuickConnect}
           >
-            <Text style={[styles.qcButtonText, { color: t.accent }]}>Quick Connect 免密登录</Text>
+            <Text style={[styles.qcButtonText, { color: t.accent }]}>
+              {tr('server.quickConnect')}
+            </Text>
           </Pressable>
           {qcError !== null && (
-            <Text style={[styles.errorText, { color: t.danger }]}>{errorMessageOf(qcError)}</Text>
+            <Text style={[styles.errorText, { color: t.danger }]}>
+              {tr(errorMessageKeyOf(qcError))}
+            </Text>
           )}
         </>
       ) : (
@@ -307,6 +324,7 @@ function QuickConnectPanel({
   onCancel: () => void;
 }) {
   const t = useTheme();
+  const tr = useT();
   return (
     <View style={[styles.qcPanel, { backgroundColor: t.surface }]}>
       {friendlyName !== undefined && (
@@ -317,11 +335,13 @@ function QuickConnectPanel({
         <QRCode value={code} size={140} color={t.textPrimary} backgroundColor="transparent" />
       </View>
       <Text style={[styles.qcGuide, { color: t.textSecondary }]}>
-        打开已登录设备：网页端 设置 → Quick Connect，输入此码确认
+        {tr('server.quickConnectGuide')}
       </Text>
       <View style={styles.qcPolling}>
         <ActivityIndicator color={t.accent} />
-        <Text style={[styles.qcPollingText, { color: t.textSecondary }]}>等待授权确认…</Text>
+        <Text style={[styles.qcPollingText, { color: t.textSecondary }]}>
+          {tr('server.waitingApproval')}
+        </Text>
       </View>
       <Pressable
         style={({ pressed }) => [
@@ -331,7 +351,7 @@ function QuickConnectPanel({
         ]}
         onPress={onCancel}
       >
-        <Text style={[styles.qcCancelText, { color: t.textPrimary }]}>取消</Text>
+        <Text style={[styles.qcCancelText, { color: t.textPrimary }]}>{tr('common.cancel')}</Text>
       </Pressable>
     </View>
   );

@@ -21,6 +21,7 @@ import { ROUTES } from '@/constant/navigation';
 import { SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { AppError } from '@/infra/error';
+import { useT } from '@/i18n';
 import { fetchFolderPage } from '@/service/BrowseService';
 import type { LibrarySortState } from '@/store/libraryViewStore';
 import { FolderCard } from '@/page/library/components/FolderCard';
@@ -45,6 +46,7 @@ interface PhotoFolderViewProps {
 
 export function PhotoFolderView({ parentId, sort, onOpenFolder, onOpenAlbum }: PhotoFolderViewProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const navigation = useNavigation<PhotoNavigationProp>();
   const miniPlayerPadding = useMiniPlayerPadding();
@@ -115,10 +117,10 @@ export function PhotoFolderView({ parentId, sort, onOpenFolder, onOpenAlbum }: P
     );
   }
   if (onlyPhotos) {
-    return <PhotoGridScreen parentId={parentId} sort={sort} emptyTitle="文件夹为空" />;
+    return <PhotoGridScreen parentId={parentId} sort={sort} emptyTitle={tr('photo.folderEmpty')} />;
   }
   if (visibleList.length === 0) {
-    return <EmptyView title="文件夹为空" />;
+    return <EmptyView title={tr('photo.folderEmpty')} />;
   }
 
   return (

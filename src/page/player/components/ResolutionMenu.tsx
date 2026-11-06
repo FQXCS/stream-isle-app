@@ -8,6 +8,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useImmersiveAccent } from '@/component/useTheme';
 import type { ResolutionTierKey } from '@/constant/resolution';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
+import { useT } from '@/i18n';
 import {
   availableResolutionTiers,
   normalizeResolutionTierForSource,
@@ -32,14 +33,15 @@ export function ResolutionMenu({
   onClose,
 }: ResolutionMenuProps) {
   const { accent, accentSoft } = useImmersiveAccent();
+  const tr = useT();
   // 原画恒显示；高于源分辨率的档无意义，隐藏；当前档高于源时效果等价原画，展示为原画
   const tierList = availableResolutionTiers(sourceHeight);
   const shownActiveTier = normalizeResolutionTierForSource(activeTier, sourceHeight);
   return (
     <View style={styles.panel}>
-      <Text style={styles.panelTitle}>转码分辨率</Text>
+      <Text style={styles.panelTitle}>{tr('player.resolutionMenu')}</Text>
       {cellularForced ? (
-        <Text style={styles.cellularNotice}>蜂窝网络 · 已自动降至 480p</Text>
+        <Text style={styles.cellularNotice}>{tr('player.cellularForced')}</Text>
       ) : null}
       <ScrollView style={styles.list} nestedScrollEnabled>
         {tierList.map((tier) => {
@@ -50,14 +52,16 @@ export function ResolutionMenu({
               style={[styles.row, active && { backgroundColor: accentSoft }]}
               onPress={() => onSelect(tier.key)}
             >
-              <Text style={styles.rowText}>{tier.label}</Text>
-              {active ? <Text style={[styles.badge, { color: accent }]}>当前</Text> : null}
+              <Text style={styles.rowText}>{tr(tier.labelKey)}</Text>
+              {active ? (
+                <Text style={[styles.badge, { color: accent }]}>{tr('player.currentBadge')}</Text>
+              ) : null}
             </Pressable>
           );
         })}
       </ScrollView>
       <Pressable style={styles.closeButton} onPress={onClose}>
-        <Text style={styles.closeText}>收起</Text>
+        <Text style={styles.closeText}>{tr('player.collapse')}</Text>
       </Pressable>
     </View>
   );

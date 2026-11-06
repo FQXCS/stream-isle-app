@@ -8,6 +8,7 @@ import { Pressable, type StyleProp, type ViewStyle } from 'react-native';
 import { AppIcon } from '@/component/AppIcon';
 import { showToast } from '@/component/Toast';
 import { useTheme } from '@/component/useTheme';
+import { useT } from '@/i18n';
 import { AppError, errorMessageOf } from '@/infra/error';
 import { markService } from '@/service/MarkService';
 
@@ -30,6 +31,7 @@ export function FavoriteButton({
   hitSlop = 8,
 }: FavoriteButtonProps) {
   const t = useTheme();
+  const tr = useT();
   const [favorite, setFavorite] = useState(false);
   const [pending, setPending] = useState(false);
   /** 用户已手动切换过：初始查询晚到时不覆盖乐观结果 */
@@ -76,7 +78,7 @@ export function FavoriteButton({
       hitSlop={hitSlop}
       style={style}
       onPress={toggleFavorite}
-      accessibilityLabel={favorite ? '取消收藏' : '收藏'}
+      accessibilityLabel={favorite ? tr('action.unfavorite') : tr('action.favorite')}
     >
       <AppIcon
         name={favorite ? 'heart' : 'heartOutline'}

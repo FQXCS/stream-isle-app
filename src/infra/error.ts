@@ -4,10 +4,12 @@
  */
 import { LOGIN_PATH_SUFFIX } from '@/constant/api';
 import {
-  ERROR_MESSAGE_MAP,
+  ERROR_MESSAGE_KEYS,
   RETRYABLE_ERROR_CODES,
   TLS_ERROR_PATTERNS,
 } from '@/constant/error';
+import type { MessageKey } from '@/i18n/messages/zh';
+import { t } from '@/i18n';
 import { apiEvents } from '@/infra/api/apiEvents';
 
 /** 业务错误码全集（12 码 + M6 增量 7 码） */
@@ -32,6 +34,7 @@ export type AppErrorCode =
   | 'DOWNLOAD_UNAVAILABLE' // 【M6 增补】条目需服务器转码，暂不支持下载（06 文档 §4.8）
   | 'DOWNLOAD_NO_SPACE' // 【M6 增补】剩余空间不足（06 文档 §4.8）
   | 'DOWNLOAD_DUPLICATE' // 【M6 增补】该条目已在下载列表（06 文档 §4.8）
+  | 'DOWNLOAD_CREDENTIAL_MISSING' // 下载凭据缺失（账号/Token 被清理，需重新登录）
   | 'NOT_IMPLEMENTED' // 【M1 增补】adapter 未实现的接口方法（M1 占位保护）
   | 'UNKNOWN'; // 其余（含 400/403 等未列举状态码，httpStatus 留痕）
 
@@ -49,7 +52,8 @@ export class AppError extends Error {
     code: AppErrorCode,
     opts?: { httpStatus?: number; serverMessage?: string; cause?: unknown }
   ) {
-    super(ERROR_MESSAGE_MAP[code], { cause: opts?.cause });
+    // message 固定为错误码（仅日志/调试；UI 展示统一经 errorMessageOf / errorMessageKeyOf）
+    super(code, { cause: opts?.cause });
     this.name = 'AppError';
     this.code = code;
     this.httpStatus = opts?.httpStatus;
@@ -137,9 +141,19 @@ function extractServerMessage(data: unknown): string | undefined {
   return undefined;
 }
 
-/** 查错误文案（ERROR_MESSAGE_MAP 唯一出处） */
+/** 错误码 → 文案 key（组件内需配合 useT 使用，保证语言切换实时刷新） */
+export function errorMessageKeyOf(code: AppErrorCode): MessageKey {
+  return ERROR_MESSAGE_KEYS[code];
+}
+
+/** 查错误文案（非组件场景：Toast/事件回调；组件内请用 useT + errorMessageKeyOf） */
 export function errorMessageOf(code: AppErrorCode): string {
-  return ERROR_MESSAGE_MAP[code];
+  return t(ERROR_MESSAGE_KEYS[code]);
+}
+
+/** 判断字符串是否为合法错误码（下载失败原因等持久化文本展示时用） */
+export function isAppErrorCode(value: string): value is AppErrorCode {
+  return Object.prototype.hasOwnProperty.call(ERROR_MESSAGE_KEYS, value);
 }
 
 /** 是否可自动重试 */

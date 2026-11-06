@@ -1,0 +1,132 @@
+/**
+ * 中文文案真源（MessageKey 由此推导；新增文案必须同时补 en.ts，tsc 强制对齐）。
+ * key 采用域前缀：common / nav / settings / theme / accent / subtitleLang / error / format …
+ */
+import type { Message } from '@/i18n/types';
+
+export const zhBase = {
+  // —— 通用 ——
+  'common.cancel': '取消',
+  'common.confirm': '确定',
+  'common.ok': '好',
+  'common.save': '保存',
+  'common.delete': '删除',
+  'common.retry': '重试',
+  'common.close': '关闭',
+  'common.search': '搜索',
+  'common.loading': '加载中…',
+  'common.unknownError': '未知错误',
+  'common.none': '无',
+
+  // —— 底部导航 ——
+  'nav.tabLibrary': '媒体库',
+  'nav.tabMediaServer': '影视服务器',
+  'nav.tabSettings': '设置',
+  'nav.back': '返回',
+  'nav.search': '搜索',
+  'nav.artist': '艺人',
+  'nav.playlist': '播放列表',
+  'nav.album': '专辑',
+  'nav.libraryDisplayTitle': '库页配置 · {flavor}',
+  'nav.tabCategories': 'Tab 分类',
+  'nav.sortOptions': '排序项',
+  'nav.libraryTabEditorTitle': 'Tab 分类 · {type}',
+  'nav.sortTabsTitle': '排序项 · {type}',
+  'nav.sortEditorTitle': '排序项 · {type} · {tab}',
+
+  // —— 设置页 ——
+  'settings.title': '设置',
+  'settings.playback': '播放',
+  'settings.appearance': '外观',
+  'settings.sameFlavorConfig': '同类型服务器配置',
+  'settings.about': '关于',
+  'settings.language': '语言',
+  'settings.languageDesc': '界面显示语言；跟随系统时按设备语言自动选择',
+  'settings.languageSystem': '跟随系统',
+  'settings.languageZh': '简体中文',
+  'settings.languageEn': 'English',
+  'settings.theme': '主题',
+  'settings.themeDesc': '默认亮色；媒体沉浸页（播放器/照片查看器/正在播放）固定深色',
+  'settings.accentScheme': '配色方案',
+  'settings.accentSchemeDesc': '全局强调色，浅色与深色主题各自适配',
+  'settings.defaultSubtitle': '默认字幕语言',
+  'settings.defaultSubtitleDesc': '播放时按该语言自动选轨（仅外挂文本轨）',
+  'settings.includedTypes': '收录类型',
+  'settings.includedTypesDesc': '继续观看与观看历史分别设置',
+  'settings.downloads': '下载管理',
+  'settings.downloadsDesc': '离线任务进度/暂停/删除，断网可播',
+  'settings.history': '观看历史',
+  'settings.historyDesc': '服务端已看条目，按观看时间倒序',
+  'settings.appName': '应用名',
+  'settings.version': '版本号',
+  'settings.githubReleases': 'GitHub Releases',
+  'settings.githubReleasesDesc': '查看更新与历史版本',
+  'settings.maxResolution': '最大转码分辨率',
+  'settings.maxResolutionDesc': '转码输出的分辨率上限（直连不受影响）',
+  'settings.allowHevc': '允许 HEVC 直连',
+  'settings.allowHevcDesc': '异常机型可关闭，改为全量转码',
+  'settings.cellularDowngrade': '蜂窝自动降档',
+  'settings.cellularDowngradeDesc': '蜂窝网络默认降至 480p，可手动更改',
+  'settings.resumePlayback': '断点续播',
+  'settings.resumePlaybackDesc': '从上次停止位置继续；关闭后每次从头播放',
+
+  // —— 转码分辨率档位 ——
+  'resolution.unlimited': '原画',
+  'resolution.uhd': '4K',
+  'resolution.fhd': '1080p',
+  'resolution.hd': '720p',
+  'resolution.sd': '480p',
+
+  // —— 播放器重启浮层 ——
+  'playback.burnInRestart': '该字幕需服务器转码渲染，正在切换…',
+  'playback.resolutionRestart': '正在切换分辨率…',
+  'playback.audioRestart': '正在切换音轨…',
+  'playback.autoNextRestart': '正在播放下一集…',
+
+  // —— 主题模式 ——
+  'theme.system': '跟随系统',
+  'theme.light': '浅色',
+  'theme.dark': '深色',
+
+  // —— 配色方案 ——
+  'accent.emerald': '翡翠',
+  'accent.blue': '雾蓝',
+  'accent.indigo': '靛紫',
+  'accent.coral': '珊瑚',
+  'accent.graphite': '墨黑',
+  'accent.berry': '莓果',
+  'accent.caramel': '焦糖',
+
+  // —— 字幕语言 ——
+  'subtitleLang.followDefault': '跟随默认（中文）',
+  'subtitleLang.zh': '中文',
+  'subtitleLang.en': '英语',
+  'subtitleLang.ja': '日语',
+  'subtitleLang.ko': '韩语',
+
+  // —— 错误文案（与 AppErrorCode 一一对应） ——
+  'error.INVALID_ADDRESS': '地址格式无效，请输入如 http://192.168.1.5:8096',
+  'error.NETWORK_UNREACHABLE': '无法连接服务器，请检查地址与网络后重试',
+  'error.TLS_ERROR':
+    '服务器证书校验失败。若为自签名证书，可在设置中开启「忽略证书校验」后重试',
+  'error.NOT_MEDIA_SERVER': '该地址不是 Emby/Jellyfin 服务器',
+  'error.LOGIN_FAILED': '用户名或密码错误',
+  'error.UNAUTHORIZED': '登录已失效，请重新输入密码',
+  'error.NOT_FOUND': '内容不存在或已被移除',
+  'error.RATE_LIMITED': '服务器繁忙，请稍后重试',
+  'error.SERVER_ERROR': '服务器内部错误，请稍后重试',
+  'error.PLAYBACK_UNSUPPORTED': '无法播放：服务器无法直连或转码该文件',
+  'error.AUDIO_ENGINE_INIT_FAILED': '音频引擎初始化失败，请重启应用',
+  'error.PHOTO_SAVE_FAILED': '保存到本地相册失败，请重试',
+  'error.PHOTO_SAVE_PERMISSION_DENIED': '未授予相册写入权限，无法保存',
+  'error.QUICK_CONNECT_DISABLED': '该服务器未启用 Quick Connect，请使用密码登录',
+  'error.QUICK_CONNECT_TIMEOUT': '授权超时，请重试',
+  'error.QUICK_CONNECT_CANCELLED': '已取消 Quick Connect 登录',
+  'error.QUICK_CONNECT_EXPIRED': '授权码已失效，请重新发起',
+  'error.DOWNLOAD_UNAVAILABLE': '该条目需服务器转码，暂不支持下载',
+  'error.DOWNLOAD_NO_SPACE': '剩余空间不足',
+  'error.DOWNLOAD_DUPLICATE': '该条目已在下载列表',
+  'error.DOWNLOAD_CREDENTIAL_MISSING': '下载凭据缺失，请重新登录该服务器后重试',
+  'error.NOT_IMPLEMENTED': '功能开发中',
+  'error.UNKNOWN': '出错了，请稍后重试',
+} as const satisfies Record<string, Message>;

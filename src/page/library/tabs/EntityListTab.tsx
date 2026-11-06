@@ -17,6 +17,7 @@ import type { TabSpec } from '@/constant/libraryTabs';
 import { ROUTES } from '@/constant/navigation';
 import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { AppError } from '@/infra/error';
+import { useT } from '@/i18n';
 import { usePagedLoad } from '@/page/library/components/usePagedLoad';
 import type { RootStackParamList } from '@/page/navigation/types';
 import {
@@ -52,6 +53,7 @@ function entityKindOf(tab: TabSpec): EntityListKind | null {
 
 export function EntityListTab({ tab, libraryId }: EntityListTabProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const navigation = useNavigation<EntityNavigation>();
   const miniPlayerPadding = useMiniPlayerPadding();
@@ -114,7 +116,7 @@ export function EntityListTab({ tab, libraryId }: EntityListTabProps) {
   );
 
   if (kind === null) {
-    return <EmptyView title="该分类暂不支持" />;
+    return <EmptyView title={tr('library.unsupportedCategory')} />;
   }
   if (state.errorCode !== null && state.itemList.length === 0) {
     return <ErrorView error={new AppError(state.errorCode)} onRetry={state.retry} />;
@@ -127,7 +129,7 @@ export function EntityListTab({ tab, libraryId }: EntityListTabProps) {
     );
   }
   if (state.itemList.length === 0) {
-    return <EmptyView title="暂无内容" />;
+    return <EmptyView title={tr('library.emptyContent')} />;
   }
   return (
     <FlashList

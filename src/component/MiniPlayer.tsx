@@ -34,6 +34,7 @@ import { QueueSheet } from '@/component/QueueSheet';
 import { SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { MINI_PLAYER_HIDDEN_ROUTES, ROUTES } from '@/constant/navigation';
+import { useT } from '@/i18n';
 import { audioService, type AdjacentTrackPreview } from '@/service/AudioService';
 import { usePlayerStore } from '@/store/playerStore';
 import { navigationRef } from '@/page/navigation/navigationRef';
@@ -79,6 +80,7 @@ export function useMiniPlayerPadding(): number {
 
 export function MiniPlayer() {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const engineReady = usePlayerStore((state) => state.audio.engineReady);
   const status = usePlayerStore((state) => state.audio.status);
@@ -274,7 +276,7 @@ export function MiniPlayer() {
         <Pressable
           onPress={openNowPlaying}
           disabled={switching}
-          accessibilityLabel="打开正在播放"
+          accessibilityLabel={tr('mini.openNowPlaying')}
           hitSlop={4}
         >
           {switching ? (
@@ -300,9 +302,10 @@ export function MiniPlayer() {
             }}
             accessible
             accessibilityRole="button"
-            accessibilityLabel={`${displayTitle}${
-              displaySubtitle !== undefined ? `，${displaySubtitle}` : ''
-            }，打开正在播放；左滑下一首，右滑上一首`}
+            accessibilityLabel={tr(
+              displaySubtitle !== undefined ? 'mini.a11yWithArtist' : 'mini.a11y',
+              { title: displayTitle, artist: displaySubtitle ?? '' }
+            )}
             onAccessibilityTap={openNowPlaying}
           >
             {/* 上一层：上一首（右滑时从左侧滑入） */}
@@ -351,7 +354,7 @@ export function MiniPlayer() {
           onPress={() => {
             void audioService.togglePlayPause();
           }}
-          accessibilityLabel={isPlaying ? '暂停' : '播放'}
+          accessibilityLabel={isPlaying ? tr('player.pause') : tr('player.play')}
         >
           <View style={[styles.playCircle, { backgroundColor: t.accent }]}>
             {switching ? (
@@ -369,7 +372,7 @@ export function MiniPlayer() {
             setPendingPreview(null);
             void audioService.stop();
           }}
-          accessibilityLabel="停止播放并关闭迷你条"
+          accessibilityLabel={tr('mini.stop')}
         >
           <AppIcon name="stop" size={20} color={t.textSecondary} />
         </Pressable>
@@ -392,6 +395,7 @@ export function MiniPlayer() {
  * 播放会话结束（迷你条返回 null）时弹层显隐自动复位，下次起播不会残留。
  */
 function QueueButton({ color }: { color: string }) {
+  const tr = useT();
   const [visible, setVisible] = useState(false);
   return (
     <>
@@ -399,7 +403,7 @@ function QueueButton({ color }: { color: string }) {
         hitSlop={8}
         style={queueButtonStyle.control}
         onPress={() => setVisible(true)}
-        accessibilityLabel="播放队列"
+        accessibilityLabel={tr('player.playQueue')}
       >
         <AppIcon name="playlist" size={22} color={color} />
       </Pressable>

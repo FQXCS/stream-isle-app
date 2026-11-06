@@ -21,8 +21,10 @@ import { AppIcon } from '@/component/AppIcon';
 import { useTheme } from '@/component/useTheme';
 import { ROUTES } from '@/constant/navigation';
 import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
-import { AppError, errorMessageOf } from '@/infra/error';
+import { AppError, errorMessageKeyOf } from '@/infra/error';
 import { getPassword } from '@/infra/credentialVault';
+import type { MessageKey } from '@/i18n';
+import { useT } from '@/i18n';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { addServer, updateServer } from '@/service/ServerService';
 import { useAccountStore, type ServerAccount } from '@/store/accountStore';
@@ -41,6 +43,7 @@ function editServerOf(params: Props['route']['params']): ServerAccount | undefin
 
 export function AddServerScreen({ route, navigation }: Props) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const params = route.params;
   const editing = editServerOf(params);
@@ -65,7 +68,7 @@ export function AddServerScreen({ route, navigation }: Props) {
   const [storedPassword, setStoredPassword] = useState<string | null>(null);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [errorText, setErrorText] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<MessageKey | null>(null);
 
   const editingUserId = editing?.activeUserId ?? editing?.users[0]?.userId ?? null;
 
@@ -99,16 +102,16 @@ export function AddServerScreen({ route, navigation }: Props) {
     const credentialChanged = passwordChanged || username.trim() !== currentUserName;
     if (params.mode === 'edit') {
       if (credentialChanged && password === '') {
-        setErrorText('修改账号需要填写密码');
+        setErrorKey('server.editNeedsPassword');
         return;
       }
       if (password !== '' && username.trim() === '') {
-        setErrorText('请填写用户名');
+        setErrorKey('server.usernameRequired');
         return;
       }
     }
     setSubmitting(true);
-    setErrorText(null);
+    setErrorKey(null);
     const address = { https, host, port, path };
     try {
       if (params.mode === 'edit') {
@@ -135,9 +138,9 @@ export function AddServerScreen({ route, navigation }: Props) {
       navigation.goBack();
     } catch (err) {
       if (err instanceof AppError) {
-        setErrorText(errorMessageOf(err.code));
+        setErrorKey(errorMessageKeyOf(err.code));
       } else {
-        setErrorText('操作失败，请重试');
+        setErrorKey('server.operationFailed');
       }
     } finally {
       setSubmitting(false);
@@ -157,11 +160,13 @@ export function AddServerScreen({ route, navigation }: Props) {
   // 导航头：标题 + 右侧「添加/保存」
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: isEdit ? '编辑服务器' : `添加 ${flavor === 'EMBY' ? 'Emby' : 'Jellyfin'}`,
+      title: isEdit
+        ? tr('server.editServerTitle')
+        : tr('server.addFlavorTitle', { flavor: flavor === 'EMBY' ? 'Emby' : 'Jellyfin' }),
       headerRight: () => (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={isEdit ? '保存' : '添加'}
+          accessibilityLabel={isEdit ? tr('common.save') : tr('server.add')}
           disabled={!canSubmit}
           onPress={() => void handleSubmit()}
         >
@@ -173,28 +178,32 @@ export function AddServerScreen({ route, navigation }: Props) {
               color: canSubmit ? t.textPrimary : t.textTertiary,
             }}
           >
-            {submitting ? '处理中…' : isEdit ? '保存' : '添加'}
+            {submitting
+              ? tr('server.saving')
+              : isEdit
+                ? tr('common.save')
+                : tr('server.add')}
           </Text>
         </Pressable>
       ),
     });
-  }, [canSubmit, flavor, handleSubmit, isEdit, navigation, submitting, t.textPrimary, t.textTertiary]);
+  }, [canSubmit, flavor, handleSubmit, isEdit, navigation, submitting, t.textPrimary, t.textTertiary, tr]);
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={styles.content}>
-      <Text style={styles.sectionLabel}>名称</Text>
+      <Text style={styles.sectionLabel}>{tr('server.formName')}</Text>
       <View style={styles.card}>
         <TextInput
           style={styles.input}
           value={name}
           onChangeText={setName}
-          placeholder="选填（自动获取）"
+          placeholder={tr('server.placeholderName')}
           placeholderTextColor={t.textSecondary}
           editable={!submitting}
         />
       </View>
 
-      <Text style={styles.sectionLabel}>协议</Text>
+      <Text style={styles.sectionLabel}>{tr('server.formProtocol')}</Text>
       <View style={styles.card}>
         <View style={styles.switchRow}>
           <Text style={styles.switchLabel}>HTTPS</Text>
@@ -202,13 +211,13 @@ export function AddServerScreen({ route, navigation }: Props) {
         </View>
       </View>
 
-      <Text style={styles.sectionLabel}>服务器地址</Text>
+      <Text style={styles.sectionLabel}>{tr('server.formAddress')}</Text>
       <View style={styles.card}>
         <TextInput
           style={styles.input}
           value={host}
           onChangeText={setHost}
-          placeholder="必填（127.0.0.1/sample）"
+          placeholder={tr('server.placeholderHost')}
           placeholderTextColor={t.textSecondary}
           autoCapitalize="none"
           autoCorrect={false}
@@ -217,13 +226,13 @@ export function AddServerScreen({ route, navigation }: Props) {
         />
       </View>
 
-      <Text style={styles.sectionLabel}>路径</Text>
+      <Text style={styles.sectionLabel}>{tr('server.formPath')}</Text>
       <View style={styles.card}>
         <TextInput
           style={styles.input}
           value={path}
           onChangeText={setPath}
-          placeholder="选填（/path）"
+          placeholder={tr('server.placeholderPath')}
           placeholderTextColor={t.textSecondary}
           autoCapitalize="none"
           autoCorrect={false}
@@ -231,7 +240,7 @@ export function AddServerScreen({ route, navigation }: Props) {
         />
       </View>
 
-      <Text style={styles.sectionLabel}>端口号</Text>
+      <Text style={styles.sectionLabel}>{tr('server.formPort')}</Text>
       <View style={styles.card}>
         <TextInput
           style={styles.input}
@@ -244,13 +253,15 @@ export function AddServerScreen({ route, navigation }: Props) {
         />
       </View>
 
-      <Text style={styles.sectionLabel}>{isEdit ? '账号（用户名）' : '用户名'}</Text>
+      <Text style={styles.sectionLabel}>
+        {isEdit ? tr('server.formAccount') : tr('server.formUsername')}
+      </Text>
       <View style={styles.card}>
         <TextInput
           style={styles.input}
           value={username}
           onChangeText={setUsername}
-          placeholder="必填"
+          placeholder={tr('server.placeholderRequired')}
           placeholderTextColor={t.textSecondary}
           autoCapitalize="none"
           autoCorrect={false}
@@ -258,14 +269,20 @@ export function AddServerScreen({ route, navigation }: Props) {
         />
       </View>
 
-      <Text style={styles.sectionLabel}>密码</Text>
+      <Text style={styles.sectionLabel}>{tr('server.formPassword')}</Text>
       <View style={styles.card}>
         <View style={styles.passwordRow}>
           <TextInput
             style={[styles.input, styles.passwordInput]}
             value={password}
             onChangeText={setPassword}
-            placeholder={isEdit ? (storedPassword === null ? '留空则不修改账号' : '已加密保存，可修改') : '选填'}
+            placeholder={
+              isEdit
+                ? storedPassword === null
+                  ? tr('server.placeholderPasswordKeep')
+                  : tr('server.placeholderPasswordStored')
+                : tr('server.placeholderPasswordOptional')
+            }
             placeholderTextColor={t.textSecondary}
             secureTextEntry={!passwordVisible}
             autoCapitalize="none"
@@ -274,7 +291,9 @@ export function AddServerScreen({ route, navigation }: Props) {
           />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={passwordVisible ? '隐藏密码' : '显示密码'}
+            accessibilityLabel={
+              passwordVisible ? tr('server.hidePassword') : tr('server.showPassword')
+            }
             hitSlop={8}
             onPress={() => setPasswordVisible((visible) => !visible)}
           >
@@ -290,20 +309,18 @@ export function AddServerScreen({ route, navigation }: Props) {
       {submitting && (
         <View style={styles.statusRow}>
           <ActivityIndicator color={t.accent} />
-          <Text style={styles.statusText}>{isEdit ? '正在校验地址…' : '正在连接服务器…'}</Text>
+          <Text style={styles.statusText}>
+            {isEdit ? tr('server.verifyingAddress') : tr('server.connectingServer')}
+          </Text>
         </View>
       )}
-      {errorText !== null && <Text style={styles.errorText}>{errorText}</Text>}
-      {errorText !== null && errorText === errorMessageOf('TLS_ERROR') && (
+      {errorKey !== null && <Text style={styles.errorText}>{tr(errorKey)}</Text>}
+      {errorKey === 'error.TLS_ERROR' && (
         <Pressable style={styles.secondaryButton} onPress={handleIgnoreTls} disabled={submitting}>
-          <Text style={styles.secondaryButtonText}>忽略该服务器证书校验并重试</Text>
+          <Text style={styles.secondaryButtonText}>{tr('server.ignoreTlsRetry')}</Text>
         </Pressable>
       )}
-      <Text style={styles.hint}>
-        {isEdit
-          ? '密码已加密保存并自动回显；修改账号/密码才需要重新登录，只改名称或地址不会动账号。'
-          : '类型以入口选择为准；添加后自动登录并切换到该服务器，不登录也可进入 App，媒体库保持为空。'}
-      </Text>
+      <Text style={styles.hint}>{isEdit ? tr('server.editHint') : tr('server.addHint')}</Text>
     </ScrollView>
   );
 }

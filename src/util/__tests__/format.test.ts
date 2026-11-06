@@ -2,7 +2,14 @@
  * formatClock 单测（M2 文档 §6.1：时长格式化；播放器时长/剩余/气泡共用）。
  * M5 增量：formatDate（照片查看器信息条「拍摄日期」，§6.1）。
  */
-import { formatChannels, formatClock, formatDate } from '@/util/format';
+import { useSettingsStore } from '@/store/settingsStore';
+import {
+  formatChannels,
+  formatClock,
+  formatDate,
+  formatRelativeTime,
+  formatRuntime,
+} from '@/util/format';
 
 describe('formatClock', () => {
   it('不足 1 小时：mm:ss，秒补零', () => {
@@ -55,5 +62,45 @@ describe('formatDate（M5 §6.1：毫秒 → "YYYY-MM-DD"）', () => {
 
   it('无效值（NaN）回退空串', () => {
     expect(formatDate(Number.NaN)).toBe('');
+  });
+});
+
+describe('formatRuntime / formatRelativeTime（随语言切换）', () => {
+  afterEach(() => {
+    useSettingsStore.getState().actions.setLanguage('system');
+    jest.restoreAllMocks();
+  });
+
+  it('中文时长', () => {
+    useSettingsStore.getState().actions.setLanguage('zh');
+    expect(formatRuntime(26 * 60_000)).toBe('26分钟');
+    expect(formatRuntime(65 * 60_000)).toBe('1小时5分钟');
+    expect(formatRuntime(2 * 3_600_000)).toBe('2小时');
+  });
+
+  it('英文时长', () => {
+    useSettingsStore.getState().actions.setLanguage('en');
+    expect(formatRuntime(26 * 60_000)).toBe('26 min');
+    expect(formatRuntime(65 * 60_000)).toBe('1 hr 5 min');
+    expect(formatRuntime(2 * 3_600_000)).toBe('2 hr');
+  });
+
+  it('相对时间：中文', () => {
+    useSettingsStore.getState().actions.setLanguage('zh');
+    jest.spyOn(Date, 'now').mockReturnValue(10 * 86_400_000);
+    expect(formatRelativeTime(10 * 86_400_000 - 30_000)).toBe('刚刚');
+    expect(formatRelativeTime(10 * 86_400_000 - 5 * 60_000)).toBe('5分钟前');
+    expect(formatRelativeTime(10 * 86_400_000 - 3 * 3_600_000)).toBe('3小时前');
+    expect(formatRelativeTime(10 * 86_400_000 - 2 * 86_400_000)).toBe('2天前');
+  });
+
+  it('相对时间：英文单复数', () => {
+    useSettingsStore.getState().actions.setLanguage('en');
+    jest.spyOn(Date, 'now').mockReturnValue(10 * 86_400_000);
+    expect(formatRelativeTime(10 * 86_400_000 - 30_000)).toBe('Just now');
+    expect(formatRelativeTime(10 * 86_400_000 - 60_000)).toBe('1 minute ago');
+    expect(formatRelativeTime(10 * 86_400_000 - 2 * 60_000)).toBe('2 minutes ago');
+    expect(formatRelativeTime(10 * 86_400_000 - 3 * 3_600_000)).toBe('3 hours ago');
+    expect(formatRelativeTime(10 * 86_400_000 - 86_400_000)).toBe('1 day ago');
   });
 });

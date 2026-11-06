@@ -9,6 +9,7 @@ import {
   LIGHT_TOKENS,
   resolveTokens,
 } from '@/constant/theme';
+import { translateFor } from '@/i18n/translate';
 
 describe('resolveTokens 三态（06 §6.1 theme 行）', () => {
   it('system + dark → DARK_TOKENS；system + light → LIGHT_TOKENS', () => {
@@ -40,7 +41,7 @@ describe('resolveTokens 三态（06 §6.1 theme 行）', () => {
     expect(blue.bg).toBe(LIGHT_TOKENS.bg);
     expect(blue.surface).toBe(LIGHT_TOKENS.surface);
 
-    const labels = ACCENT_SCHEME_LIST.map((scheme) => scheme.label);
+    const labels = ACCENT_SCHEME_LIST.map((scheme) => translateFor('zh', scheme.labelKey));
     expect(labels).toContain('翡翠');
     expect(labels).not.toContain('翠玉');
     expect(labels).not.toContain('翠绿');

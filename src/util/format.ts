@@ -2,7 +2,9 @@
  * 时长格式化（M2 文档 §4.1：M1 缺失，M2 第 1 步补齐）。
  * 播放器时长/剩余时长、seek 预览气泡、续播弹窗文案共用。
  * M3 增量：音轨声道数展示（AudioTrackMenu，03 §4.8.1）。
+ * 时长/相对时间按当前语言输出（format.* 文案），时钟与日期保持数字格式不本地化。
  */
+import { t } from '@/i18n';
 
 /**
  * 毫秒 → 时钟文本：不足 1 小时为 "mm:ss"，超过为 "h:mm:ss"。
@@ -21,17 +23,19 @@ export function formatClock(ms: number): string {
 }
 
 /**
- * 毫秒 → 中文时长（M8 详情页元数据「26分钟」口径）：
- * 不足 1 小时为 "N分钟"，超过为 "N小时" / "N小时M分钟"；负数按 0 处理。
+ * 毫秒 → 本地化时长（M8 详情页元数据「26分钟」口径）：
+ * 不足 1 小时为「N分钟」，超过为「N小时」/「N小时M分钟」；负数按 0 处理。
  */
 export function formatRuntime(ms: number): string {
   const totalMinutes = Math.max(0, Math.round(ms / 60000));
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   if (hours > 0) {
-    return minutes > 0 ? `${hours}小时${minutes}分钟` : `${hours}小时`;
+    return minutes > 0
+      ? t('format.runtimeHoursMinutes', { hours, minutes })
+      : t('format.runtimeHours', { hours });
   }
-  return `${minutes}分钟`;
+  return t('format.runtimeMinutes', { minutes });
 }
 
 /**
@@ -52,7 +56,7 @@ export function formatChannels(channels: number | undefined): string | undefined
 }
 
 /**
- * 毫秒时间戳 → 相对时间（影视服务器卡片「1天前」口径）：
+ * 毫秒时间戳 → 本地化相对时间（影视服务器卡片「1天前」口径）：
  * 1 分钟内「刚刚」、1 小时内「N分钟前」、24 小时内「N小时前」、30 天内「N天前」，
  * 更早回退 YYYY-MM-DD；无效值返回空串（调用方不展示）。
  */
@@ -62,16 +66,16 @@ export function formatRelativeTime(ms: number | undefined): string {
   }
   const diff = Date.now() - ms;
   if (diff < 60_000) {
-    return '刚刚';
+    return t('format.justNow');
   }
   if (diff < 3_600_000) {
-    return `${Math.floor(diff / 60_000)}分钟前`;
+    return t('format.minutesAgo', { count: Math.floor(diff / 60_000) });
   }
   if (diff < 86_400_000) {
-    return `${Math.floor(diff / 3_600_000)}小时前`;
+    return t('format.hoursAgo', { count: Math.floor(diff / 3_600_000) });
   }
   if (diff < 30 * 86_400_000) {
-    return `${Math.floor(diff / 86_400_000)}天前`;
+    return t('format.daysAgo', { count: Math.floor(diff / 86_400_000) });
   }
   return formatDate(ms);
 }

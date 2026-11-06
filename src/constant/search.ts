@@ -1,6 +1,7 @@
 /**
  * 搜索域常量（04 文档 §4.8；设计文档 §7.4）。
  */
+import type { MessageKey } from '@/i18n/messages/zh';
 
 /** 输入防抖间隔（毫秒） */
 export const SEARCH_DEBOUNCE_MS = 400;
@@ -12,10 +13,10 @@ export const SEARCH_DEBOUNCE_MS = 400;
 export const SEARCH_GROUP_LIMIT = 12;
 
 /** 搜索结果分组标题（组标题由常量提供，04 §4.3 SearchResultGroup 不携带） */
-export const SEARCH_GROUP_TITLE_MAP: Record<'MOVIE' | 'SERIES' | 'PERSON', string> = {
-  MOVIE: '电影',
-  SERIES: '剧集',
-  PERSON: '人物',
+export const SEARCH_GROUP_TITLE_MAP: Record<'MOVIE' | 'SERIES' | 'PERSON', MessageKey> = {
+  MOVIE: 'search.movies',
+  SERIES: 'search.series',
+  PERSON: 'search.people',
 };
 
 /** 人物头像请求最大宽度（搜索结果头像卡，04 §4.8） */

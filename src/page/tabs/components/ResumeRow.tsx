@@ -14,6 +14,7 @@ import { useTheme } from '@/component/useTheme';
 import { MEDIA_WIDE_CARD_WIDTH } from '@/constant/browse';
 import { ROUTES } from '@/constant/navigation';
 import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { useT } from '@/i18n';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { formatClock } from '@/util/format';
 import { mediaIconOf } from '@/util/mediaCard';
@@ -52,6 +53,7 @@ function timeTextOf(item: MediaLibraryItem): string | undefined {
 
 export function ResumeRow({ itemList }: ResumeRowProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const navigation = useNavigation<NavigationProp>();
 
@@ -72,7 +74,7 @@ export function ResumeRow({ itemList }: ResumeRowProps) {
         return (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`继续观看 ${item.name}`}
+            accessibilityLabel={tr('server.continueWatchingOf', { name: item.name })}
             onPress={() => navigation.navigate(ROUTES.ITEM, { itemId: item.id })}
             style={({ pressed }) => [styles.card, pressed && styles.pressed]}
           >

@@ -15,7 +15,8 @@ import { AppIcon } from '@/component/AppIcon';
 import { EmptyView } from '@/component/EmptyView';
 import { useTheme } from '@/component/useTheme';
 import { FONT_SIZE, POSTER_RADIUS, SPACING } from '@/constant/theme';
-import { AppError, errorMessageOf } from '@/infra/error';
+import { useT, type Translator } from '@/i18n';
+import { AppError, errorMessageKeyOf, errorMessageOf, isAppErrorCode } from '@/infra/error';
 import { ROUTES } from '@/constant/navigation';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { downloadService } from '@/service/DownloadService';
@@ -26,22 +27,41 @@ import { formatBytes } from '@/util/formatBytes';
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 /** 状态行文案（06 文档 §4.4.5 状态行） */
-function statusText(task: DownloadTaskUi): string {
+function statusText(task: DownloadTaskUi, tr: Translator): string {
   switch (task.status) {
     case 'queued':
-      return '排队中';
+      return tr('downloads.queued');
     case 'downloading': {
       const total = task.totalBytes ?? 0;
       return total > 0
-        ? `下载中 ${formatBytes(task.progressBytes)} / ${formatBytes(total)}`
-        : `下载中 ${formatBytes(task.progressBytes)}`;
+        ? tr('downloads.downloading', {
+            progress: formatBytes(task.progressBytes),
+            total: formatBytes(total),
+          })
+        : tr('downloads.downloadingProgress', { progress: formatBytes(task.progressBytes) });
     }
     case 'paused':
-      return `已暂停 ${formatBytes(task.progressBytes)}${task.totalBytes !== undefined ? ` / ${formatBytes(task.totalBytes)}` : ''}`;
+      return task.totalBytes !== undefined
+        ? tr('downloads.pausedOfTotal', {
+            progress: formatBytes(task.progressBytes),
+            total: formatBytes(task.totalBytes),
+          })
+        : tr('downloads.paused', { progress: formatBytes(task.progressBytes) });
     case 'completed':
-      return task.totalBytes !== undefined ? `已完成 · 占用 ${formatBytes(task.totalBytes)}` : '已完成';
-    case 'failed':
-      return `失败：${task.errorMessage ?? '未知错误'}`;
+      return task.totalBytes !== undefined
+        ? tr('downloads.completedWithSize', { size: formatBytes(task.totalBytes) })
+        : tr('downloads.completed');
+    case 'failed': {
+      // errorMessage 可能是错误码 / 原生错误文本 / 旧数据中文：错误码走字典，其余原样展示
+      const raw = task.errorMessage;
+      const reason =
+        raw === undefined || raw === ''
+          ? tr('common.unknownError')
+          : isAppErrorCode(raw)
+            ? tr(errorMessageKeyOf(raw))
+            : raw;
+      return tr('downloads.failed', { reason });
+    }
     default:
       return '';
   }
@@ -49,6 +69,7 @@ function statusText(task: DownloadTaskUi): string {
 
 export function DownloadsScreen() {
   const t = useTheme();
+  const tr = useT();
   const navigation = useNavigation<NavigationProp>();
   const taskMap = useDownloadStore((state) => state.taskMap);
   const totalCompletedBytes = useDownloadStore((state) => state.totalCompletedBytes);
@@ -65,32 +86,39 @@ export function DownloadsScreen() {
   const taskList = Object.values(taskMap);
 
   /** 删除二次确认（06 §4.4.5 次操作；删除后本地文件与快照行清空，占用归还） */
-  const confirmDelete = useCallback((task: DownloadTaskUi) => {
-    Alert.alert('删除下载', `确定删除「${task.title}」吗？本地文件与下载记录将一并清除。`, [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '删除',
-        style: 'destructive',
-        onPress: () => {
-          void downloadService.deleteDownload(task.itemId).catch(() => {
-            showToast(errorMessageOf('UNKNOWN'), 'error');
-          });
-        },
-      },
-    ]);
-  }, []);
+  const confirmDelete = useCallback(
+    (task: DownloadTaskUi) => {
+      Alert.alert(
+        tr('downloads.deleteTitle'),
+        tr('downloads.deleteMessage', { title: task.title }),
+        [
+          { text: tr('common.cancel'), style: 'cancel' },
+          {
+            text: tr('common.delete'),
+            style: 'destructive',
+            onPress: () => {
+              void downloadService.deleteDownload(task.itemId).catch(() => {
+                showToast(errorMessageOf('UNKNOWN'), 'error');
+              });
+            },
+          },
+        ]
+      );
+    },
+    [tr]
+  );
 
   const mainActionLabel = (task: DownloadTaskUi): string | null => {
     switch (task.status) {
       case 'queued':
       case 'downloading':
-        return '暂停';
+        return tr('action.pause');
       case 'paused':
-        return '继续';
+        return tr('action.resume');
       case 'failed':
-        return '重试';
+        return tr('common.retry');
       case 'completed':
-        return '播放';
+        return tr('action.play');
       default:
         return null;
     }
@@ -134,14 +162,17 @@ export function DownloadsScreen() {
 
   return (
     <View style={[styles.fill, { backgroundColor: t.bg }]}>
-      <Text style={[styles.title, { color: t.textPrimary }]}>下载管理</Text>
+      <Text style={[styles.title, { color: t.textPrimary }]}>{tr('downloads.title')}</Text>
       {taskList.length > 0 && (
         <Text style={[styles.usage, { color: t.textSecondary }]}>
-          已下载占用 {formatBytes(totalCompletedBytes)}（请保持应用前台至下载完成）
+          {tr('downloads.usage', { size: formatBytes(totalCompletedBytes) })}
         </Text>
       )}
       {taskList.length === 0 ? (
-        <EmptyView title="暂无下载" subtitle="在电影或剧集集详情页点「下载」把内容存到本地" />
+        <EmptyView
+          title={tr('downloads.empty')}
+          subtitle={tr('downloads.emptyHint')}
+        />
       ) : (
         <FlatList
           data={taskList}
@@ -177,7 +208,7 @@ export function DownloadsScreen() {
                     ]}
                     numberOfLines={1}
                   >
-                    {statusText(item)}
+                    {statusText(item, tr)}
                   </Text>
                   {percent !== null && (item.status === 'downloading' || item.status === 'queued') && (
                     <View style={[styles.progressTrack, { backgroundColor: t.separator }]}>
@@ -200,7 +231,9 @@ export function DownloadsScreen() {
                     style={[styles.actionButton, { backgroundColor: t.surfaceElevated }]}
                     onPress={() => confirmDelete(item)}
                   >
-                    <Text style={[styles.actionText, { color: t.danger }]}>删除</Text>
+                    <Text style={[styles.actionText, { color: t.danger }]}>
+                      {tr('common.delete')}
+                    </Text>
                   </Pressable>
                 </View>
               </View>

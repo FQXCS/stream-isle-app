@@ -11,12 +11,14 @@ import { SettingRow } from '@/component/SettingRow';
 import { useTheme } from '@/component/useTheme';
 import { ROUTES } from '@/constant/navigation';
 import { CARD_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { useT } from '@/i18n';
 import type { RootStackParamList } from '@/page/navigation/types';
 
 type SettingsNavigation = NativeStackNavigationProp<RootStackParamList>;
 
 export function LibraryDisplaySettingsScreen() {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const navigation = useNavigation<SettingsNavigation>();
   const route = useRoute<{ key: string; name: string; params: { flavor: ServerFlavor } }>();
@@ -27,14 +29,14 @@ export function LibraryDisplaySettingsScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.card}>
           <SettingRow
-            label="Tab 分类"
-            description="库页顶部展示哪些分类（每种最多 5 个，可拖动排序）"
+            label={tr('nav.tabCategories')}
+            description={tr('server.tabCategoriesDesc')}
             showArrow
             onPress={() => navigation.navigate(ROUTES.LIBRARY_TAB_SETTINGS, { flavor })}
           />
           <SettingRow
-            label="排序项"
-            description="按库类型和 Tab 配置排序字段（可拖动排序）"
+            label={tr('nav.sortOptions')}
+            description={tr('server.sortOptionsDesc')}
             showArrow
             onPress={() => navigation.navigate(ROUTES.LIBRARY_SORT_SETTINGS, { flavor })}
           />

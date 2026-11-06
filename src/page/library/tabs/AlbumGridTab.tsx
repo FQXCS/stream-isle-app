@@ -17,6 +17,7 @@ import { GRID_COLUMNS } from '@/constant/browse';
 import { ROUTES } from '@/constant/navigation';
 import { SPACING, type ThemeTokens } from '@/constant/theme';
 import { AppError } from '@/infra/error';
+import { useT } from '@/i18n';
 import { usePagedLoad } from '@/page/library/components/usePagedLoad';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { fetchAlbumPage } from '@/service/BrowseService';
@@ -31,6 +32,7 @@ interface AlbumGridTabProps {
 
 export function AlbumGridTab({ libraryId, sort }: AlbumGridTabProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const navigation = useNavigation<AlbumNavigation>();
   const miniPlayerPadding = useMiniPlayerPadding();
@@ -53,7 +55,7 @@ export function AlbumGridTab({ libraryId, sort }: AlbumGridTabProps) {
     );
   }
   if (state.itemList.length === 0) {
-    return <EmptyView title="暂无专辑" />;
+    return <EmptyView title={tr('library.emptyAlbums')} />;
   }
   return (
     <FlashList

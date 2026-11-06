@@ -11,6 +11,7 @@ import DraggableFlatList, { type DragEndParams } from 'react-native-draggable-fl
 import { AppIcon } from '@/component/AppIcon';
 import { useTheme } from '@/component/useTheme';
 import { SPACING, type ThemeTokens } from '@/constant/theme';
+import { useT } from '@/i18n';
 import { audioService, type AudioQueueEntry } from '@/service/AudioService';
 import { usePlayerStore } from '@/store/playerStore';
 import { PLAYBACK_MODE_META, combinedPlaybackMode } from '@/util/playbackMode';
@@ -25,6 +26,7 @@ function toEntryList(snapshot: AudioQueueEntry[]): QueueEntry[] {
 
 export function QueuePanel() {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const repeatMode = usePlayerStore((state) => state.audio.repeatMode);
   const shuffle = usePlayerStore((state) => state.audio.shuffle);
@@ -34,6 +36,7 @@ export function QueuePanel() {
 
   const mode = combinedPlaybackMode(repeatMode, shuffle);
   const modeMeta = PLAYBACK_MODE_META[mode];
+  const modeLabel = tr(modeMeta.labelKey);
   // 快照未就绪时先用 store 镜像长度，避免标题闪 0
   const shownCount = entryList?.length ?? queueLength;
 
@@ -89,17 +92,17 @@ export function QueuePanel() {
 
   /** 清空队列：二次确认 → 仅移除当前曲以外的条目，保留当前播放与迷你条 → 刷新列表 */
   const handleClear = useCallback(() => {
-    Alert.alert('清空队列', '将移除当前歌曲以外的队列歌曲，当前播放不中断。', [
-      { text: '取消', style: 'cancel' },
+    Alert.alert(tr('queue.clearTitle'), tr('queue.clearMessage'), [
+      { text: tr('common.cancel'), style: 'cancel' },
       {
-        text: '清空',
+        text: tr('queue.clearAction'),
         style: 'destructive',
         onPress: () => {
           void audioService.clearQueueKeepCurrent().then(() => void reload());
         },
       },
     ]);
-  }, [reload]);
+  }, [reload, tr]);
 
   return (
     <View style={styles.container}>
@@ -108,14 +111,14 @@ export function QueuePanel() {
           hitSlop={8}
           style={styles.modeInfo}
           onPress={handleCycleMode}
-          accessibilityLabel={`播放模式：${modeMeta.label}，点击切换`}
+          accessibilityLabel={tr('queue.modeA11y', { mode: modeLabel })}
         >
           <AppIcon name={modeMeta.icon} size={22} color={t.textPrimary} />
           <Text style={styles.headerTitle} numberOfLines={1}>
-            {`${modeMeta.label}（${shownCount} 首）`}
+            {tr('queue.title', { mode: modeLabel, count: shownCount })}
           </Text>
         </Pressable>
-        <Pressable hitSlop={8} onPress={handleClear} accessibilityLabel="清空队列">
+        <Pressable hitSlop={8} onPress={handleClear} accessibilityLabel={tr('queue.clear')}>
           <AppIcon name="broom" size={22} color={t.textPrimary} />
         </Pressable>
       </View>
@@ -125,7 +128,7 @@ export function QueuePanel() {
         </View>
       ) : entryList.length === 0 ? (
         <View style={styles.centerFill}>
-          <Text style={styles.emptyText}>队列为空</Text>
+          <Text style={styles.emptyText}>{tr('queue.empty')}</Text>
         </View>
       ) : (
         <DraggableFlatList

@@ -10,6 +10,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useImmersiveAccent } from '@/component/useTheme';
 import type { SubtitleTrack } from '@/adapter/model';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
+import { useT } from '@/i18n';
 
 interface SubtitleMenuProps {
   /** session.subtitleList（全部轨，含烧录轨） */
@@ -23,15 +24,16 @@ interface SubtitleMenuProps {
 
 export function SubtitleMenu({ tracks, activeStreamIndex, onSelect, onClose }: SubtitleMenuProps) {
   const { accent, accentSoft } = useImmersiveAccent();
+  const tr = useT();
   return (
     <View style={styles.panel}>
-      <Text style={styles.panelTitle}>字幕</Text>
+      <Text style={styles.panelTitle}>{tr('player.subtitleMenu')}</Text>
       <ScrollView style={styles.list} nestedScrollEnabled>
         <Pressable
           style={[styles.row, activeStreamIndex === null && { backgroundColor: accentSoft }]}
           onPress={() => onSelect(null)}
         >
-          <Text style={styles.rowText}>关闭</Text>
+          <Text style={styles.rowText}>{tr('player.subtitleOff')}</Text>
         </Pressable>
         {tracks.map((track) => {
           const active = track.streamIndex === activeStreamIndex;
@@ -48,21 +50,29 @@ export function SubtitleMenu({ tracks, activeStreamIndex, onSelect, onClose }: S
                 style={[styles.rowText, unavailable && styles.rowTextDisabled]}
                 numberOfLines={1}
               >
-                {track.title ?? `字幕 ${track.streamIndex + 1}`}
+                {track.title ?? tr('player.subtitleFallback', { index: track.streamIndex + 1 })}
               </Text>
               <View style={styles.badges}>
-                {track.isDefault ? <Text style={[styles.badge, { color: accent }]}>默认</Text> : null}
-                {track.isForced ? <Text style={[styles.badge, { color: accent }]}>强制</Text> : null}
-                {track.burnIn ? <Text style={[styles.badge, styles.badgeBurnIn]}>需转码</Text> : null}
+                {track.isDefault ? (
+                  <Text style={[styles.badge, { color: accent }]}>{tr('player.defaultBadge')}</Text>
+                ) : null}
+                {track.isForced ? (
+                  <Text style={[styles.badge, { color: accent }]}>{tr('player.forcedBadge')}</Text>
+                ) : null}
+                {track.burnIn ? (
+                  <Text style={[styles.badge, styles.badgeBurnIn]}>{tr('player.transcodeBadge')}</Text>
+                ) : null}
                 {track.format ? <Text style={styles.badgeMuted}>{track.format}</Text> : null}
-                {unavailable ? <Text style={styles.badgeMuted}>不可外挂</Text> : null}
+                {unavailable ? (
+                  <Text style={styles.badgeMuted}>{tr('player.notEmbeddableBadge')}</Text>
+                ) : null}
               </View>
             </Pressable>
           );
         })}
       </ScrollView>
       <Pressable style={styles.closeButton} onPress={onClose}>
-        <Text style={styles.closeText}>收起</Text>
+        <Text style={styles.closeText}>{tr('player.collapse')}</Text>
       </Pressable>
     </View>
   );

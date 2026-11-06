@@ -28,6 +28,7 @@ import {
   PREVIOUS_RESTART_THRESHOLD_MS,
 } from '@/constant/audio';
 import { AppError, errorMessageOf } from '@/infra/error';
+import { t } from '@/i18n';
 import { getActiveAdapter } from '@/service/adapterProvider';
 import { playbackService } from '@/service/PlaybackService';
 import { AudioReporting, type AudioReportingHost } from '@/service/AudioReporting';
@@ -260,7 +261,7 @@ export class AudioService {
       return true;
     });
     if (newTrackList.length === 0) {
-      showToast('歌曲已在播放队列中');
+      showToast(t('audio.alreadyInQueue'));
       return 0;
     }
     const queueEmpty = this.activePlaySessionId === null;
@@ -287,7 +288,7 @@ export class AudioService {
       TrackPlayer.skipToIndex(0);
       await TrackPlayer.play();
     }
-    showCenterToast('已添加至播放队列');
+    showCenterToast(t('audio.addedToQueue'));
     return newTrackList.length;
   }
 

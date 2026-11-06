@@ -10,6 +10,7 @@ import { ErrorView } from '@/component/ErrorView';
 import { showToast } from '@/component/Toast';
 import { useTheme } from '@/component/useTheme';
 import { AppError, errorMessageOf } from '@/infra/error';
+import { useT } from '@/i18n';
 import { SongFlashList } from '@/page/library/components/SongFlashList';
 import { usePagedLoad } from '@/page/library/components/usePagedLoad';
 import { audioService } from '@/service/AudioService';
@@ -25,6 +26,7 @@ interface SongListTabProps {
 
 export function SongListTab({ libraryId, sort, filters }: SongListTabProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const state = usePagedLoad<AudioItem>(
     useCallback(
@@ -53,7 +55,7 @@ export function SongListTab({ libraryId, sort, filters }: SongListTabProps) {
     );
   }
   if (state.itemList.length === 0) {
-    return <EmptyView title="暂无歌曲" />;
+    return <EmptyView title={tr('library.emptySongs')} />;
   }
   return (
     <SongFlashList

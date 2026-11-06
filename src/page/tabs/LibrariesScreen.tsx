@@ -32,6 +32,7 @@ import { PosterRow } from '@/component/PosterRow';
 import { showToast } from '@/component/Toast';
 import { useMiniPlayerPadding } from '@/component/MiniPlayer';
 import { useTheme } from '@/component/useTheme';
+import { useT } from '@/i18n';
 import { MEDIA_CARD_HEIGHT } from '@/constant/browse';
 import { ROUTES } from '@/constant/navigation';
 import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
@@ -58,6 +59,7 @@ interface SectionGroupProps {
 /** 分区容器：标题 + 可选「查看全部」+ 内容（各行自带左右留白） */
 function SectionGroup({ title, onMore, children }: SectionGroupProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   return (
     <View style={styles.section}>
@@ -66,12 +68,12 @@ function SectionGroup({ title, onMore, children }: SectionGroupProps) {
         {onMore !== undefined && (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`查看全部 ${title}`}
+            accessibilityLabel={tr('server.viewAllOf', { title })}
             hitSlop={8}
             onPress={onMore}
             style={({ pressed }) => [styles.moreButton, pressed && styles.pressed]}
           >
-            <Text style={styles.moreText}>查看全部</Text>
+            <Text style={styles.moreText}>{tr('server.viewAll')}</Text>
             <AppIcon name="chevronRight" size={14} color={t.textSecondary} />
           </Pressable>
         )}
@@ -83,6 +85,7 @@ function SectionGroup({ title, onMore, children }: SectionGroupProps) {
 
 export function LibrariesScreen() {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   // 迷你条浮在 Tab 栏上方：底部让位，内容不被条子覆盖（停止播放后自动归零）
   const miniPadding = useMiniPlayerPadding();
@@ -220,18 +223,18 @@ export function LibrariesScreen() {
 
   /** 服务器切换菜单：刷新首页 / 媒体管理（预留）/ 各服务器（勾选当前） */
   const switcherMenuItems: AnchorMenuItem[] = [
-    { key: 'refresh', label: '刷新首页', icon: 'refresh', onPress: () => void loadAll() },
+    { key: 'refresh', label: tr('server.refreshHome'), icon: 'refresh', onPress: () => void loadAll() },
     {
       key: 'manage',
-      label: '媒体管理',
+      label: tr('server.mediaManage'),
       icon: 'library',
-      onPress: () => showToast('媒体管理即将支持'),
+      onPress: () => showToast(tr('server.mediaManageSoon')),
     },
     ...serverList
       .filter((server) => server.private !== true)
       .map((server) => ({
         key: `server:${server.serverId}`,
-        label: server.serverName || '未命名服务器',
+        label: server.serverName || tr('server.unnamedServer'),
         // 参考稿：只有当前服务器带勾选图标，未选中的服务器不显示图标
         icon: (active?.serverId === server.serverId ? 'check' : undefined) as AnchorMenuItem['icon'],
         onPress: () => {
@@ -240,7 +243,7 @@ export function LibrariesScreen() {
               .getState()
               .actions.activateServer(server.serverId);
             if (!activated) {
-              showToast('该服务器还没有账号，请先在影视服务器页登录', 'error');
+              showToast(tr('server.noAccountForServer'), 'error');
             }
           })();
         },
@@ -269,14 +272,12 @@ export function LibrariesScreen() {
           <View style={styles.guestIconBox}>
             <AppIcon name="server" size={30} color={t.accent} />
           </View>
-          <Text style={styles.guestTitle}>媒体库是空的</Text>
-          <Text style={styles.guestHint}>
-            添加 Emby / Jellyfin 服务器后，继续观看与最近添加会出现在这里
-          </Text>
+          <Text style={styles.guestTitle}>{tr('server.guestTitle')}</Text>
+          <Text style={styles.guestHint}>{tr('server.guestHint')}</Text>
           <Pressable
             ref={guestAddRef}
             accessibilityRole="button"
-            accessibilityLabel="添加服务器"
+            accessibilityLabel={tr('server.addServer')}
             onPress={() =>
               guestAddRef.current?.measureInWindow((x, y, width, height) =>
                 setGuestAddAnchor({ x, y, width, height })
@@ -284,7 +285,7 @@ export function LibrariesScreen() {
             }
             style={({ pressed }) => [styles.guestButton, pressed && styles.pressed]}
           >
-            <Text style={styles.guestButtonText}>添加服务器</Text>
+            <Text style={styles.guestButtonText}>{tr('server.addServer')}</Text>
           </Pressable>
         </View>
         <AnchorMenu
@@ -337,11 +338,11 @@ export function LibrariesScreen() {
         <View style={styles.header}>
           {/* 大标题 + 右侧搜索/历史入口（亮色下建立页面层级） */}
           <View style={styles.headerTop}>
-            <Text style={styles.pageTitle}>媒体库</Text>
+            <Text style={styles.pageTitle}>{tr('nav.tabLibrary')}</Text>
             <View style={styles.headerActions}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="搜索"
+                accessibilityLabel={tr('nav.search')}
                 hitSlop={8}
                 onPress={() => navigation.navigate(ROUTES.SEARCH)}
                 style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
@@ -350,7 +351,7 @@ export function LibrariesScreen() {
               </Pressable>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="观看历史"
+                accessibilityLabel={tr('settings.history')}
                 hitSlop={8}
                 onPress={() => navigation.navigate(ROUTES.HISTORY)}
                 style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
@@ -363,7 +364,7 @@ export function LibrariesScreen() {
           <Pressable
             ref={serverPillRef}
             accessibilityRole="button"
-            accessibilityLabel="切换媒体库服务器"
+            accessibilityLabel={tr('server.switchServer')}
             onPress={() =>
               serverPillRef.current?.measureInWindow((x, y, width, height) =>
                 setSwitcherAnchor({ x, y, width, height })
@@ -377,7 +378,7 @@ export function LibrariesScreen() {
             </View>
             {/* 名称单行省略；flexShrink 保证省略号紧贴实际边界，不带多余空白 */}
             <Text style={styles.serverPillText} numberOfLines={1} ellipsizeMode="tail">
-              {activeServer?.serverName || '未命名服务器'}
+              {activeServer?.serverName || tr('server.unnamedServer')}
             </Text>
             <View style={styles.serverPillChevron}>
               <AppIcon name="chevronDown" size={16} color={t.textSecondary} />
@@ -385,16 +386,19 @@ export function LibrariesScreen() {
           </Pressable>
         </View>
       {pageEmpty ? (
-        <EmptyView title="媒体库暂无内容" subtitle="添加服务器后，继续观看与最近添加会出现在这里" />
+        <EmptyView
+          title={tr('server.libraryEmptyTitle')}
+          subtitle={tr('server.libraryEmptySubtitle')}
+        />
       ) : (
         <>
           {sections.resumeList.length > 0 && (
-            <SectionGroup title="继续观看">
+            <SectionGroup title={tr('server.sectionResume')}>
               <ResumeRow itemList={sections.resumeList} />
             </SectionGroup>
           )}
           {sections.nextUpList.length > 0 && (
-            <SectionGroup title="下一集">
+            <SectionGroup title={tr('server.sectionNextUp')}>
               <PosterRow
                 itemList={sections.nextUpList}
                 cardHeight={MEDIA_CARD_HEIGHT}
@@ -403,12 +407,15 @@ export function LibrariesScreen() {
             </SectionGroup>
           )}
           {sections.latestList.length > 0 && (
-            <SectionGroup title="最近添加">
+            <SectionGroup title={tr('server.sectionLatest')}>
               <PosterRow itemList={sections.latestList} cardHeight={MEDIA_CARD_HEIGHT} />
             </SectionGroup>
           )}
           {libraryList.length > 0 && (
-            <SectionGroup title="我的媒体" onMore={() => navigation.navigate(ROUTES.LIBRARY_LIST)}>
+            <SectionGroup
+              title={tr('server.sectionMyMedia')}
+              onMore={() => navigation.navigate(ROUTES.LIBRARY_LIST)}
+            >
               <FlatList
                 horizontal
                 data={libraryList}

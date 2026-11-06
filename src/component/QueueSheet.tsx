@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/component/useTheme';
 import { SHEET_RADIUS, type ThemeTokens } from '@/constant/theme';
+import { useT } from '@/i18n';
 import { QueuePanel } from '@/page/nowplaying/components/QueuePanel';
 
 interface QueueSheetProps {
@@ -19,6 +20,7 @@ interface QueueSheetProps {
 
 export function QueueSheet({ visible, onClose }: QueueSheetProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const insets = useSafeAreaInsets();
 
@@ -38,7 +40,7 @@ export function QueueSheet({ visible, onClose }: QueueSheetProps) {
           <Pressable
             style={StyleSheet.absoluteFill}
             onPress={onClose}
-            accessibilityLabel="收起播放队列"
+            accessibilityLabel={tr('queue.collapseSheet')}
           />
           <View style={[styles.panel, { paddingBottom: insets.bottom }]}>
             <QueuePanel />

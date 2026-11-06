@@ -9,8 +9,14 @@ import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from
 import { useTheme } from '@/component/useTheme';
 import { ROUTES } from '@/constant/navigation';
 import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { useT } from '@/i18n';
 import type { RootStackParamList } from '@/page/navigation/types';
-import { routesOf, useAccountStore } from '@/store/accountStore';
+import {
+  DEFAULT_ROUTE_NAME_SENTINEL,
+  isDefaultRouteName,
+  routesOf,
+  useAccountStore,
+} from '@/store/accountStore';
 import { composeServerUrl, splitServerUrl } from '@/util/serverUrl';
 import { newUid } from '@/util/uuid';
 
@@ -18,6 +24,7 @@ type Props = NativeStackScreenProps<RootStackParamList, typeof ROUTES.SERVER_ROU
 
 export function ServerRouteEditScreen({ route, navigation }: Props) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const { serverId, routeId } = route.params;
   const server = useAccountStore((state) => state.servers.find((item) => item.serverId === serverId));
@@ -26,13 +33,16 @@ export function ServerRouteEditScreen({ route, navigation }: Props) {
       ? routesOf(server).find((item) => item.id === routeId)
       : undefined;
   const parts = splitServerUrl(editingRoute?.baseUrl ?? '');
+  /** 默认线路名是存储哨兵：编辑时输入框留空、以「默认线路」作占位，保存空名写回哨兵 */
+  const isDefaultRoute = editingRoute !== undefined && isDefaultRouteName(editingRoute.name);
 
-  const [name, setName] = useState(editingRoute?.name ?? '');
+  const [name, setName] = useState(isDefaultRoute ? '' : (editingRoute?.name ?? ''));
   const [https, setHttps] = useState(parts.https);
   const [host, setHost] = useState(parts.host);
   const [port, setPort] = useState(parts.port !== '' ? parts.port : '8096');
 
-  const canSave = name.trim() !== '' && host.trim() !== '' && port.trim() !== '';
+  const canSave =
+    host.trim() !== '' && port.trim() !== '' && (name.trim() !== '' || isDefaultRoute);
 
   const handleSave = useCallback(() => {
     if (!canSave) {
@@ -46,7 +56,7 @@ export function ServerRouteEditScreen({ route, navigation }: Props) {
     }
     useAccountStore.getState().actions.upsertRoute(serverId, {
       id: editingRoute?.id ?? newUid(),
-      name: name.trim(),
+      name: name.trim() !== '' ? name.trim() : DEFAULT_ROUTE_NAME_SENTINEL,
       baseUrl,
     });
     navigation.goBack();
@@ -54,11 +64,11 @@ export function ServerRouteEditScreen({ route, navigation }: Props) {
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: editingRoute !== undefined ? '编辑线路' : '添加备用路线',
+      title: editingRoute !== undefined ? tr('server.editRouteTitle') : tr('server.addBackupRoute'),
       headerRight: () => (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="保存"
+          accessibilityLabel={tr('common.save')}
           disabled={!canSave}
           onPress={handleSave}
         >
@@ -69,27 +79,29 @@ export function ServerRouteEditScreen({ route, navigation }: Props) {
               color: canSave ? t.textPrimary : t.textTertiary,
             }}
           >
-            保存
+            {tr('common.save')}
           </Text>
         </Pressable>
       ),
     });
-  }, [canSave, editingRoute, handleSave, navigation, t.textPrimary, t.textTertiary]);
+  }, [canSave, editingRoute, handleSave, navigation, t.textPrimary, t.textTertiary, tr]);
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={styles.content}>
-      <Text style={styles.sectionLabel}>名称</Text>
+      <Text style={styles.sectionLabel}>{tr('server.formName')}</Text>
       <View style={styles.card}>
         <TextInput
           style={styles.input}
           value={name}
           onChangeText={setName}
-          placeholder="必填"
+          placeholder={
+            isDefaultRoute ? tr('server.defaultRoute') : tr('server.placeholderRequired')
+          }
           placeholderTextColor={t.textSecondary}
         />
       </View>
 
-      <Text style={styles.sectionLabel}>协议</Text>
+      <Text style={styles.sectionLabel}>{tr('server.formProtocol')}</Text>
       <View style={styles.card}>
         <View style={styles.switchRow}>
           <Text style={styles.switchLabel}>HTTPS</Text>
@@ -97,13 +109,13 @@ export function ServerRouteEditScreen({ route, navigation }: Props) {
         </View>
       </View>
 
-      <Text style={styles.sectionLabel}>服务器地址</Text>
+      <Text style={styles.sectionLabel}>{tr('server.formAddress')}</Text>
       <View style={styles.card}>
         <TextInput
           style={styles.input}
           value={host}
           onChangeText={setHost}
-          placeholder="必填（127.0.0.1/sample）"
+          placeholder={tr('server.placeholderHost')}
           placeholderTextColor={t.textSecondary}
           autoCapitalize="none"
           autoCorrect={false}
@@ -111,7 +123,7 @@ export function ServerRouteEditScreen({ route, navigation }: Props) {
         />
       </View>
 
-      <Text style={styles.sectionLabel}>端口号</Text>
+      <Text style={styles.sectionLabel}>{tr('server.formPort')}</Text>
       <View style={styles.card}>
         <TextInput
           style={styles.input}
@@ -123,9 +135,7 @@ export function ServerRouteEditScreen({ route, navigation }: Props) {
         />
       </View>
 
-      <Text style={styles.hint}>
-        备用线路与服务器共用账号，无需重新登录；切换后立即生效，请求失败会自动切到下一条线路。
-      </Text>
+      <Text style={styles.hint}>{tr('server.routeEditHint')}</Text>
     </ScrollView>
   );
 }

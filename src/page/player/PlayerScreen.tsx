@@ -47,6 +47,7 @@ import {
 } from '@/constant/playback';
 import { useImmersiveAccent } from '@/component/useTheme';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
+import { useT } from '@/i18n';
 import { AudioTrackMenu } from '@/page/player/components/AudioTrackMenu';
 import { ResolutionMenu } from '@/page/player/components/ResolutionMenu';
 import { ControlOverlay } from '@/page/player/components/ControlOverlay';
@@ -87,6 +88,7 @@ function autoSelectSubtitleStreamIndex(session: PlaybackSession): number | null 
 
 export function PlayerScreen() {
   const immersiveAccent = useImmersiveAccent();
+  const tr = useT();
   const route = useRoute<{ key: string; name: string; params: { session: PlaybackSession } }>();
   const navigation = useNavigation<NavigationProp>();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
@@ -313,7 +315,7 @@ export function PlayerScreen() {
             // 先换会话（resetTrackSelection 会同时清重启态），再置重启浮层：
             // 新集 onLoad 时 endRestart 收起（03 §4.8.2 时序）
             store.setSession(next, { resetTrackSelection: true });
-            store.beginRestart(AUTO_NEXT_RESTART_NOTICE);
+            store.beginRestart(tr(AUTO_NEXT_RESTART_NOTICE));
             // 新集字幕按 03 §4.8.3 重新自动选轨（音轨由 resetTrackSelection 取默认轨）
             const autoSubtitleIndex = autoSelectSubtitleStreamIndex(next);
             if (autoSubtitleIndex !== null) {
@@ -328,7 +330,7 @@ export function PlayerScreen() {
       }
       navigation.goBack();
     })();
-  }, [finishOnce, navigation, initialSession]);
+  }, [finishOnce, navigation, initialSession, tr]);
 
   // —— 控制动作 ——
   const togglePlay = useCallback(() => {
@@ -404,11 +406,11 @@ export function PlayerScreen() {
         // 旧会话已在重启第 2–3 步终止，不可续用：收尾退出播放（03 §4.11）
         console.warn('[播放页] 会话切换失败:', err instanceof Error ? err.message : '');
         await finishOnce('error');
-        ToastAndroid.show('切换失败，请重新播放', ToastAndroid.SHORT);
+        ToastAndroid.show(tr('player.switchFailed'), ToastAndroid.SHORT);
         navigation.goBack();
       }
     },
-    [finishOnce, navigation]
+    [finishOnce, navigation, tr]
   );
 
   // 用户本次会话手动选过分辨率：蜂窝自动降档仅作默认，不再覆盖手动结果（网络切换时复位）
@@ -500,12 +502,12 @@ export function PlayerScreen() {
         const newSession = await playbackService.switchResolution(store.session, tier);
         if (newSession === null) {
           // 直连会话不重启：设置已落盘，下次转码会话生效（03 §4.6.2）
-          ToastAndroid.show('直连播放不受分辨率限制，设置将在下次会话生效', ToastAndroid.SHORT);
+          ToastAndroid.show(tr('player.directResolutionNotice'), ToastAndroid.SHORT);
         }
         return newSession;
       });
     },
-    [runSwitch]
+    [runSwitch, tr]
   );
 
   // 字幕选择：烧录轨进出由 switchSubtitle 判定重启；纯客户端切换（null）已由 service 更新选中态；
@@ -652,7 +654,11 @@ export function PlayerScreen() {
   const localSubtitleTracks: SubtitleTrack[] = isLocalSession
     ? engineTextTracks.map((track) => ({
         streamIndex: track.index,
-        title: track.title ?? (track.language !== undefined ? track.language : `字幕 ${track.index + 1}`),
+        title:
+          track.title ??
+          (track.language !== undefined
+            ? track.language
+            : tr('player.subtitleFallback', { index: track.index + 1 })),
         language: track.language,
         isExternal: true,
         burnIn: false,
@@ -675,7 +681,7 @@ export function PlayerScreen() {
       textTracks: session.subtitleList
         .filter((track) => !track.burnIn && track.vttUrl !== undefined)
         .map((track) => ({
-          title: track.title ?? `字幕 ${track.streamIndex + 1}`,
+          title: track.title ?? tr('player.subtitleFallback', { index: track.streamIndex + 1 }),
           // 服务器 Language 为 ISO 639-2 三字码（chi），RN Video 类型仅收 ISO 639-1 两字码；
           // 选中经 index 精确控制，此字段仅辅助引擎展示，原样透传（类型强转登记）
           language: (track.language ?? '') as never,
@@ -683,7 +689,7 @@ export function PlayerScreen() {
           uri: track.vttUrl as string,
         })),
     }),
-    [session.url, session.positionMsAtStart, session.subtitleList]
+    [session.url, session.positionMsAtStart, session.subtitleList, tr]
   );
 
   // selectedTextTrack 派生（03 §4.8.2；streamIndex → 本地数组序号的映射只在此处发生）：
@@ -787,9 +793,13 @@ export function PlayerScreen() {
       {/* 锁屏态：单击呼出解锁按钮（02 §4.12「锁屏时单击仅显示解锁按钮」），数秒无操作自动隐藏 */}
       {isLocked && unlockVisible && (
         <View style={styles.lockBar} pointerEvents="box-none">
-          <Pressable style={styles.unlockButton} onPress={toggleLock} accessibilityLabel="解锁">
+          <Pressable
+            style={styles.unlockButton}
+            onPress={toggleLock}
+            accessibilityLabel={tr('player.unlock')}
+          >
             <AppIcon name="unlock" size={16} color={COLORS.textPrimary} />
-            <Text style={styles.unlockText}>解锁</Text>
+            <Text style={styles.unlockText}>{tr('player.unlock')}</Text>
           </Pressable>
         </View>
       )}
@@ -850,13 +860,19 @@ export function PlayerScreen() {
       {status === 'error' && (
         <View style={styles.errorLayer}>
           <Text style={styles.errorText}>
-            {session.playMethod === 'Transcode' ? '转码播放失败，请重试' : '播放出错，请重试'}
+            {session.playMethod === 'Transcode'
+              ? tr('player.errorTranscode')
+              : tr('player.errorPlayback')}
           </Text>
           <Pressable style={[styles.retryButton, { backgroundColor: immersiveAccent.accent }]} onPress={retry}>
-            <Text style={[styles.retryText, { color: immersiveAccent.accentOn }]}>重试</Text>
+            <Text style={[styles.retryText, { color: immersiveAccent.accentOn }]}>
+              {tr('common.retry')}
+            </Text>
           </Pressable>
           <Pressable style={[styles.retryButton, { backgroundColor: immersiveAccent.accent }]} onPress={exitPlayer}>
-            <Text style={[styles.retryText, { color: immersiveAccent.accentOn }]}>退出播放</Text>
+            <Text style={[styles.retryText, { color: immersiveAccent.accentOn }]}>
+              {tr('player.exitPlayback')}
+            </Text>
           </Pressable>
         </View>
       )}

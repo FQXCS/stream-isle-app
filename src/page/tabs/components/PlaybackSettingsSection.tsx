@@ -21,6 +21,7 @@ import {
   type ThemeTokens,
 } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
+import { useT } from '@/i18n';
 import { useSettingsStore } from '@/store/settingsStore';
 
 /** 开关行（标签 + 说明文案 + Switch） */
@@ -45,6 +46,7 @@ function SettingSwitchRow(props: {
 
 export function PlaybackSettingsSection() {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const maxResolutionTier = useSettingsStore((state) => state.maxResolutionTier);
   const allowHevcDirectPlay = useSettingsStore((state) => state.allowHevcDirectPlay);
@@ -56,37 +58,40 @@ export function PlaybackSettingsSection() {
 
   return (
     <View style={styles.card}>
-      <Text style={styles.groupTitle}>播放</Text>
+      <Text style={styles.groupTitle}>{tr('settings.playback')}</Text>
       <SettingRow
-        label="最大转码分辨率"
-        description="转码输出的分辨率上限（直连不受影响）"
-        value={RESOLUTION_TIER_MAP[maxResolutionTier].label}
+        label={tr('settings.maxResolution')}
+        description={tr('settings.maxResolutionDesc')}
+        value={tr(RESOLUTION_TIER_MAP[maxResolutionTier].labelKey)}
         showArrow
         onPress={() => setResolutionSheetOpen(true)}
       />
       <SettingSwitchRow
-        label="允许 HEVC 直连"
-        description="异常机型可关闭，改为全量转码"
+        label={tr('settings.allowHevc')}
+        description={tr('settings.allowHevcDesc')}
         value={allowHevcDirectPlay}
         onValueChange={setAllowHevcDirectPlay}
       />
       <SettingSwitchRow
-        label="蜂窝自动降档"
-        description="蜂窝网络默认降至 480p，可手动更改"
+        label={tr('settings.cellularDowngrade')}
+        description={tr('settings.cellularDowngradeDesc')}
         value={autoDowngradeOnCellular}
         onValueChange={setAutoDowngradeOnCellular}
       />
       <SettingSwitchRow
-        label="断点续播"
-        description="从上次停止位置继续；关闭后每次从头播放"
+        label={tr('settings.resumePlayback')}
+        description={tr('settings.resumePlaybackDesc')}
         value={resumePlaybackEnabled}
         onValueChange={setResumePlaybackEnabled}
       />
       <RadioOptionSheet
-        title="最大转码分辨率"
+        title={tr('settings.maxResolution')}
         visible={resolutionSheetOpen}
         selectedKey={maxResolutionTier}
-        optionList={RESOLUTION_TIER_LIST.map((tier) => ({ key: tier.key, label: tier.label }))}
+        optionList={RESOLUTION_TIER_LIST.map((tier) => ({
+          key: tier.key,
+          label: tr(tier.labelKey),
+        }))}
         onSelect={(key) => setMaxResolutionTier(key as ResolutionTierKey)}
         onClose={() => setResolutionSheetOpen(false)}
       />

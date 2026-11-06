@@ -11,6 +11,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { MediaLibraryItem } from '@/adapter/model';
 import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
+import { useT } from '@/i18n';
 import { loadFolderCover } from '@/service/FolderCoverService';
 
 interface FolderCardProps {
@@ -19,6 +20,7 @@ interface FolderCardProps {
 
 export function FolderCard({ item }: FolderCardProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   // 服务器自带封面优先；没有则懒加载目录内首个条目的海报
   const [coverUrl, setCoverUrl] = useState<string | undefined>(item.posterImageUrl);
@@ -54,7 +56,9 @@ export function FolderCard({ item }: FolderCardProps) {
         )}
         {item.childCount !== undefined && (
           <View style={styles.countBadge}>
-            <Text style={styles.countText}>{item.childCount} 项</Text>
+            <Text style={styles.countText}>
+              {tr('library.itemCount', { count: item.childCount })}
+            </Text>
           </View>
         )}
       </View>

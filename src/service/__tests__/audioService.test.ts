@@ -179,7 +179,8 @@ describe('ensureSetup（幂等）', () => {
       throw new Error('rom blocked');
     });
     const service = makeService();
-    await expect(service.ensureSetup()).rejects.toThrow('音频引擎初始化失败，请重启应用');
+    // AppError.message 固定为错误码，展示文案由 errorMessageOf 按语言解析
+    await expect(service.ensureSetup()).rejects.toThrow('AUDIO_ENGINE_INIT_FAILED');
     expect(usePlayerStore.getState().audio.status).toBe('error');
     await expect(service.ensureSetup()).resolves.toBeUndefined();
   });

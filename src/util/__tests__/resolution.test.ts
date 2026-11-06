@@ -8,6 +8,7 @@ import {
   normalizeResolutionTierForSource,
   resolveResolutionTierForNetwork,
 } from '@/util/resolution';
+import { translateFor } from '@/i18n/translate';
 
 describe('resolveResolutionTierForNetwork（真值表）', () => {
   it('cellular + 开关开 → 480p', () => {
@@ -44,7 +45,7 @@ describe('resolveResolutionTierForNetwork（真值表）', () => {
 
 describe('菜单档位按源分辨率收敛', () => {
   it('720p 源：隐藏 4K/1080p，保留原画/720p/480p', () => {
-    expect(availableResolutionTiers(720).map((tier) => tier.label)).toEqual([
+    expect(availableResolutionTiers(720).map((tier) => translateFor('zh', tier.labelKey))).toEqual([
       '原画',
       '720p',
       '480p',
@@ -52,7 +53,7 @@ describe('菜单档位按源分辨率收敛', () => {
   });
 
   it('1080p 源：隐藏 4K，保留原画/1080p/720p/480p', () => {
-    expect(availableResolutionTiers(1080).map((tier) => tier.label)).toEqual([
+    expect(availableResolutionTiers(1080).map((tier) => translateFor('zh', tier.labelKey))).toEqual([
       '原画',
       '1080p',
       '720p',

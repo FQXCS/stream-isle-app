@@ -2,9 +2,10 @@
  * 错误归一化矩阵单测（M1 文档 §6.1 errors 行 / §4.5.2）。
  */
 import { LOGIN_PATH_SUFFIX } from '@/constant/api';
-import { ERROR_MESSAGE_MAP } from '@/constant/error';
+import { ERROR_MESSAGE_KEYS } from '@/constant/error';
 import { apiEvents } from '@/infra/api/apiEvents';
 import { AppError, errorMessageOf, isRetryable, normalizeHttpError } from '@/infra/error';
+import { useSettingsStore } from '@/store/settingsStore';
 
 /** 构造 axios 形态错误 */
 function axiosLike(status?: number, data?: unknown): { response?: { status: number; data?: unknown } } {
@@ -85,7 +86,12 @@ describe('normalizeHttpError 归一化矩阵', () => {
   });
 });
 
-describe('ERROR_MESSAGE_MAP（§4.3 唯一出处）', () => {
+describe('ERROR_MESSAGE_KEYS（§4.3 唯一出处）', () => {
+  beforeEach(() => {
+    // 文案断言固定中文，避免跟随系统语言影响
+    useSettingsStore.getState().actions.setLanguage('zh');
+  });
+
   const ALL_CODES = [
     'INVALID_ADDRESS',
     'NETWORK_UNREACHABLE',
@@ -109,12 +115,13 @@ describe('ERROR_MESSAGE_MAP（§4.3 唯一出处）', () => {
     'DOWNLOAD_UNAVAILABLE',
     'DOWNLOAD_NO_SPACE',
     'DOWNLOAD_DUPLICATE',
+    'DOWNLOAD_CREDENTIAL_MISSING',
     'NOT_IMPLEMENTED',
     'UNKNOWN',
   ] as const;
 
-  it('覆盖全部 22 个 AppErrorCode 且无多余键', () => {
-    expect(Object.keys(ERROR_MESSAGE_MAP).sort()).toEqual([...ALL_CODES].sort());
+  it('覆盖全部 23 个 AppErrorCode 且无多余键', () => {
+    expect(Object.keys(ERROR_MESSAGE_KEYS).sort()).toEqual([...ALL_CODES].sort());
   });
 
   it('三类错误文案与 §4.3 映射逐字一致（验收标准 3）', () => {
@@ -131,6 +138,16 @@ describe('ERROR_MESSAGE_MAP（§4.3 唯一出处）', () => {
     expect(errorMessageOf('UNAUTHORIZED')).toBe('登录已失效，请重新输入密码');
   });
 
+  it('切换语言后错误文案跟随（en）', () => {
+    useSettingsStore.getState().actions.setLanguage('en');
+    expect(errorMessageOf('NETWORK_UNREACHABLE')).toBe(
+      'Cannot reach the server. Check the address and network, then try again'
+    );
+    expect(errorMessageOf('NOT_MEDIA_SERVER')).toBe(
+      'This address is not an Emby/Jellyfin server'
+    );
+  });
+
   it('isRetryable 按 RETRYABLE_ERROR_CODES 判定', () => {
     expect(isRetryable('NETWORK_UNREACHABLE')).toBe(true);
     expect(isRetryable('TLS_ERROR')).toBe(true);
@@ -142,9 +159,9 @@ describe('ERROR_MESSAGE_MAP（§4.3 唯一出处）', () => {
     expect(isRetryable('NOT_FOUND')).toBe(false);
   });
 
-  it('AppError message 取文案、httpStatus/serverMessage 留痕', () => {
+  it('AppError message 固定为错误码、httpStatus/serverMessage 留痕', () => {
     const err = new AppError('SERVER_ERROR', { httpStatus: 500, serverMessage: 'boom' });
-    expect(err.message).toBe(ERROR_MESSAGE_MAP.SERVER_ERROR);
+    expect(err.message).toBe('SERVER_ERROR');
     expect(err.httpStatus).toBe(500);
     expect(err.serverMessage).toBe('boom');
   });

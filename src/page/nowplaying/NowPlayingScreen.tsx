@@ -26,6 +26,7 @@ import { MODE_HINT_DURATION_MS } from '@/constant/audio';
 import { ROUTES } from '@/constant/navigation';
 import { COLORS, SPACING } from '@/constant/theme';
 import { AppError, errorMessageOf } from '@/infra/error';
+import { useT } from '@/i18n';
 import { audioService } from '@/service/AudioService';
 import { downloadService } from '@/service/DownloadService';
 import { itemActionService } from '@/service/ItemActionService';
@@ -61,6 +62,7 @@ export function NowPlayingScreen() {
   const insets = useSafeAreaInsets();
   const scheme = useResolvedScheme();
   const t = useTheme();
+  const tr = useT();
   const immersiveAccent = useImmersiveAccent();
   const { width, height } = useWindowDimensions();
   const currentTrack = usePlayerStore((state) => state.audio.currentTrack);
@@ -123,7 +125,7 @@ export function NowPlayingScreen() {
     // 无播放会话进入（理论不可达：入口仅迷你条点击）——给空态兜底
     return (
       <View style={[styles.emptyFill, { backgroundColor: t.bg }]}>
-        <EmptyView title="当前没有播放中的歌曲" />
+        <EmptyView title={tr('nowPlaying.empty')} />
       </View>
     );
   }
@@ -146,29 +148,33 @@ export function NowPlayingScreen() {
         runtimeMs: currentTrack.runtimeMs,
         userData: { played: false, playCount: 0, favorite: false, playbackPositionMs: 0 },
       })
-      .then(() => showToast(`已加入下载队列：${currentTrack.name}`))
+      .then(() => showToast(tr('nowPlaying.downloadQueued', { name: currentTrack.name })))
       .catch(toastError);
   };
 
   /** 删除当前曲：服务器删除成功后停止播放并离开播放页 */
   const handleDelete = () => {
-    Alert.alert('删除媒体', `确定从服务器删除「${currentTrack.name}」吗？此操作不可撤销。`, [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '删除',
-        style: 'destructive',
-        onPress: () => {
-          void itemActionService
-            .deleteItem(currentTrack.id)
-            .then(() => {
-              showToast('已删除');
-              void audioService.stop();
-              navigation.goBack();
-            })
-            .catch(toastError);
+    Alert.alert(
+      tr('nowPlaying.deleteTitle'),
+      tr('nowPlaying.deleteMessage', { name: currentTrack.name }),
+      [
+        { text: tr('common.cancel'), style: 'cancel' },
+        {
+          text: tr('common.delete'),
+          style: 'destructive',
+          onPress: () => {
+            void itemActionService
+              .deleteItem(currentTrack.id)
+              .then(() => {
+                showToast(tr('nowPlaying.deleted'));
+                void audioService.stop();
+                navigation.goBack();
+              })
+              .catch(toastError);
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   const handleOpenDetail = () => {
@@ -180,9 +186,25 @@ export function NowPlayingScreen() {
       setMoreMenu({
         anchor: { x, y, width, height },
         itemList: [
-          { key: 'download', label: '下载', icon: 'download', onPress: handleDownload },
-          { key: 'delete', label: '删除', icon: 'trash', tone: 'danger', onPress: handleDelete },
-          { key: 'detail', label: '详情', icon: 'info', onPress: handleOpenDetail },
+          {
+            key: 'download',
+            label: tr('nowPlaying.download'),
+            icon: 'download',
+            onPress: handleDownload,
+          },
+          {
+            key: 'delete',
+            label: tr('nowPlaying.delete'),
+            icon: 'trash',
+            tone: 'danger',
+            onPress: handleDelete,
+          },
+          {
+            key: 'detail',
+            label: tr('nowPlaying.detail'),
+            icon: 'info',
+            onPress: handleOpenDetail,
+          },
         ],
       });
     });
@@ -212,17 +234,17 @@ export function NowPlayingScreen() {
           <Pressable
             hitSlop={8}
             onPress={() => navigation.goBack()}
-            accessibilityLabel="收起播放页"
+            accessibilityLabel={tr('nowPlaying.collapse')}
           >
             <AppIcon name="chevronDown" size={26} color={textPrimary} />
           </Pressable>
-          <Text style={[styles.headerTitle, { color: textPrimary }]}>正在播放</Text>
+          <Text style={[styles.headerTitle, { color: textPrimary }]}>{tr('nowPlaying.title')}</Text>
           {/* 更多：下载 / 删除 / 详情（点击后按按钮矩形锚定弹出菜单） */}
           <Pressable
             ref={moreRef}
             hitSlop={8}
             onPress={openMoreMenu}
-            accessibilityLabel="更多操作"
+            accessibilityLabel={tr('nowPlaying.more')}
           >
             <AppIcon name="more" size={26} color={textPrimary} />
           </Pressable>
@@ -323,7 +345,7 @@ export function NowPlayingScreen() {
             onPress={() => {
               void audioService.previous();
             }}
-            accessibilityLabel="上一首"
+            accessibilityLabel={tr('nowPlaying.previousTrack')}
           >
             <AppIcon name="skipPrevious" size={30} color={textPrimary} />
           </Pressable>
@@ -333,7 +355,7 @@ export function NowPlayingScreen() {
             onPress={() => {
               void audioService.togglePlayPause();
             }}
-            accessibilityLabel={isPlaying ? '暂停' : '播放'}
+            accessibilityLabel={isPlaying ? tr('player.pause') : tr('player.play')}
           >
             <AppIcon name={isPlaying ? 'pause' : 'play'} size={30} color={playIconColor} />
           </Pressable>
@@ -342,7 +364,7 @@ export function NowPlayingScreen() {
             onPress={() => {
               void audioService.next();
             }}
-            accessibilityLabel="下一首"
+            accessibilityLabel={tr('nowPlaying.nextTrack')}
           >
             <AppIcon name="skipNext" size={30} color={textPrimary} />
           </Pressable>
@@ -351,7 +373,7 @@ export function NowPlayingScreen() {
             onPress={() => {
               setQueueVisible((value) => !value);
             }}
-            accessibilityLabel="播放队列"
+            accessibilityLabel={tr('player.playQueue')}
           >
             <AppIcon name="playlist" size={26} color={queueVisible ? accent : textPrimary} />
           </Pressable>
@@ -365,7 +387,7 @@ export function NowPlayingScreen() {
             onPress={() => {
               setQueueVisible(false);
             }}
-            accessibilityLabel="收起队列"
+            accessibilityLabel={tr('nowPlaying.collapseQueue')}
           />
           <View
             style={[

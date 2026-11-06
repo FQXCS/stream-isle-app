@@ -28,6 +28,7 @@ import {
 } from '@/constant/theme';
 import { AppIcon } from '@/component/AppIcon';
 import { useTheme } from '@/component/useTheme';
+import { useT } from '@/i18n';
 
 interface SortMenuButtonProps {
   /** 打开/关闭排序面板（导航栏 headerRight） */
@@ -37,6 +38,7 @@ interface SortMenuButtonProps {
 /** 导航栏右上角排序按钮（图标库 sort-variant） */
 export function SortMenuButton({ onPress }: SortMenuButtonProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   return (
     <Pressable
@@ -44,7 +46,7 @@ export function SortMenuButton({ onPress }: SortMenuButtonProps) {
       onPress={onPress}
       hitSlop={SPACING.s}
       accessibilityRole="button"
-      accessibilityLabel="排序"
+      accessibilityLabel={tr('sortMenu.title')}
     >
       <AppIcon name="sort" size={22} color={t.textPrimary} />
     </Pressable>
@@ -71,6 +73,7 @@ export function SortMenu({
   optionList = SORT_OPTIONS,
 }: SortMenuProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   // 面板最大高度 = 屏高 55%（13 项超出时内部滚动，不撑满整屏）
   const { height: windowHeight } = useWindowDimensions();
@@ -107,7 +110,9 @@ export function SortMenu({
                 <View style={styles.checkSlot}>
                   {active && <AppIcon name="check" size={14} color={t.accent} />}
                 </View>
-                <Text style={[styles.label, active && styles.activeText]}>{option.label}</Text>
+                <Text style={[styles.label, active && styles.activeText]}>
+                  {tr(option.labelKey)}
+                </Text>
                 {active && option.defaultOrder !== null && (
                   <AppIcon
                     name={sortOrder === 'DESC' ? 'arrowDown' : 'arrowUp'}

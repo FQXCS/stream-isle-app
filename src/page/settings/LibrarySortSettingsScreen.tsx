@@ -10,12 +10,13 @@ import type { LibraryTypeEnum, ServerFlavor, SortByEnum } from '@/adapter/model'
 import { SettingRow } from '@/component/SettingRow';
 import { useTheme } from '@/component/useTheme';
 import {
-  LIBRARY_TYPE_LABELS,
+  LIBRARY_TYPE_LABEL_KEYS,
   libraryTypesOfFlavor,
   tabsOfFlavor,
 } from '@/constant/libraryTabs';
 import { ROUTES } from '@/constant/navigation';
 import { FONT_SIZE, CARD_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { useT } from '@/i18n';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { useLibraryDisplayStore } from '@/store/libraryDisplayStore';
 import { usesPrimarySortConfig } from '@/util/libraryConfig';
@@ -51,12 +52,13 @@ interface LibraryTypeListProps {
 
 function LibraryTypeList({ flavor, sortListByTabScope, onSelect }: LibraryTypeListProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const visibleTypes = libraryTypesOfFlavor(flavor);
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <Text style={styles.sectionTitle}>库类型</Text>
+      <Text style={styles.sectionTitle}>{tr('server.libraryTypes')}</Text>
       <View style={styles.card}>
         {visibleTypes.map((libraryType) => {
           const tabs = tabsOfFlavor(libraryType, flavor);
@@ -72,11 +74,16 @@ function LibraryTypeList({ flavor, sortListByTabScope, onSelect }: LibraryTypeLi
           return (
             <SettingRow
               key={libraryType}
-              label={LIBRARY_TYPE_LABELS[libraryType]}
+              label={tr(LIBRARY_TYPE_LABEL_KEYS[libraryType])}
               value={
                 sortableCount === 0
-                  ? '不支持排序'
-                  : `${sortableCount} 个可排序 Tab${customized ? ' · 已自定义' : ''}`
+                  ? tr('server.sortNotSupported')
+                  : tr(
+                      customized
+                        ? 'server.sortableTabsCustomized'
+                        : 'server.sortableTabsCount',
+                      { count: sortableCount }
+                    )
               }
               showArrow={sortableCount > 0}
               onPress={sortableCount > 0 ? () => onSelect(libraryType) : undefined}

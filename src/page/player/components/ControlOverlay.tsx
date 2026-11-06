@@ -10,6 +10,7 @@ import { SeekBar } from '@/page/player/components/SeekBar';
 import { AppIcon } from '@/component/AppIcon';
 import { CONTROLS_AUTO_HIDE_MS } from '@/constant/playback';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
+import { useT } from '@/i18n';
 import { formatClock } from '@/util/format';
 import { usePlayerStore } from '@/store/playerStore';
 
@@ -52,6 +53,7 @@ export function ControlOverlay({
 }: ControlOverlayProps) {
   // 无操作自动隐藏（CONTROLS_AUTO_HIDE_MS）：挂载即计时，交互（按钮/拖动）重置；
   // 控制层显隐由页面 toggleControls 驱动，本组件不持有 visible 状态
+  const tr = useT();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -87,7 +89,7 @@ export function ControlOverlay({
         <Pressable
           style={styles.iconButton}
           onPress={interact(onExit)}
-          accessibilityLabel="返回"
+          accessibilityLabel={tr('nav.back')}
         >
           <AppIcon name="arrowLeft" size={20} color={COLORS.textPrimary} />
         </Pressable>
@@ -97,7 +99,7 @@ export function ControlOverlay({
         <Pressable
           style={styles.iconButton}
           onPress={interact(onToggleLock)}
-          accessibilityLabel="锁定屏幕"
+          accessibilityLabel={tr('player.lockScreen')}
         >
           <AppIcon name="lock" size={20} color={COLORS.textPrimary} />
         </Pressable>
@@ -108,21 +110,21 @@ export function ControlOverlay({
         <Pressable
           style={styles.iconButton}
           onPress={interact(onTogglePlay)}
-          accessibilityLabel={isPlaying ? '暂停' : '播放'}
+          accessibilityLabel={isPlaying ? tr('player.pause') : tr('player.play')}
         >
           <AppIcon name={isPlaying ? 'pause' : 'play'} size={20} color={COLORS.textPrimary} />
         </Pressable>
         <Pressable
           style={styles.iconButton}
           onPress={interact(onOpenSubtitleMenu)}
-          accessibilityLabel="字幕"
+          accessibilityLabel={tr('player.subtitleMenu')}
         >
           <AppIcon name="subtitle" size={20} color={COLORS.textPrimary} />
         </Pressable>
         <Pressable
           style={styles.iconButton}
           onPress={interact(onOpenAudioTrackMenu)}
-          accessibilityLabel="音轨"
+          accessibilityLabel={tr('player.audioMenu')}
         >
           <AppIcon name="audio" size={20} color={COLORS.textPrimary} />
         </Pressable>
@@ -130,7 +132,7 @@ export function ControlOverlay({
           <Pressable
             style={styles.iconButton}
             onPress={interact(onOpenResolutionMenu)}
-            accessibilityLabel="转码分辨率"
+            accessibilityLabel={tr('player.resolutionMenu')}
           >
             <AppIcon name="resolution" size={20} color={COLORS.textPrimary} />
           </Pressable>

@@ -12,6 +12,7 @@ import { AppIcon } from '@/component/AppIcon';
 import { showToast } from '@/component/Toast';
 import { useTheme } from '@/component/useTheme';
 import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
+import { useT } from '@/i18n';
 import { AppError, errorMessageOf } from '@/infra/error';
 import { audioService } from '@/service/AudioService';
 import { markService } from '@/service/MarkService';
@@ -50,6 +51,7 @@ export function SongRow({
   trailing,
 }: SongRowProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   // 行内切换过的收藏态优先（列表数据不会即时回写）；未切换过取接口返回值
   const favoriteOverride = useFavoriteStore((state) => state.overrideById[song.id]);
@@ -113,7 +115,9 @@ export function SongRow({
           <Pressable
             hitSlop={8}
             onPress={toggleFavorite}
-            accessibilityLabel={favorite ? '取消收藏' : '收藏'}
+            accessibilityLabel={
+              favorite ? tr('action.unfavorite') : tr('action.favorite')
+            }
           >
             <AppIcon
               name={favorite ? 'heart' : 'heartOutline'}
@@ -124,7 +128,7 @@ export function SongRow({
           <Pressable
             hitSlop={8}
             onPress={addToQueue}
-            accessibilityLabel={`将${song.name}加入播放队列`}
+            accessibilityLabel={tr('songRow.addToQueue', { name: song.name })}
           >
             <AppIcon name="playlistPlus" size={22} color={t.textTertiary} />
           </Pressable>

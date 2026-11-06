@@ -16,6 +16,7 @@ import { SortMenu, SortMenuButton } from '@/component/SortMenu';
 import { useTheme } from '@/component/useTheme';
 import type { TabSpec } from '@/constant/libraryTabs';
 import { type ThemeTokens } from '@/constant/theme';
+import { useT } from '@/i18n';
 import { TabContent } from '@/page/library/tabs/TabContent';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { useAccountStore, useActiveServerFlavor } from '@/store/accountStore';
@@ -48,6 +49,7 @@ export function LibraryScreen() {
 
 function LibraryBody({ library }: { library: MediaLibrary }) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const navigation = useNavigation<LibraryNavigation>();
   const flavor = useActiveServerFlavor();
@@ -76,8 +78,8 @@ function LibraryBody({ library }: { library: MediaLibrary }) {
   const activeTab: TabSpec | undefined =
     tabList.find((tab) => tab.id === selectedTabId) ?? tabList[0];
   const tabBarOptions = useMemo(
-    () => tabList.map((tab) => ({ value: tab.id, label: tab.label })),
-    [tabList]
+    () => tabList.map((tab) => ({ value: tab.id, label: tr(tab.labelKey) })),
+    [tabList, tr]
   );
 
   const sortOptions = useMemo(
@@ -164,7 +166,7 @@ function LibraryBody({ library }: { library: MediaLibrary }) {
   }, [navigation, sortOptions.length, handleToggleSortMenu]);
 
   if (tabList.length === 0 || activeTab === undefined) {
-    return <EmptyView title="库内暂无分类" />;
+    return <EmptyView title={tr('library.emptyTabs')} />;
   }
 
   return (

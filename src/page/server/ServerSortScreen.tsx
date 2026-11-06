@@ -13,6 +13,7 @@ import { SortableSettingsList } from '@/component/SortableSettingsList';
 import { useTheme } from '@/component/useTheme';
 import { ROUTES } from '@/constant/navigation';
 import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { useT } from '@/i18n';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { useAccountStore, type ServerAccount } from '@/store/accountStore';
 
@@ -20,6 +21,7 @@ type Props = NativeStackScreenProps<RootStackParamList, typeof ROUTES.SERVER_SOR
 
 export function ServerSortScreen({ navigation }: Props) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const servers = useAccountStore((state) => state.servers);
   const [orderedList, setOrderedList] = useState<ServerAccount[]>(servers);
@@ -31,14 +33,18 @@ export function ServerSortScreen({ navigation }: Props) {
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: '排序',
+      title: tr('server.sortTitle'),
       headerRight: () => (
-        <Pressable accessibilityRole="button" accessibilityLabel="保存" onPress={handleSave}>
-          <Text style={[styles.headerAction, { color: t.textPrimary }]}>保存</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={tr('common.save')}
+          onPress={handleSave}
+        >
+          <Text style={[styles.headerAction, { color: t.textPrimary }]}>{tr('common.save')}</Text>
         </Pressable>
       ),
     });
-  }, [handleSave, navigation, styles.headerAction, t.textPrimary]);
+  }, [handleSave, navigation, styles.headerAction, t.textPrimary, tr]);
 
   return (
     <SortableSettingsList
@@ -50,7 +56,7 @@ export function ServerSortScreen({ navigation }: Props) {
           <ServerFlavorLogo flavor={item.flavor} size={34} />
           <View style={styles.meta}>
             <Text style={styles.name} numberOfLines={1}>
-              {item.serverName || '未命名服务器'}
+              {item.serverName || tr('server.unnamedServer')}
             </Text>
             <Text style={styles.description} numberOfLines={1}>
               {item.flavor === 'EMBY' ? 'Emby' : 'Jellyfin'} - {item.baseUrl}

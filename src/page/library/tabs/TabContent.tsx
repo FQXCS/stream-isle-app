@@ -5,6 +5,7 @@
 import type { MediaLibrary } from '@/adapter/model';
 import { EmptyView } from '@/component/EmptyView';
 import type { TabSpec } from '@/constant/libraryTabs';
+import { useT } from '@/i18n';
 import type { LibrarySortState } from '@/store/libraryViewStore';
 import { AlbumGridTab } from '@/page/library/tabs/AlbumGridTab';
 import { ArtistListTab } from '@/page/library/tabs/ArtistListTab';
@@ -26,13 +27,14 @@ interface TabContentProps {
 }
 
 export function TabContent({ tab, library, sort, onClearFilter }: TabContentProps) {
+  const tr = useT();
   switch (tab.renderer) {
     case 'posterWall':
       if (tab.special === 'suggestions') {
         return <SuggestionTab tab={tab} libraryId={library.id} />;
       }
       if (tab.source === 'special') {
-        return <EmptyView title="该分类暂不支持" />;
+        return <EmptyView title={tr('library.unsupportedCategory')} />;
       }
       return (
         <PosterWallTab
@@ -57,7 +59,7 @@ export function TabContent({ tab, library, sort, onClearFilter }: TabContentProp
         <ArtistListTab
           libraryId={library.id}
           sort={sort}
-          emptyTitle={library.type === 'BOOK' ? '暂无作者' : '暂无艺人'}
+          emptyTitle={library.type === 'BOOK' ? tr('library.emptyAuthors') : tr('library.emptyArtists')}
         />
       );
     case 'albumGrid':
@@ -70,6 +72,6 @@ export function TabContent({ tab, library, sort, onClearFilter }: TabContentProp
     case 'timerList':
       return <LiveListTab tab={tab} sort={sort} />;
     default:
-      return <EmptyView title="该分类暂不支持" />;
+      return <EmptyView title={tr('library.unsupportedCategory')} />;
   }
 }

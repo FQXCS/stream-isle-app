@@ -16,6 +16,7 @@ import { GRID_COLUMNS } from '@/constant/browse';
 import { SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { AppError } from '@/infra/error';
+import { useT } from '@/i18n';
 import { usePagedLoad } from '@/page/library/components/usePagedLoad';
 import { WallGridCell } from '@/page/library/components/WallGridCell';
 
@@ -25,12 +26,9 @@ interface PhotoVideoGridProps {
   emptyTitle?: string;
 }
 
-export function PhotoVideoGrid({
-  loadPage,
-  onPressItem,
-  emptyTitle = '暂无视频',
-}: PhotoVideoGridProps) {
+export function PhotoVideoGrid({ loadPage, onPressItem, emptyTitle }: PhotoVideoGridProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const miniPlayerPadding = useMiniPlayerPadding();
   const state = usePagedLoad<MediaLibraryItem>(loadPage);
@@ -88,7 +86,7 @@ export function PhotoVideoGrid({
     );
   }
   if (state.itemList.length === 0) {
-    return <EmptyView title={emptyTitle} />;
+    return <EmptyView title={emptyTitle ?? tr('photo.videoEmpty')} />;
   }
   return (
     <>

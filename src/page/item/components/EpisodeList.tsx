@@ -12,6 +12,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { EpisodeItem } from '@/adapter/model';
 import { FONT_SIZE, POSTER_RADIUS, SPACING } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
+import { useT } from '@/i18n';
 import { formatClock } from '@/util/format';
 
 interface EpisodeListProps {
@@ -52,6 +53,7 @@ function EpisodeCard({
   trailing?: ReactNode;
 }) {
   const t = useTheme();
+  const tr = useT();
   const percent =
     !episode.userData.played &&
     episode.userData.playedPercentage !== undefined &&
@@ -105,7 +107,7 @@ function EpisodeCard({
       </View>
       <View style={styles.info}>
         <Text style={[styles.title, { color: t.textPrimary }]} numberOfLines={1}>
-          第 {episode.indexNumber} 集 {episode.name}
+          {tr('item.episodeLabel', { number: episode.indexNumber, name: episode.name })}
         </Text>
         {episode.overview !== undefined && (
           <Text style={[styles.overview, { color: t.textSecondary }]} numberOfLines={1}>

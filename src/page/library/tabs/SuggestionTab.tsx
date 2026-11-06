@@ -8,6 +8,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MediaLibraryItem } from '@/adapter/model';
 import type { TabSpec } from '@/constant/libraryTabs';
 import { PAGE_SIZE } from '@/constant/browse';
+import { useT } from '@/i18n';
 import { PhotoVideoGrid } from '@/page/photo/PhotoVideoGrid';
 import { navigateTabItem } from '@/page/library/tabs/navigation';
 import type { RootStackParamList } from '@/page/navigation/types';
@@ -22,6 +23,7 @@ interface SuggestionTabProps {
 
 export function SuggestionTab({ tab, libraryId }: SuggestionTabProps) {
   const navigation = useNavigation<SuggestNavigation>();
+  const tr = useT();
   const loadPage = useCallback(
     async (page: number) => {
       if (page > 0) {
@@ -36,7 +38,7 @@ export function SuggestionTab({ tab, libraryId }: SuggestionTabProps) {
     <PhotoVideoGrid
       loadPage={loadPage}
       onPressItem={(item: MediaLibraryItem) => navigateTabItem(navigation, tab.tap, item)}
-      emptyTitle="暂无推荐"
+      emptyTitle={tr('library.emptySuggestions')}
     />
   );
 }

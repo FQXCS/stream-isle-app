@@ -16,6 +16,7 @@ import { LoadingView } from '@/component/LoadingView';
 import { showToast } from '@/component/Toast';
 import { useTheme } from '@/component/useTheme';
 import { FONT_SIZE, POSTER_RADIUS, SPACING } from '@/constant/theme';
+import { useT } from '@/i18n';
 import { AppError, errorMessageOf } from '@/infra/error';
 import { ROUTES } from '@/constant/navigation';
 import type { RootStackParamList } from '@/page/navigation/types';
@@ -27,6 +28,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export function HistoryScreen() {
   const t = useTheme();
+  const tr = useT();
   const navigation = useNavigation<NavigationProp>();
   const miniPadding = useMiniPlayerPadding();
 
@@ -100,7 +102,7 @@ export function HistoryScreen() {
   if (status === 'loading') {
     return (
       <View style={[styles.fill, { backgroundColor: t.bg }]}>
-        <Text style={[styles.title, { color: t.textPrimary }]}>观看历史</Text>
+        <Text style={[styles.title, { color: t.textPrimary }]}>{tr('history.title')}</Text>
         <LoadingView />
       </View>
     );
@@ -109,7 +111,7 @@ export function HistoryScreen() {
   if (status === 'error' && error !== null) {
     return (
       <View style={[styles.fill, { backgroundColor: t.bg }]}>
-        <Text style={[styles.title, { color: t.textPrimary }]}>观看历史</Text>
+        <Text style={[styles.title, { color: t.textPrimary }]}>{tr('history.title')}</Text>
         <ErrorView error={error} onRetry={() => void loadFirstPage()} />
       </View>
     );
@@ -117,9 +119,9 @@ export function HistoryScreen() {
 
   return (
     <View style={[styles.fill, { backgroundColor: t.bg }]}>
-      <Text style={[styles.title, { color: t.textPrimary }]}>观看历史</Text>
+      <Text style={[styles.title, { color: t.textPrimary }]}>{tr('history.title')}</Text>
       {entryList.length === 0 ? (
-        <EmptyView title="暂无观看记录" subtitle="看过的电影和剧集会显示在这里" />
+        <EmptyView title={tr('history.empty')} subtitle={tr('history.emptyHint')} />
       ) : (
         <FlatList
           data={entryList}
@@ -145,7 +147,9 @@ export function HistoryScreen() {
                     : item.name}
                 </Text>
                 <Text style={[styles.meta, { color: t.textSecondary }]} numberOfLines={1}>
-                  {item.lastPlayedAtMs !== undefined ? `看过于 ${formatDate(item.lastPlayedAtMs)}` : ''}
+                  {item.lastPlayedAtMs !== undefined
+                    ? tr('history.watchedAt', { date: formatDate(item.lastPlayedAtMs) })
+                    : ''}
                   {item.productionYear !== undefined
                     ? (item.lastPlayedAtMs !== undefined ? ' · ' : '') + String(item.productionYear)
                     : ''}

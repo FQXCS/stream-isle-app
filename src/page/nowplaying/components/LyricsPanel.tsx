@@ -12,6 +12,7 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { LYRIC_SYNC_INTERVAL_MS } from '@/constant/lyrics';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
+import { useT } from '@/i18n';
 import { audioService } from '@/service/AudioService';
 import { activeLyricIndex } from '@/util/lyrics';
 
@@ -35,6 +36,7 @@ export function LyricsPanel({
   const [loaded, setLoaded] = useState<{ id: string; lines: LyricLine[] | null } | null>(null);
   /** 歌词区实际高度（父布局 flex 分配，onLayout 回填后动态折算上下留白） */
   const [areaHeight, setAreaHeight] = useState(0);
+  const tr = useT();
   const listRef = useRef<FlatList<LyricLine>>(null);
   // 渲染期派生当前曲歌词：loaded.id ≠ itemId → 加载中（不进 effect 同步 setState）
   const lines = loaded?.id === itemId ? loaded.lines : undefined;
@@ -85,12 +87,12 @@ export function LyricsPanel({
       {lines === undefined ? (
         // 加载中（loaded 未回填或切歌后新曲目尚未加载完成）
         <View style={styles.centerFill}>
-          <Text style={[styles.placeholder, { color: textColor }]}>歌词加载中…</Text>
+          <Text style={[styles.placeholder, { color: textColor }]}>{tr('nowPlaying.lyricsLoading')}</Text>
         </View>
       ) : lines === null || lines.length === 0 ? (
         // 无歌词占位（A11 第三态）
         <View style={styles.centerFill}>
-          <Text style={[styles.placeholder, { color: textColor }]}>暂无歌词</Text>
+          <Text style={[styles.placeholder, { color: textColor }]}>{tr('nowPlaying.noLyrics')}</Text>
         </View>
       ) : (
         <FlatList

@@ -11,6 +11,7 @@ import { useTheme } from '@/component/useTheme';
 import { tabsOfFlavor } from '@/constant/libraryTabs';
 import { ROUTES } from '@/constant/navigation';
 import { FONT_SIZE, CARD_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { useT } from '@/i18n';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { useLibraryDisplayStore } from '@/store/libraryDisplayStore';
 import {
@@ -28,6 +29,7 @@ interface LibrarySortTabsParams {
 
 export function LibrarySortTabsScreen() {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const navigation = useNavigation<SettingsNavigation>();
   const route = useRoute<{ key: string; name: string; params: LibrarySortTabsParams }>();
@@ -47,15 +49,23 @@ export function LibrarySortTabsScreen() {
               return (
                 <SettingRow
                   key={tab.id}
-                  label={tab.label}
+                  label={tr(tab.labelKey)}
                   value={
-                    primaryTab === undefined ? '不支持排序' : `跟随「${primaryTab.label}」`
+                    primaryTab === undefined
+                      ? tr('server.sortNotSupported')
+                      : tr('server.followPrimaryTab', { tab: tr(primaryTab.labelKey) })
                   }
                 />
               );
             }
             if (tab.sortSet === 'none') {
-              return <SettingRow key={tab.id} label={tab.label} value="不支持排序" />;
+              return (
+                <SettingRow
+                  key={tab.id}
+                  label={tr(tab.labelKey)}
+                  value={tr('server.sortNotSupported')}
+                />
+              );
             }
             const count = resolveTabSortOptions({
               flavor,
@@ -66,8 +76,8 @@ export function LibrarySortTabsScreen() {
             return (
               <SettingRow
                 key={tab.id}
-                label={tab.label}
-                value={`已选 ${count} 项`}
+                label={tr(tab.labelKey)}
+                value={tr('server.sortSelectedCount', { count })}
                 showArrow
                 onPress={() =>
                   navigation.navigate(ROUTES.LIBRARY_SORT_EDITOR, {

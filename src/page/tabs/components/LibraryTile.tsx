@@ -11,6 +11,7 @@ import { LIBRARY_ICON_MAP } from '@/component/LibraryCard';
 import { useTheme } from '@/component/useTheme';
 import { MEDIA_WIDE_CARD_WIDTH } from '@/constant/browse';
 import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { useT } from '@/i18n';
 
 /** 卡片宽度：与「继续观看」大卡同宽（16:9，高度 MEDIA_CARD_HEIGHT），两行尺寸一致 */
 const TILE_WIDTH = MEDIA_WIDE_CARD_WIDTH;
@@ -22,11 +23,12 @@ interface LibraryTileProps {
 
 export function LibraryTile({ library, onPress }: LibraryTileProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`打开库 ${library.name}`}
+      accessibilityLabel={tr('server.openLibrary', { name: library.name })}
       onPress={() => onPress(library)}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >

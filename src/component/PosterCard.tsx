@@ -13,6 +13,7 @@ import type { MediaLibraryItem } from '@/adapter/model';
 import { AppIcon } from '@/component/AppIcon';
 import { FONT_SIZE, POSTER_RADIUS, SPACING } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
+import { useT } from '@/i18n';
 import { useTransitionStore } from '@/store/transitionStore';
 import { mediaIconOf } from '@/util/mediaCard';
 
@@ -36,6 +37,7 @@ export function PosterCard({
   aspectRatio = 2 / 3,
 }: PosterCardProps) {
   const t = useTheme();
+  const tr = useT();
   const posterBoxRef = useRef<ComponentRef<typeof View> | null>(null);
   const begin = useTransitionStore((state) => state.begin);
   const progressPercent =
@@ -87,7 +89,9 @@ export function PosterCard({
             hitSlop={8}
             onPress={() => onToggleFavorite(item)}
             accessibilityRole="button"
-            accessibilityLabel={item.userData.favorite ? '取消收藏' : '收藏'}
+            accessibilityLabel={
+              item.userData.favorite ? tr('action.unfavorite') : tr('action.favorite')
+            }
           >
             <AppIcon
               name={item.userData.favorite ? 'heart' : 'heartOutline'}

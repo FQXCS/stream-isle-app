@@ -11,6 +11,7 @@ import type { MediaLibraryItem } from '@/adapter/model';
 import { AnchorMenu, type AnchorMenuItem, type AnchorRect } from '@/component/AnchorMenu';
 import { showToast } from '@/component/Toast';
 import { ROUTES } from '@/constant/navigation';
+import { useT } from '@/i18n';
 import { AppError, errorMessageOf } from '@/infra/error';
 import { downloadService } from '@/service/DownloadService';
 import { itemActionService } from '@/service/ItemActionService';
@@ -61,6 +62,7 @@ export function ItemActionMenu({
   onDeleted,
 }: ItemActionMenuProps) {
   const navigation = useNavigation<ItemActionNavigationProp>();
+  const tr = useT();
 
   if (item === null || anchor === null) {
     return null;
@@ -87,7 +89,7 @@ export function ItemActionMenu({
   const handleDownload = () => {
     void downloadService
       .startDownload(item)
-      .then(() => showToast(`已加入下载队列：${item.name}`))
+      .then(() => showToast(tr('item.downloadQueued', { name: item.name })))
       .catch(toastError);
   };
 
@@ -111,47 +113,51 @@ export function ItemActionMenu({
 
   /** 删除服务器条目（二次确认；需要服务器删除权限，失败 Toast） */
   const handleDelete = () => {
-    Alert.alert('删除媒体', `确定从服务器删除「${item.name}」吗？此操作不可撤销。`, [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '删除',
-        style: 'destructive',
-        onPress: () => {
-          void itemActionService
-            .deleteItem(item.id)
-            .then(() => {
-              onDeleted?.(item);
-              showToast('已删除');
-            })
-            .catch(toastError);
+    Alert.alert(
+      tr('item.deleteTitle'),
+      tr('item.deleteMessage', { name: item.name }),
+      [
+        { text: tr('common.cancel'), style: 'cancel' },
+        {
+          text: tr('common.delete'),
+          style: 'destructive',
+          onPress: () => {
+            void itemActionService
+              .deleteItem(item.id)
+              .then(() => {
+                onDeleted?.(item);
+                showToast(tr('item.deleted'));
+              })
+              .catch(toastError);
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   const menuItemList: AnchorMenuItem[] = [];
   if (isPlayableItem(item)) {
     menuItemList.push(
-      { key: 'play', label: '播放', icon: 'play', onPress: handlePlay },
-      { key: 'download', label: '下载', icon: 'download', onPress: handleDownload }
+      { key: 'play', label: tr('action.play'), icon: 'play', onPress: handlePlay },
+      { key: 'download', label: tr('action.download'), icon: 'download', onPress: handleDownload }
     );
   }
   menuItemList.push(
     {
       key: 'played',
-      label: item.userData.played ? '标记为未观看' : '标记为已观看',
+      label: item.userData.played ? tr('item.markUnplayed') : tr('item.markPlayed'),
       icon: item.userData.played ? 'flagOutline' : 'flag',
       onPress: handleTogglePlayed,
     },
     {
       key: 'favorite',
-      label: item.userData.favorite ? '取消收藏' : '添加到收藏夹',
+      label: item.userData.favorite ? tr('action.unfavorite') : tr('item.addFavorite'),
       icon: item.userData.favorite ? 'heart' : 'heartOutline',
       onPress: handleToggleFavorite,
     },
     {
       key: 'delete',
-      label: '删除',
+      label: tr('common.delete'),
       icon: 'trash',
       tone: 'danger',
       onPress: handleDelete,

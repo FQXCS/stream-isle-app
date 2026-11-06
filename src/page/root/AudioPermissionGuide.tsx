@@ -13,11 +13,13 @@ import { Linking, Modal, Platform, Pressable, StyleSheet, Text, View } from 'rea
 import { ANDROID_APPLICATION_ID } from '@/constant/app';
 import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
+import { useT } from '@/i18n';
 import { usePlayerStore } from '@/store/playerStore';
 import { useSettingsStore } from '@/store/settingsStore';
 
 export function AudioPermissionGuide() {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const status = usePlayerStore((state) => state.audio.status);
   const batteryGuideShown = useSettingsStore((state) => state.batteryGuideShown);
@@ -43,10 +45,8 @@ export function AudioPermissionGuide() {
     <Modal transparent animationType="fade" onRequestClose={() => setVisible(false)}>
       <View style={styles.mask}>
         <View style={styles.dialog}>
-          <Text style={styles.title}>后台播放设置建议</Text>
-          <Text style={styles.message}>
-            为避免后台播放被系统省电中断，建议允许忽略电池优化；小米/华为等机型还需在设置中允许自启动/后台运行。
-          </Text>
+          <Text style={styles.title}>{tr('server.batteryTitle')}</Text>
+          <Text style={styles.message}>{tr('server.batteryMessage')}</Text>
           <View style={styles.buttonRow}>
             <Pressable
               style={[styles.button, styles.secondaryButton]}
@@ -55,7 +55,7 @@ export function AudioPermissionGuide() {
                 setBatteryGuideShown();
               }}
             >
-              <Text style={styles.secondaryText}>暂不</Text>
+              <Text style={styles.secondaryText}>{tr('server.batteryLater')}</Text>
             </Pressable>
             <Pressable
               style={[styles.button, styles.primaryButton]}
@@ -65,7 +65,7 @@ export function AudioPermissionGuide() {
                 openBatteryOptimizationSettings();
               }}
             >
-              <Text style={styles.primaryText}>去设置</Text>
+              <Text style={styles.primaryText}>{tr('server.batteryGoSettings')}</Text>
             </Pressable>
           </View>
         </View>

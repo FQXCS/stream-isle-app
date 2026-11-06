@@ -19,7 +19,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, ToastAndroid, View } from 'react-native';
 
 import { MINI_PLAYER_HIDDEN_ROUTES, ROUTES } from '@/constant/navigation';
-import { LIBRARY_TYPE_LABELS, TAB_CATALOG } from '@/constant/libraryTabs';
+import { LIBRARY_TYPE_LABEL_KEYS, TAB_CATALOG } from '@/constant/libraryTabs';
+import { useT } from '@/i18n';
 import { errorMessageOf } from '@/infra/error';
 import { apiEvents } from '@/infra/api/apiEvents';
 import { AppIcon } from '@/component/AppIcon';
@@ -71,6 +72,7 @@ const Tabs = createBottomTabNavigator<TabsParamList>();
 /** 底部三 Tab 容器（媒体库融合页/媒体服务器/设置；搜索改由媒体库页头部入口进入） */
 function TabsNavigator() {
   const t = useTheme();
+  const tr = useT();
   return (
     <Tabs.Navigator
       screenOptions={{
@@ -91,7 +93,7 @@ function TabsNavigator() {
         name={ROUTES.TAB_LIBRARIES}
         component={LibrariesScreen}
         options={{
-          title: '媒体库',
+          title: tr('nav.tabLibrary'),
           tabBarIcon: ({ color, size, focused }) => (
             <AppIcon name="library" size={size} color={color} weight={focused ? 'fill' : 'regular'} />
           ),
@@ -101,7 +103,7 @@ function TabsNavigator() {
         name={ROUTES.TAB_MEDIA_SERVER}
         component={MediaServerScreen}
         options={{
-          title: '影视服务器',
+          title: tr('nav.tabMediaServer'),
           tabBarIcon: ({ color, size, focused }) => (
             <AppIcon name="server" size={size} color={color} weight={focused ? 'fill' : 'regular'} />
           ),
@@ -111,7 +113,7 @@ function TabsNavigator() {
         name={ROUTES.TAB_SETTINGS}
         component={SettingsScreen}
         options={{
-          title: '设置',
+          title: tr('nav.tabSettings'),
           tabBarIcon: ({ color, size, focused }) => (
             <AppIcon name="settings" size={size} color={color} weight={focused ? 'fill' : 'regular'} />
           ),
@@ -127,6 +129,7 @@ export function RootNavigator() {
   const hydrated = useAccountStore((state) => state.hydrated);
   // M6 主题：NavigationContainer theme 由 token 映射（深/浅两套，06 §4.6.1）
   const t = useTheme();
+  const tr = useT();
   const scheme = useResolvedScheme();
   const navigationTheme = useMemo(
     () => ({
@@ -209,13 +212,13 @@ export function RootNavigator() {
             <RootStack.Screen
               name={ROUTES.SEARCH}
               component={SearchScreen}
-              options={{ title: '搜索', headerBackTitle: '返回' }}
+              options={{ title: tr('nav.search'), headerBackTitle: tr('nav.back') }}
             />
             {/* 全部媒体库列表：融合页「我的媒体 · 查看全部」入口，沿用库卡片列表样式 */}
             <RootStack.Screen
               name={ROUTES.LIBRARY_LIST}
               component={LibraryListScreen}
-              options={{ title: '媒体库', headerBackTitle: '返回' }}
+              options={{ title: tr('nav.tabLibrary'), headerBackTitle: tr('nav.back') }}
             />
             {/* 库页：库名居中标题（参考稿），右上角排序按钮由 LibraryScreen setOptions 注入 */}
             <RootStack.Screen
@@ -224,7 +227,7 @@ export function RootNavigator() {
               options={({ route }) => ({
                 title: route.params.library.name,
                 headerTitleAlign: 'center',
-                headerBackTitle: '返回',
+                headerBackTitle: tr('nav.back'),
               })}
             />
             {/* 库内文件夹/相册下钻：原生 push 滑动转场，标题为目录名（不含库页 Tab 栏） */}
@@ -234,7 +237,7 @@ export function RootNavigator() {
               options={({ route }) => ({
                 title: route.params.folderName,
                 headerTitleAlign: 'center',
-                headerBackTitle: '返回',
+                headerBackTitle: tr('nav.back'),
                 animation: 'slide_from_right',
               })}
             />
@@ -247,7 +250,7 @@ export function RootNavigator() {
             <RootStack.Screen
               name={ROUTES.PERSON}
               component={PersonScreen}
-              options={{ headerBackTitle: '返回' }}
+              options={{ headerBackTitle: tr('nav.back') }}
             />
             {/* M2 播放页：全屏黑底自绘控制层，隐藏系统导航栏（横屏由页内锁定） */}
             <RootStack.Screen
@@ -262,11 +265,11 @@ export function RootNavigator() {
               options={({ route }) => ({
                 title:
                   route.params.kind === 'artist'
-                    ? '艺人'
+                    ? tr('nav.artist')
                     : route.params.kind === 'playlist'
-                      ? '播放列表'
-                      : '专辑',
-                headerBackTitle: '返回',
+                      ? tr('nav.playlist')
+                      : tr('nav.album'),
+                headerBackTitle: tr('nav.back'),
               })}
             />
             {/* M5：Now Playing 全屏页（大封面/进度/模式/队列面板）；进出走底部上滑/下滑 */}
@@ -285,42 +288,46 @@ export function RootNavigator() {
             <RootStack.Screen
               name={ROUTES.HISTORY}
               component={HistoryScreen}
-              options={{ headerBackTitle: '返回' }}
+              options={{ headerBackTitle: tr('nav.back') }}
             />
             {/* M6：下载管理（离线任务列表 + 本地播放入口，06 §4.10） */}
             <RootStack.Screen
               name={ROUTES.DOWNLOADS}
               component={DownloadsScreen}
-              options={{ headerBackTitle: '返回' }}
+              options={{ headerBackTitle: tr('nav.back') }}
             />
             {/* 收录类型二级页：继续观看/观看历史分别多选（类型集不同） */}
             <RootStack.Screen
               name={ROUTES.MEDIA_TYPE_SETTINGS}
               component={MediaTypeSettingsScreen}
-              options={{ title: '收录类型', headerBackTitle: '返回' }}
+              options={{ title: tr('settings.includedTypes'), headerBackTitle: tr('nav.back') }}
             />
             {/* 库页配置：根设置页已选服务器类型，这里配置 Tab 分类/排序项 */}
             <RootStack.Screen
               name={ROUTES.LIBRARY_DISPLAY_SETTINGS}
               component={LibraryDisplaySettingsScreen}
               options={({ route }) => ({
-                title: `库页配置 · ${route.params.flavor === 'JELLYFIN' ? 'Jellyfin' : 'Emby'}`,
-                headerBackTitle: '返回',
+                title: tr('nav.libraryDisplayTitle', {
+                  flavor: route.params.flavor === 'JELLYFIN' ? 'Jellyfin' : 'Emby',
+                }),
+                headerBackTitle: tr('nav.back'),
               })}
             />
             {/* 库页 Tab 分类配置：指定 flavor → 库类型列表 */}
             <RootStack.Screen
               name={ROUTES.LIBRARY_TAB_SETTINGS}
               component={LibraryTabSettingsScreen}
-              options={{ title: 'Tab 分类', headerBackTitle: '返回', animation: 'slide_from_right' }}
+              options={{ title: tr('nav.tabCategories'), headerBackTitle: tr('nav.back'), animation: 'slide_from_right' }}
             />
             {/* 某库类型的 Tab 编辑器：原生 push 动画 + 动态标题 */}
             <RootStack.Screen
               name={ROUTES.LIBRARY_TAB_EDITOR}
               component={LibraryTabEditorScreen}
               options={({ route }) => ({
-                title: `Tab 分类 · ${LIBRARY_TYPE_LABELS[route.params.libraryType]}`,
-                headerBackTitle: '返回',
+                title: tr('nav.libraryTabEditorTitle', {
+                  type: tr(LIBRARY_TYPE_LABEL_KEYS[route.params.libraryType]),
+                }),
+                headerBackTitle: tr('nav.back'),
                 animation: 'slide_from_right',
               })}
             />
@@ -328,15 +335,17 @@ export function RootNavigator() {
             <RootStack.Screen
               name={ROUTES.LIBRARY_SORT_SETTINGS}
               component={LibrarySortSettingsScreen}
-              options={{ title: '排序项', headerBackTitle: '返回', animation: 'slide_from_right' }}
+              options={{ title: tr('nav.sortOptions'), headerBackTitle: tr('nav.back'), animation: 'slide_from_right' }}
             />
             {/* 某库类型的 Tab 列表：原生 push 动画 + 动态标题 */}
             <RootStack.Screen
               name={ROUTES.LIBRARY_SORT_TABS}
               component={LibrarySortTabsScreen}
               options={({ route }) => ({
-                title: `排序项 · ${LIBRARY_TYPE_LABELS[route.params.libraryType]}`,
-                headerBackTitle: '返回',
+                title: tr('nav.sortTabsTitle', {
+                  type: tr(LIBRARY_TYPE_LABEL_KEYS[route.params.libraryType]),
+                }),
+                headerBackTitle: tr('nav.back'),
                 animation: 'slide_from_right',
               })}
             />
@@ -351,9 +360,12 @@ export function RootNavigator() {
                 return {
                   title:
                     tab === undefined
-                      ? '排序项'
-                      : `排序项 · ${LIBRARY_TYPE_LABELS[route.params.libraryType]} · ${tab.label}`,
-                  headerBackTitle: '返回',
+                      ? tr('nav.sortOptions')
+                      : tr('nav.sortEditorTitle', {
+                          type: tr(LIBRARY_TYPE_LABEL_KEYS[route.params.libraryType]),
+                          tab: tr(tab.labelKey),
+                        }),
+                  headerBackTitle: tr('nav.back'),
                   animation: 'slide_from_right',
                 };
               }}
@@ -364,7 +376,7 @@ export function RootNavigator() {
               component={ItemListScreen}
               options={({ route }) => ({
                 title: route.params.title,
-                headerBackTitle: '返回',
+                headerBackTitle: tr('nav.back'),
               })}
             />
             {/* 通用歌单详情（视频/混合歌单） */}
@@ -372,8 +384,8 @@ export function RootNavigator() {
               name={ROUTES.PLAYLIST_DETAIL}
               component={PlaylistDetailScreen}
               options={({ route }) => ({
-                title: route.params.title ?? '播放列表',
-                headerBackTitle: '返回',
+                title: route.params.title ?? tr('nav.playlist'),
+                headerBackTitle: tr('nav.back'),
               })}
             />
             {/* M7：图书阅读器（WebView+PDF.js 全屏沉浸） */}
@@ -386,33 +398,33 @@ export function RootNavigator() {
             <RootStack.Screen
               name={ROUTES.SERVER_ADD}
               component={AddServerScreen}
-              options={{ headerBackTitle: '返回' }}
+              options={{ headerBackTitle: tr('nav.back') }}
             />
             <RootStack.Screen
               name={ROUTES.SERVER_ROUTES}
               component={ServerRoutesScreen}
-              options={{ headerBackTitle: '返回' }}
+              options={{ headerBackTitle: tr('nav.back') }}
             />
             <RootStack.Screen
               name={ROUTES.SERVER_SORT}
               component={ServerSortScreen}
-              options={{ headerBackTitle: '返回' }}
+              options={{ headerBackTitle: tr('nav.back') }}
             />
             <RootStack.Screen
               name={ROUTES.SERVER_ROUTE_EDIT}
               component={ServerRouteEditScreen}
-              options={{ headerBackTitle: '返回' }}
+              options={{ headerBackTitle: tr('nav.back') }}
             />
             {/* 登录页：同服务器多账号 / 401 重登（modal 呈现，成功后原地 pop） */}
             <RootStack.Screen
               name={ROUTES.ONBOARDING_CONNECT}
               component={OnboardingConnectScreen}
-              options={{ presentation: 'modal', headerBackTitle: '返回' }}
+              options={{ presentation: 'modal', headerBackTitle: tr('nav.back') }}
             />
             <RootStack.Screen
               name={ROUTES.ONBOARDING_LOGIN}
               component={OnboardingLoginScreen}
-              options={{ presentation: 'modal', headerBackTitle: '返回' }}
+              options={{ presentation: 'modal', headerBackTitle: tr('nav.back') }}
             />
         </RootStack.Navigator>
       </NavigationContainer>

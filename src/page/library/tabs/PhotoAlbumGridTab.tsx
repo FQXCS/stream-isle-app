@@ -20,6 +20,7 @@ import { useTheme } from '@/component/useTheme';
 import { GRID_COLUMNS } from '@/constant/browse';
 import { SPACING, type ThemeTokens } from '@/constant/theme';
 import { AppError } from '@/infra/error';
+import { useT } from '@/i18n';
 import { usePagedLoad } from '@/page/library/components/usePagedLoad';
 import { PhotoGridScreen } from '@/page/photo/PhotoGridScreen';
 import { fetchPhotoAlbumPage } from '@/service/BrowseService';
@@ -32,6 +33,7 @@ interface PhotoAlbumGridTabProps {
 
 export function PhotoAlbumGridTab({ libraryId, sort }: PhotoAlbumGridTabProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const miniPlayerPadding = useMiniPlayerPadding();
   const [selectedAlbum, setSelectedAlbum] = useState<MediaLibraryItem | null>(null);
@@ -61,7 +63,7 @@ export function PhotoAlbumGridTab({ libraryId, sort }: PhotoAlbumGridTabProps) {
         parentId={selectedAlbum.id}
         title={selectedAlbum.name}
         sort={sort}
-        emptyTitle="相册为空"
+        emptyTitle={tr('library.emptyAlbum')}
       />
     );
   }
@@ -76,7 +78,7 @@ export function PhotoAlbumGridTab({ libraryId, sort }: PhotoAlbumGridTabProps) {
     );
   }
   if (state.itemList.length === 0) {
-    return <EmptyView title="暂无相册" />;
+    return <EmptyView title={tr('library.emptyPhotoAlbums')} />;
   }
   return (
     <FlashList
@@ -88,7 +90,9 @@ export function PhotoAlbumGridTab({ libraryId, sort }: PhotoAlbumGridTabProps) {
           <PosterCard
             item={item}
             subtextOverride={
-              item.childCount !== undefined ? `${item.childCount} 张` : undefined
+              item.childCount !== undefined
+                ? tr('library.photoCount', { count: item.childCount })
+                : undefined
             }
           />
         </Pressable>

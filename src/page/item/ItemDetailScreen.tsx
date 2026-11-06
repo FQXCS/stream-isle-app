@@ -26,6 +26,7 @@ import { ErrorView } from '@/component/ErrorView';
 import { LoadingView } from '@/component/LoadingView';
 import { showToast } from '@/component/Toast';
 import { useTheme } from '@/component/useTheme';
+import { useT, type Translator } from '@/i18n';
 import { errorMessageOf, AppError } from '@/infra/error';
 import { ROUTES } from '@/constant/navigation';
 import { FONT_SIZE, POSTER_RADIUS, SPACING } from '@/constant/theme';
@@ -118,6 +119,7 @@ export function ItemDetailScreen() {
   const itemId = route.params.itemId;
   const navigation = useNavigation<NavigationProp>();
   const t = useTheme();
+  const tr = useT();
   const resumePlaybackEnabled = useSettingsStore((state) => state.resumePlaybackEnabled);
 
   const [detail, setDetail] = useState<MediaDetail | null>(null);
@@ -366,23 +368,27 @@ export function ItemDetailScreen() {
     if (detail === null) {
       return;
     }
-    Alert.alert('删除媒体', `确定从服务器删除「${detail.name}」吗？此操作不可撤销。`, [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '删除',
-        style: 'destructive',
-        onPress: () => {
-          void itemActionService
-            .deleteItem(detail.id)
-            .then(() => {
-              showToast('已删除');
-              navigation.goBack();
-            })
-            .catch(toastError);
+    Alert.alert(
+      tr('item.deleteTitle'),
+      tr('item.deleteMessage', { name: detail.name }),
+      [
+        { text: tr('common.cancel'), style: 'cancel' },
+        {
+          text: tr('common.delete'),
+          style: 'destructive',
+          onPress: () => {
+            void itemActionService
+              .deleteItem(detail.id)
+              .then(() => {
+                showToast(tr('item.deleted'));
+                navigation.goBack();
+              })
+              .catch(toastError);
+          },
         },
-      },
-    ]);
-  }, [detail, navigation]);
+      ]
+    );
+  }, [detail, navigation, tr]);
 
   /** 打开「更多」菜单：按当前条目/下载/已看状态构建菜单项（事件期构建，避免渲染期读取状态） */
   const handleOpenMore = useCallback(
@@ -394,14 +400,14 @@ export function ItemDetailScreen() {
       if (isMediaFlowType(detail.type)) {
         const downloadLabel =
           downloadTask === undefined
-            ? '下载'
+            ? tr('action.download')
             : downloadTask.status === 'completed'
-              ? '本地播放'
+              ? tr('download.playLocal')
               : downloadTask.status === 'paused'
-                ? '继续下载'
+                ? tr('download.resume')
                 : downloadTask.status === 'failed'
-                  ? '重试下载'
-                  : '下载中';
+                  ? tr('download.retry')
+                  : tr('download.downloadingShort');
         itemList.push({
           key: 'download',
           label: downloadLabel,
@@ -412,21 +418,21 @@ export function ItemDetailScreen() {
       itemList.push(
         {
           key: 'played',
-          label: '标记为已观看',
+          label: tr('item.markPlayed'),
           icon: 'flag',
           disabled: marking,
           onPress: () => void updatePlayedState(true),
         },
         {
           key: 'unplayed',
-          label: '标记为未观看',
+          label: tr('item.markUnplayed'),
           icon: 'flagOutline',
           disabled: marking,
           onPress: () => void updatePlayedState(false),
         },
         {
           key: 'delete',
-          label: '删除',
+          label: tr('common.delete'),
           icon: 'trash',
           tone: 'danger',
           onPress: handleDeleteItem,
@@ -434,7 +440,15 @@ export function ItemDetailScreen() {
       );
       setMoreMenu({ anchor, itemList });
     },
-    [detail, downloadTask, handleDeleteItem, handleMoreDownload, marking, updatePlayedState]
+    [
+      detail,
+      downloadTask,
+      handleDeleteItem,
+      handleMoreDownload,
+      marking,
+      tr,
+      updatePlayedState,
+    ]
   );
 
   // —— 收藏 toggle（04 §4.4 新增）：乐观更新——立即翻转 UI → await → 失败回滚 + Toast ——
@@ -557,7 +571,7 @@ export function ItemDetailScreen() {
               }
             >
               <AppIcon name="file" size={18} color={t.accentOn} />
-              <Text style={playButtonTextStyle}>阅读</Text>
+              <Text style={playButtonTextStyle}>{tr('item.read')}</Text>
             </Pressable>
           )}
           {isPlayable && (
@@ -587,7 +601,9 @@ export function ItemDetailScreen() {
               )}
               <AppIcon name="play" size={18} color={t.accentOn} />
               <Text style={playButtonTextStyle}>
-                {resumeMs !== null ? `从 ${formatClock(resumeMs)} 继续` : '播放'}
+                {resumeMs !== null
+                  ? tr('item.continueFrom', { time: formatClock(resumeMs) })
+                  : tr('action.play')}
               </Text>
             </Pressable>
           )}
@@ -605,7 +621,7 @@ export function ItemDetailScreen() {
               }
             >
               <AppIcon name="play" size={18} color={t.accentOn} />
-              <Text style={playButtonTextStyle}>播放第一集</Text>
+              <Text style={playButtonTextStyle}>{tr('item.playFirstEpisode')}</Text>
             </Pressable>
           )}
           {/* 收藏 / 已看图标（参考稿：播放按钮下方居中两枚图标） */}
@@ -613,7 +629,9 @@ export function ItemDetailScreen() {
             <Pressable
               style={[styles.iconButton, { backgroundColor: t.surface, borderColor: t.separator }]}
               onPress={() => void toggleFavorite()}
-              accessibilityLabel={detail.userData.favorite ? '取消收藏' : '收藏'}
+              accessibilityLabel={
+                detail.userData.favorite ? tr('action.unfavorite') : tr('action.favorite')
+              }
             >
               <AppIcon
                 name={detail.userData.favorite ? 'heart' : 'heartOutline'}
@@ -624,7 +642,9 @@ export function ItemDetailScreen() {
             <Pressable
               style={[styles.iconButton, { backgroundColor: t.surface, borderColor: t.separator }]}
               onPress={togglePlayed}
-              accessibilityLabel={detail.userData.played ? '标记为未观看' : '标记为已观看'}
+              accessibilityLabel={
+                detail.userData.played ? tr('item.markUnplayed') : tr('item.markPlayed')
+              }
             >
               <AppIcon
                 name={detail.userData.played ? 'flag' : 'flagOutline'}
@@ -724,7 +744,9 @@ function SeasonPicker({
   onSelect: (season: SeasonItem) => void;
 }) {
   const t = useTheme();
-  const label = selectedSeason !== null ? seasonLabelOf(selectedSeason) : '选择季';
+  const tr = useT();
+  const label =
+    selectedSeason !== null ? seasonLabelOf(selectedSeason, tr) : tr('item.selectSeason');
   return (
     <View style={styles.pickerWrap}>
       <Pressable
@@ -749,7 +771,7 @@ function SeasonPicker({
                   season.id === selectedSeason?.id && { color: t.accent },
                 ]}
               >
-                {seasonLabelOf(season)}
+                {seasonLabelOf(season, tr)}
               </Text>
             </Pressable>
           ))}
@@ -760,8 +782,10 @@ function SeasonPicker({
 }
 
 /** 季展示文案（季号 0/缺失为特别篇惯例） */
-function seasonLabelOf(season: SeasonItem): string {
-  return season.indexNumber > 0 ? `第 ${season.indexNumber} 季` : '特别篇';
+function seasonLabelOf(season: SeasonItem, tr: Translator): string {
+  return season.indexNumber > 0
+    ? tr('item.seasonNumber', { number: season.indexNumber })
+    : tr('item.specialSeason');
 }
 
 const styles = StyleSheet.create({

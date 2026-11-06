@@ -17,6 +17,7 @@ import { GRID_COLUMNS } from '@/constant/browse';
 import { ROUTES } from '@/constant/navigation';
 import { SPACING, type ThemeTokens } from '@/constant/theme';
 import { AppError } from '@/infra/error';
+import { useT } from '@/i18n';
 import { usePagedLoad } from '@/page/library/components/usePagedLoad';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { fetchMusicArtists } from '@/service/BrowseService';
@@ -30,8 +31,9 @@ interface ArtistListTabProps {
   emptyTitle?: string;
 }
 
-export function ArtistListTab({ libraryId, sort, emptyTitle = '暂无艺人' }: ArtistListTabProps) {
+export function ArtistListTab({ libraryId, sort, emptyTitle }: ArtistListTabProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const navigation = useNavigation<ArtistNavigation>();
   const miniPlayerPadding = useMiniPlayerPadding();
@@ -54,7 +56,7 @@ export function ArtistListTab({ libraryId, sort, emptyTitle = '暂无艺人' }: 
     );
   }
   if (state.itemList.length === 0) {
-    return <EmptyView title={emptyTitle} />;
+    return <EmptyView title={emptyTitle ?? tr('library.emptyArtists')} />;
   }
   return (
     <FlashList

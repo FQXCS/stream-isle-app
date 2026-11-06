@@ -22,6 +22,7 @@ import { ROUTES } from '@/constant/navigation';
 import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { AppError, errorMessageOf } from '@/infra/error';
+import { useT } from '@/i18n';
 import { audioService } from '@/service/AudioService';
 import { fetchFolderPage } from '@/service/BrowseService';
 import { FolderCard } from '@/page/library/components/FolderCard';
@@ -59,6 +60,7 @@ interface MusicFolderViewProps {
 
 export function MusicFolderView({ folderId, onOpenFolder, sortBy, sortOrder }: MusicFolderViewProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const navigation = useNavigation<LibraryNavigationProp>();
   const miniPlayerPadding = useMiniPlayerPadding();
@@ -125,7 +127,7 @@ export function MusicFolderView({ folderId, onOpenFolder, sortBy, sortOrder }: M
     );
   }
   if (visibleList.length === 0) {
-    return <EmptyView title="文件夹为空" />;
+    return <EmptyView title={tr('library.emptyFolder')} />;
   }
 
   if (gridMode) {
@@ -180,7 +182,7 @@ export function MusicFolderView({ folderId, onOpenFolder, sortBy, sortOrder }: M
             : 'audio';
         const rowSubtext = isFolder
           ? item.childCount !== undefined
-            ? `${item.childCount} 项`
+            ? tr('library.itemCount', { count: item.childCount })
             : undefined
           : item.subtext;
         return (

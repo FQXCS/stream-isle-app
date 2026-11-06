@@ -15,6 +15,7 @@ import { LoadingView } from '@/component/LoadingView';
 import { useTheme } from '@/component/useTheme';
 import { ROUTES } from '@/constant/navigation';
 import { SPACING } from '@/constant/theme';
+import { useT } from '@/i18n';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { useAccountStore } from '@/store/accountStore';
 import { librariesKeyOf, useBrowseStore } from '@/store/browseStore';
@@ -23,6 +24,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export function LibraryListScreen() {
   const t = useTheme();
+  const tr = useT();
   const navigation = useNavigation<NavigationProp>();
   const active = useAccountStore((state) => state.active);
   const key = active ? librariesKeyOf(active.serverId, active.userId) : null;
@@ -61,7 +63,7 @@ export function LibraryListScreen() {
 
   if (libraries === undefined) {
     // 游客态（未添加服务器）直接空态；有账号但尚未返回时显示加载
-    return active === null ? <EmptyView title="没有可见的媒体库" /> : <LoadingView />;
+    return active === null ? <EmptyView title={tr('library.emptyLibraries')} /> : <LoadingView />;
   }
 
   return (
@@ -71,7 +73,7 @@ export function LibraryListScreen() {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <LibraryCard library={item} onPress={handlePress} />}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={<EmptyView title="没有可见的媒体库" />}
+        ListEmptyComponent={<EmptyView title={tr('library.emptyLibraries')} />}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={t.accent} />
         }

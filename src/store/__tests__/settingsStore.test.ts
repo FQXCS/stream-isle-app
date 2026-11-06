@@ -7,6 +7,7 @@
 import { SETTINGS_STORE_KEY } from '@/constant/storage';
 import { mmkv } from '@/infra/storage';
 import { DEFAULT_ACCENT_SCHEME, ACCENT_SCHEME_LIST } from '@/constant/theme';
+import { translateFor } from '@/i18n/translate';
 import { useSettingsStore } from '@/store/settingsStore';
 
 const mockSyncTlsBypassHosts = jest.fn();
@@ -202,7 +203,7 @@ describe('settingsStore（配色方案）', () => {
   it('默认翡翠，且列表里绿色只保留翡翠', () => {
     expect(DEFAULT_ACCENT_SCHEME).toBe('EMERALD');
     expect(useSettingsStore.getState().accentScheme).toBe('EMERALD');
-    const labels = ACCENT_SCHEME_LIST.map((scheme) => scheme.label);
+    const labels = ACCENT_SCHEME_LIST.map((scheme) => translateFor('zh', scheme.labelKey));
     expect(labels).toEqual(['翡翠', '雾蓝', '靛紫', '珊瑚', '墨黑', '莓果', '焦糖']);
   });
 
@@ -211,5 +212,37 @@ describe('settingsStore（配色方案）', () => {
     expect(useSettingsStore.getState().accentScheme).toBe('BERRY');
     const snapshot = mmkv.getString(SETTINGS_STORE_KEY) ?? '';
     expect(snapshot).toContain('"accentScheme":"BERRY"');
+  });
+});
+
+describe('settingsStore（界面语言）', () => {
+  beforeEach(() => {
+    useSettingsStore.setState({ language: 'system' });
+    mmkv.clearAll();
+  });
+
+  it('默认跟随系统', () => {
+    expect(useSettingsStore.getState().language).toBe('system');
+  });
+
+  it('setLanguage 写入并持久化', () => {
+    useSettingsStore.getState().actions.setLanguage('en');
+    expect(useSettingsStore.getState().language).toBe('en');
+    const snapshot = mmkv.getString(SETTINGS_STORE_KEY) ?? '';
+    expect(snapshot).toContain('"language":"en"');
+  });
+
+  it('旧快照缺 language / 非法值 → 回灌为 system', async () => {
+    mmkv.set(SETTINGS_STORE_KEY, JSON.stringify({ state: { themeMode: 'dark' }, version: 1 }));
+    await useSettingsStore.persist.rehydrate();
+    expect(useSettingsStore.getState().language).toBe('system');
+    expect(useSettingsStore.getState().themeMode).toBe('dark');
+
+    mmkv.set(
+      SETTINGS_STORE_KEY,
+      JSON.stringify({ state: { language: 'fr' }, version: 1 })
+    );
+    await useSettingsStore.persist.rehydrate();
+    expect(useSettingsStore.getState().language).toBe('system');
   });
 });

@@ -64,12 +64,20 @@ export interface ServerAccount {
   stats?: ServerMediaStats;
 }
 
+/** 默认线路持久化名哨兵：显示层按当前语言翻译，数据层不随语言改写 */
+export const DEFAULT_ROUTE_NAME_SENTINEL = '默认线路';
+
+/** 是否默认线路名（展示/编辑时替换为本地化文案） */
+export function isDefaultRouteName(name: string): boolean {
+  return name === DEFAULT_ROUTE_NAME_SENTINEL;
+}
+
 /** 读取线路列表：旧记录无 routes 时按 baseUrl 合成默认线路（不做写迁移） */
 export function routesOf(server: ServerAccount): ServerRoute[] {
   if (server.routes !== undefined && server.routes.length > 0) {
     return server.routes;
   }
-  return [{ id: 'primary', name: '默认线路', baseUrl: server.baseUrl }];
+  return [{ id: 'primary', name: DEFAULT_ROUTE_NAME_SENTINEL, baseUrl: server.baseUrl }];
 }
 
 /** 当前线路 id（无效 id 回退 routes[0]） */
@@ -226,7 +234,7 @@ export const useAccountStore = create<AccountState>()(
               version: info.version,
               users: [],
               activeUserId: null,
-              routes: [{ id: 'primary', name: '默认线路', baseUrl: info.baseUrl }],
+              routes: [{ id: 'primary', name: DEFAULT_ROUTE_NAME_SENTINEL, baseUrl: info.baseUrl }],
               activeRouteId: 'primary',
               lastUsedAt: Date.now(),
             };

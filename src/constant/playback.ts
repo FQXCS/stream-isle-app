@@ -2,6 +2,7 @@
  * 播放域常量（M1 文档 §4.2 + M2 文档 §4.7；设计文档 §7.2/§7.3/§7.5）。
  * M2 落直连播放：进度上报、续播、兜底已看、播放器交互间隔均收敛于此。
  */
+import type { MessageKey } from '@/i18n/messages/zh';
 
 /** 视频进度上报节流间隔（毫秒），见设计文档 §7.3 */
 export const PROGRESS_REPORT_INTERVAL_MS = 10000;
@@ -28,16 +29,16 @@ export const SIMILAR_LIMIT = 12;
 export const CAST_ROW_LIMIT = 20;
 
 /** 烧录字幕重启提示文案（SessionRestartOverlay），见设计文档 §8.2 */
-export const BURN_IN_RESTART_NOTICE = '该字幕需服务器转码渲染，正在切换…';
+export const BURN_IN_RESTART_NOTICE: MessageKey = 'playback.burnInRestart';
 
 /** 分辨率切换重启提示文案 */
-export const RESOLUTION_RESTART_NOTICE = '正在切换分辨率…';
+export const RESOLUTION_RESTART_NOTICE: MessageKey = 'playback.resolutionRestart';
 
 /** 音轨切换（转码重启路径）提示文案（03 §4.6.2 switchAudioTrack 走重启增强） */
-export const AUDIO_TRACK_RESTART_NOTICE = '正在切换音轨…';
+export const AUDIO_TRACK_RESTART_NOTICE: MessageKey = 'playback.audioRestart';
 
 /** 自动连播下一集浮层提示文案（04 §4.4：natural_end 的 EPISODE 分支换源续播） */
-export const AUTO_NEXT_RESTART_NOTICE = '正在播放下一集…';
+export const AUTO_NEXT_RESTART_NOTICE: MessageKey = 'playback.autoNextRestart';
 
 /** 重启会话 resolve 失败自动重试前等待（毫秒），见 03 §4.11 */
 export const RESTART_RESOLVE_RETRY_DELAY_MS = 500;

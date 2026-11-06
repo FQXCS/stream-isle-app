@@ -10,12 +10,13 @@ import type { LibraryTypeEnum, ServerFlavor } from '@/adapter/model';
 import { SettingRow } from '@/component/SettingRow';
 import { useTheme } from '@/component/useTheme';
 import {
-  LIBRARY_TYPE_LABELS,
+  LIBRARY_TYPE_LABEL_KEYS,
   MAX_LIBRARY_TABS,
   libraryTypesOfFlavor,
 } from '@/constant/libraryTabs';
 import { ROUTES } from '@/constant/navigation';
 import { FONT_SIZE, CARD_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { useT } from '@/i18n';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { useLibraryDisplayStore } from '@/store/libraryDisplayStore';
 import { resolveTabList } from '@/util/libraryConfig';
@@ -51,12 +52,13 @@ interface LibraryTypeListProps {
 
 function LibraryTypeList({ flavor, tabListByScope, onSelect }: LibraryTypeListProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const libraryTypes = libraryTypesOfFlavor(flavor);
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <Text style={styles.sectionTitle}>库类型</Text>
+      <Text style={styles.sectionTitle}>{tr('server.libraryTypes')}</Text>
       <View style={styles.card}>
         {libraryTypes.map((libraryType) => {
           const count = resolveTabList({
@@ -67,7 +69,7 @@ function LibraryTypeList({ flavor, tabListByScope, onSelect }: LibraryTypeListPr
           return (
             <SettingRow
               key={libraryType}
-              label={LIBRARY_TYPE_LABELS[libraryType]}
+              label={tr(LIBRARY_TYPE_LABEL_KEYS[libraryType])}
               value={`${count}/${MAX_LIBRARY_TABS}`}
               showArrow
               onPress={() => onSelect(libraryType)}

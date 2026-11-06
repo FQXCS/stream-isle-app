@@ -11,6 +11,7 @@ import { CAST_ROW_LIMIT } from '@/constant/playback';
 import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { ROUTES } from '@/constant/navigation';
+import { useT } from '@/i18n';
 import type { RootStackParamList } from '@/page/navigation/types';
 
 interface CastRowProps {
@@ -21,6 +22,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export function CastRow({ peopleList }: CastRowProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const navigation = useNavigation<NavigationProp>();
   if (peopleList.length === 0) {
@@ -28,7 +30,7 @@ export function CastRow({ peopleList }: CastRowProps) {
   }
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>演员</Text>
+      <Text style={styles.sectionTitle}>{tr('item.cast')}</Text>
       <FlatList
         horizontal
         data={peopleList.slice(0, CAST_ROW_LIMIT)}

@@ -2,6 +2,7 @@
  * 浏览域常量（M1 文档 §4.3）：分页、海报墙网格、排序/筛选选项、库类型映射。
  */
 import type { LibraryTypeEnum, MediaItemTypeEnum, SortByEnum } from '@/adapter/model';
+import type { MessageKey } from '@/i18n/messages/zh';
 
 /** 服务端分页页大小 */
 export const PAGE_SIZE = 40;
@@ -22,20 +23,20 @@ export const MEDIA_WIDE_CARD_WIDTH = Math.round((MEDIA_CARD_HEIGHT * 16) / 9);
  * 继续观看可选类型（设置页二级页多选）：仅视频类会记录服务端播放断点，
  * 图书/照片没有 PlaybackPositionTicks，选了也不会出现。
  */
-export const RESUME_TYPE_OPTIONS: readonly { type: MediaItemTypeEnum; label: string }[] = [
-  { type: 'Movie', label: '电影' },
-  { type: 'Episode', label: '剧集' },
-  { type: 'Video', label: '家庭视频' },
+export const RESUME_TYPE_OPTIONS: readonly { type: MediaItemTypeEnum; labelKey: MessageKey }[] = [
+  { type: 'Movie', labelKey: 'mediaType.movie' },
+  { type: 'Episode', labelKey: 'mediaType.episode' },
+  { type: 'Video', labelKey: 'mediaType.video' },
 ];
 
 /**
  * 观看历史可选类型（设置页二级页多选）：视频类 + 有已看态的图书/音乐。
  * Book 需读到末页触发 markPlayed；Photo 因 App 不上报已看，暂不提供。
  */
-export const HISTORY_TYPE_OPTIONS: readonly { type: MediaItemTypeEnum; label: string }[] = [
+export const HISTORY_TYPE_OPTIONS: readonly { type: MediaItemTypeEnum; labelKey: MessageKey }[] = [
   ...RESUME_TYPE_OPTIONS,
-  { type: 'Book', label: '图书' },
-  { type: 'Audio', label: '音乐' },
+  { type: 'Book', labelKey: 'mediaType.book' },
+  { type: 'Audio', labelKey: 'mediaType.audio' },
 ];
 
 /** 默认收录类型（继续观看/观看历史共用）：Movie,Episode,Video */
@@ -53,7 +54,7 @@ export const PAGE_END_THRESHOLD = 0.5;
  */
 export interface SortOption {
   value: SortByEnum;
-  label: string;
+  labelKey: MessageKey;
   defaultOrder: 'ASC' | 'DESC' | null;
 }
 
@@ -62,25 +63,25 @@ export interface SortOption {
  * 仅用于视频类（电影/剧集/家庭视频）：这些条目有大小/容器/时长/评分元数据。
  */
 export const SORT_OPTIONS: readonly SortOption[] = [
-  { value: 'SORT_NAME', label: '标题', defaultOrder: 'ASC' },
-  { value: 'DATE_CREATED', label: '添加日期', defaultOrder: 'DESC' },
-  { value: 'PREMIERE_DATE', label: '发行日期', defaultOrder: 'DESC' },
-  { value: 'COMMUNITY_RATING', label: '公众评分', defaultOrder: 'DESC' },
-  { value: 'CRITIC_RATING', label: '影评人评分', defaultOrder: 'DESC' },
-  { value: 'OFFICIAL_RATING', label: '分级', defaultOrder: 'DESC' },
-  { value: 'PLAY_COUNT', label: '播放次数', defaultOrder: 'DESC' },
-  { value: 'DATE_PLAYED', label: '播放日期', defaultOrder: 'DESC' },
-  { value: 'FILENAME', label: '文件名', defaultOrder: 'ASC' },
-  { value: 'RUNTIME', label: '文件时长', defaultOrder: 'DESC' },
-  { value: 'FILE_SIZE', label: '文件大小', defaultOrder: 'DESC' },
-  { value: 'CONTAINER', label: '文件格式', defaultOrder: 'ASC' },
-  { value: 'RANDOM', label: '随机', defaultOrder: null },
+  { value: 'SORT_NAME', labelKey: 'sort.name', defaultOrder: 'ASC' },
+  { value: 'DATE_CREATED', labelKey: 'sort.dateAdded', defaultOrder: 'DESC' },
+  { value: 'PREMIERE_DATE', labelKey: 'sort.premiereDate', defaultOrder: 'DESC' },
+  { value: 'COMMUNITY_RATING', labelKey: 'sort.communityRating', defaultOrder: 'DESC' },
+  { value: 'CRITIC_RATING', labelKey: 'sort.criticRating', defaultOrder: 'DESC' },
+  { value: 'OFFICIAL_RATING', labelKey: 'sort.officialRating', defaultOrder: 'DESC' },
+  { value: 'PLAY_COUNT', labelKey: 'sort.playCount', defaultOrder: 'DESC' },
+  { value: 'DATE_PLAYED', labelKey: 'sort.datePlayed', defaultOrder: 'DESC' },
+  { value: 'FILENAME', labelKey: 'sort.fileName', defaultOrder: 'ASC' },
+  { value: 'RUNTIME', labelKey: 'sort.runtime', defaultOrder: 'DESC' },
+  { value: 'FILE_SIZE', labelKey: 'sort.fileSize', defaultOrder: 'DESC' },
+  { value: 'CONTAINER', labelKey: 'sort.container', defaultOrder: 'ASC' },
+  { value: 'RANDOM', labelKey: 'sort.random', defaultOrder: null },
 ];
 
 /** 音频专有排序项（Emby 音乐排序词表；仅音乐库菜单展示） */
 const AUDIO_ONLY_SORT_OPTIONS: readonly SortOption[] = [
-  { value: 'ALBUM', label: '专辑', defaultOrder: 'ASC' },
-  { value: 'ALBUM_ARTIST', label: '专辑艺人', defaultOrder: 'ASC' },
+  { value: 'ALBUM', labelKey: 'sort.album', defaultOrder: 'ASC' },
+  { value: 'ALBUM_ARTIST', labelKey: 'sort.albumArtist', defaultOrder: 'ASC' },
 ];
 
 /** 排序项查表（分组选项按 value 复用既有标签与默认方向） */
@@ -156,53 +157,53 @@ export type LibraryViewEnum = 'all' | 'favorite' | 'unplayed' | 'movie' | 'serie
 /** 分段控件选项（与 SegmentedOption 同形） */
 export interface LibraryViewOption {
   value: LibraryViewEnum;
-  label: string;
+  labelKey: MessageKey;
 }
 
 /** 音乐库视图段：全部（歌曲）/ 艺人 / 文件夹 */
 export type MusicViewEnum = 'all' | 'artist' | 'folder';
-export const MUSIC_VIEW_OPTIONS: readonly { value: MusicViewEnum; label: string }[] = [
-  { value: 'all', label: '全部' },
-  { value: 'artist', label: '艺人' },
-  { value: 'folder', label: '文件夹' },
+export const MUSIC_VIEW_OPTIONS: readonly { value: MusicViewEnum; labelKey: MessageKey }[] = [
+  { value: 'all', labelKey: 'tab.all' },
+  { value: 'artist', labelKey: 'tab.artists' },
+  { value: 'folder', labelKey: 'tab.folders' },
 ];
 
 /** 照片库（家庭视频/照片混合库 homevideos）视图段：视频 / 图片 / 文件夹 */
 export type PhotoViewEnum = 'video' | 'photo' | 'folder';
-export const PHOTO_VIEW_OPTIONS: readonly { value: PhotoViewEnum; label: string }[] = [
-  { value: 'video', label: '视频' },
-  { value: 'photo', label: '图片' },
-  { value: 'folder', label: '文件夹' },
+export const PHOTO_VIEW_OPTIONS: readonly { value: PhotoViewEnum; labelKey: MessageKey }[] = [
+  { value: 'video', labelKey: 'tab.videos' },
+  { value: 'photo', labelKey: 'tab.images' },
+  { value: 'folder', labelKey: 'tab.folders' },
 ];
 
 /** 电影库：影片（全部）/ 收藏 / 未看 / 文件夹 */
 export const MOVIE_VIEW_OPTIONS: readonly LibraryViewOption[] = [
-  { value: 'all', label: '影片' },
-  { value: 'favorite', label: '收藏' },
-  { value: 'unplayed', label: '未看' },
-  { value: 'folder', label: '文件夹' },
+  { value: 'all', labelKey: 'tab.movies' },
+  { value: 'favorite', labelKey: 'tab.favorites' },
+  { value: 'unplayed', labelKey: 'tab.unplayed' },
+  { value: 'folder', labelKey: 'tab.folders' },
 ];
 
 /** 剧集库：剧集（全部）/ 收藏 / 未看 / 文件夹 */
 export const TVSHOW_VIEW_OPTIONS: readonly LibraryViewOption[] = [
-  { value: 'all', label: '剧集' },
-  { value: 'favorite', label: '收藏' },
-  { value: 'unplayed', label: '未看' },
-  { value: 'folder', label: '文件夹' },
+  { value: 'all', labelKey: 'tab.series' },
+  { value: 'favorite', labelKey: 'tab.favorites' },
+  { value: 'unplayed', labelKey: 'tab.unplayed' },
+  { value: 'folder', labelKey: 'tab.folders' },
 ];
 
 /** 混合库：全部 / 电影 / 剧集 / 文件夹（保留类型拆分；4 段上限内不再放收藏/未看） */
 export const MIXED_VIEW_OPTIONS: readonly LibraryViewOption[] = [
-  { value: 'all', label: '全部' },
-  { value: 'movie', label: '电影' },
-  { value: 'series', label: '剧集' },
-  { value: 'folder', label: '文件夹' },
+  { value: 'all', labelKey: 'tab.all' },
+  { value: 'movie', labelKey: 'tab.movie' },
+  { value: 'series', labelKey: 'tab.series' },
+  { value: 'folder', labelKey: 'tab.folders' },
 ];
 
 /** 图书库：书籍 / 文件夹（图书无播放态与流派） */
 export const BOOK_VIEW_OPTIONS: readonly LibraryViewOption[] = [
-  { value: 'all', label: '书籍' },
-  { value: 'folder', label: '文件夹' },
+  { value: 'all', labelKey: 'tab.books' },
+  { value: 'folder', labelKey: 'tab.folders' },
 ];
 
 /** 库类型 → 视图段表（MUSIC/PHOTO 不走本表：音乐有独立视图段，照片为相册布局） */

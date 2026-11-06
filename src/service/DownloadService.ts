@@ -398,7 +398,8 @@ export class DownloadService {
       const row = await this.safeGetRow(serverId, itemId);
       if (row !== null && row.status !== 'paused' && row.status !== 'completed') {
         const dao = await this.dao;
-        const message = err instanceof Error ? err.message : '下载失败';
+        // AppError.message 即错误码，由下载页按当前语言翻译；非 Error 归入 UNKNOWN
+        const message = err instanceof Error ? err.message : 'UNKNOWN';
         console.warn('[下载] 任务失败:', sanitizedForLog(message));
         await dao.updateDownloadStatus(serverId, itemId, 'failed', { errorMessage: message });
         useDownloadStore.getState().updateStatus(itemId, 'failed', message);
@@ -450,7 +451,7 @@ export class DownloadService {
     const token = await getToken(row.serverId, row.userId);
     if (server === undefined || token === null || token === '') {
       // 账号记录/凭据缺失（登出或记录被清）：无法重建合法 URL，按可读失败收敛（重试需重登）
-      throw new Error('下载凭据缺失，请重新登录该服务器后重试');
+      throw new AppError('DOWNLOAD_CREDENTIAL_MISSING');
     }
     const url =
       `${server.baseUrl}/${row.itemType === 'Audio' ? 'Audio' : 'Videos'}/${row.itemId}/stream?static=true` +

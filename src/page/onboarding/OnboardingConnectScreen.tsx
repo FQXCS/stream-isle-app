@@ -11,7 +11,8 @@ import type { ServerInfo } from '@/adapter/model';
 import { ROUTES } from '@/constant/navigation';
 import { POSTER_RADIUS, FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
-import { AppError, errorMessageOf } from '@/infra/error';
+import { useT } from '@/i18n';
+import { AppError, errorMessageKeyOf } from '@/infra/error';
 import type { AppErrorCode } from '@/infra/error';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { connect } from '@/service/AuthService';
@@ -22,11 +23,9 @@ type ConnectPhase = 'IDLE' | 'PROBING' | 'SERVER_OK' | 'TLS_OFFER' | 'ERROR';
 
 type Props = NativeStackScreenProps<RootStackParamList, typeof ROUTES.ONBOARDING_CONNECT>;
 
-/** 按钮文案全局唯一写法（验收标准 3 / §4.10 / §6.3 手测 1e 三处逐字引用） */
-const IGNORE_TLS_BUTTON_LABEL = '忽略该服务器证书校验并重试';
-
 export function OnboardingConnectScreen({ navigation }: Props) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const [phase, setPhase] = useState<ConnectPhase>('IDLE');
   const [address, setAddress] = useState('');
@@ -63,8 +62,8 @@ export function OnboardingConnectScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>连接服务器</Text>
-      <Text style={styles.hint}>输入 Jellyfin / Emby 服务器地址，如 http://192.168.1.5:8096</Text>
+      <Text style={styles.title}>{tr('server.connectTitle')}</Text>
+      <Text style={styles.hint}>{tr('server.connectHint')}</Text>
       <TextInput
         style={styles.input}
         value={address}
@@ -78,14 +77,14 @@ export function OnboardingConnectScreen({ navigation }: Props) {
       />
       {phase === 'ERROR' && errorCode !== null && (
         // 文案一律取 ERROR_MESSAGE_MAP 唯一出处（§4.10）
-        <Text style={styles.errorText}>{errorMessageOf(errorCode)}</Text>
+        <Text style={styles.errorText}>{tr(errorMessageKeyOf(errorCode))}</Text>
       )}
       {phase === 'TLS_OFFER' && (
         <View style={styles.tlsBox}>
           {/* 文案取 ERROR_MESSAGE_MAP（TLS_ERROR），逐字一致 */}
-          <Text style={styles.errorText}>{errorMessageOf('TLS_ERROR')}</Text>
+          <Text style={styles.errorText}>{tr('error.TLS_ERROR')}</Text>
           <Pressable style={styles.secondaryButton} onPress={handleIgnoreTls}>
-            <Text style={styles.secondaryButtonText}>{IGNORE_TLS_BUTTON_LABEL}</Text>
+            <Text style={styles.secondaryButtonText}>{tr('server.ignoreTlsRetry')}</Text>
           </Pressable>
         </View>
       )}
@@ -94,20 +93,22 @@ export function OnboardingConnectScreen({ navigation }: Props) {
         onPress={handleConnect}
         disabled={probing}
       >
-        <Text style={styles.primaryButtonText}>{probing ? '探测中…' : '连接'}</Text>
+        <Text style={styles.primaryButtonText}>
+          {probing ? tr('server.probing') : tr('server.connect')}
+        </Text>
       </Pressable>
       {phase === 'SERVER_OK' && serverInfo !== null && (
         <View style={styles.serverCard}>
           <View style={styles.cardHeader}>
             {/* 类型徽标：UI 展示探测结果，不感知后续请求 */}
             <Text style={styles.badge}>{serverInfo.flavor}</Text>
-            <Text style={styles.serverName}>{serverInfo.serverName || '未命名服务器'}</Text>
-          </View>
-          <Text style={styles.version}>版本 {serverInfo.version}</Text>
-          {serverInfo.versionTooLow && (
-            <Text style={styles.warning}>
-              版本过低（低于 Jellyfin 10.8 / Emby 4.7），部分功能可能不可用，可继续尝试
+            <Text style={styles.serverName}>
+              {serverInfo.serverName || tr('server.unnamedServer')}
             </Text>
+          </View>
+          <Text style={styles.version}>{tr('server.version', { version: serverInfo.version })}</Text>
+          {serverInfo.versionTooLow && (
+            <Text style={styles.warning}>{tr('server.versionTooLow')}</Text>
           )}
           <Pressable
             style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
@@ -115,7 +116,7 @@ export function OnboardingConnectScreen({ navigation }: Props) {
               navigation.navigate(ROUTES.ONBOARDING_LOGIN, { serverInfo })
             }
           >
-            <Text style={styles.primaryButtonText}>下一步</Text>
+            <Text style={styles.primaryButtonText}>{tr('server.next')}</Text>
           </Pressable>
         </View>
       )}

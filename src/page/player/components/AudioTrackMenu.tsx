@@ -7,6 +7,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { AudioTrack } from '@/adapter/model';
 import { useImmersiveAccent } from '@/component/useTheme';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
+import { useT } from '@/i18n';
 import { formatChannels } from '@/util/format';
 
 interface AudioTrackMenuProps {
@@ -19,9 +20,10 @@ interface AudioTrackMenuProps {
 
 export function AudioTrackMenu({ tracks, activeStreamIndex, onSelect, onClose }: AudioTrackMenuProps) {
   const { accent, accentSoft } = useImmersiveAccent();
+  const tr = useT();
   return (
     <View style={styles.panel}>
-      <Text style={styles.panelTitle}>音轨</Text>
+      <Text style={styles.panelTitle}>{tr('player.audioMenu')}</Text>
       <ScrollView style={styles.list} nestedScrollEnabled>
         {tracks.map((track) => {
           const active = track.streamIndex === activeStreamIndex;
@@ -33,19 +35,21 @@ export function AudioTrackMenu({ tracks, activeStreamIndex, onSelect, onClose }:
               onPress={() => onSelect(track)}
             >
               <Text style={styles.rowText} numberOfLines={1}>
-                {track.title ?? `音轨 ${track.streamIndex + 1}`}
+                {track.title ?? tr('player.audioFallback', { index: track.streamIndex + 1 })}
               </Text>
               <View style={styles.badges}>
                 {track.codec ? <Text style={styles.badgeMuted}>{track.codec}</Text> : null}
                 {channelText ? <Text style={styles.badgeMuted}>{channelText}</Text> : null}
-                {track.isDefault ? <Text style={[styles.badge, { color: accent }]}>默认</Text> : null}
+                {track.isDefault ? (
+                  <Text style={[styles.badge, { color: accent }]}>{tr('player.defaultBadge')}</Text>
+                ) : null}
               </View>
             </Pressable>
           );
         })}
       </ScrollView>
       <Pressable style={styles.closeButton} onPress={onClose}>
-        <Text style={styles.closeText}>收起</Text>
+        <Text style={styles.closeText}>{tr('player.collapse')}</Text>
       </Pressable>
     </View>
   );

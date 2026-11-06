@@ -22,6 +22,7 @@ import {
   STOPPED_RETRY_DELAY_MS,
 } from '@/constant/playback';
 import { fetchDecoderCaps } from '@/infra/mediaCaps';
+import { t } from '@/i18n';
 import { enqueueOnReportFailure, offlineProgressService } from '@/service/OfflineProgressService';
 import { getActiveAdapter } from '@/service/adapterProvider';
 import { useAccountStore } from '@/store/accountStore';
@@ -269,7 +270,7 @@ export class PlaybackService {
     if (session.playMethod !== 'Transcode') {
       return null;
     }
-    usePlayerStore.getState().beginRestart(RESOLUTION_RESTART_NOTICE);
+    usePlayerStore.getState().beginRestart(t(RESOLUTION_RESTART_NOTICE));
     return this.restartSession(session, {
       overrides: { maxResolutionTier: tier },
       subtitleTarget: 'keep',
@@ -292,7 +293,7 @@ export class PlaybackService {
       usePlayerStore.getState().setActiveSubtitle(track ? track.streamIndex : null);
       return null;
     }
-    usePlayerStore.getState().beginRestart(BURN_IN_RESTART_NOTICE);
+    usePlayerStore.getState().beginRestart(t(BURN_IN_RESTART_NOTICE));
     return this.restartSession(session, {
       // 进烧录带目标轨；出烧录（切回文本/关闭）显式不带（undefined 语义必须可区分，见 restartSession）
       overrides: { subtitleStreamIndex: track?.burnIn ? track.streamIndex : undefined },
@@ -312,7 +313,7 @@ export class PlaybackService {
     if (session.playMethod !== 'Transcode') {
       return null;
     }
-    usePlayerStore.getState().beginRestart(AUDIO_TRACK_RESTART_NOTICE);
+    usePlayerStore.getState().beginRestart(t(AUDIO_TRACK_RESTART_NOTICE));
     return this.restartSession(session, {
       overrides: { audioStreamIndex: track.streamIndex },
       subtitleTarget: 'keep',
@@ -451,7 +452,7 @@ export class PlaybackService {
     const source = await this.resolveInternal(nextItem.id, { startPositionMs: 0 });
     return {
       ...source,
-      name: `第 ${nextItem.indexNumber} 集 ${nextItem.name}`,
+      name: t('player.episodeTitle', { index: nextItem.indexNumber, name: nextItem.name }),
       itemType: 'Episode',
       seriesId: nextItem.seriesId,
     };

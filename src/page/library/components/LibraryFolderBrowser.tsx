@@ -21,6 +21,7 @@ import { GRID_COLUMNS, PAGE_END_THRESHOLD, PAGE_SIZE } from '@/constant/browse';
 import { ROUTES } from '@/constant/navigation';
 import { SPACING, type ThemeTokens } from '@/constant/theme';
 import { AppError } from '@/infra/error';
+import { useT } from '@/i18n';
 import { FolderCard } from '@/page/library/components/FolderCard';
 import { MusicFolderView } from '@/page/library/components/MusicFolderView';
 import { WallGridCell } from '@/page/library/components/WallGridCell';
@@ -56,6 +57,7 @@ export function LibraryFolderBrowser({
   tabId,
   album = false,
 }: LibraryFolderBrowserProps) {
+  const tr = useT();
   if (libraryType === 'MUSIC' || libraryType === 'AUDIOBOOK') {
     return (
       <MusicFolderBrowser
@@ -69,7 +71,9 @@ export function LibraryFolderBrowser({
   }
   if (libraryType === 'PHOTO') {
     if (album) {
-      return <PhotoGridScreen parentId={containerId} sort={sort} emptyTitle="相册为空" />;
+      return (
+        <PhotoGridScreen parentId={containerId} sort={sort} emptyTitle={tr('library.emptyAlbum')} />
+      );
     }
     return (
       <PhotoFolderBrowser
@@ -187,6 +191,7 @@ function PosterFolderBrowser({
   tabId,
 }: FolderBrowserProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const navigation = useNavigation<FolderNavigation>();
   const openFolder = useOpenFolder();
@@ -319,7 +324,7 @@ function PosterFolderBrowser({
         }
         onEndReached={handleEndReached}
         onEndReachedThreshold={PAGE_END_THRESHOLD}
-        ListEmptyComponent={<EmptyView title="文件夹为空" />}
+        ListEmptyComponent={<EmptyView title={tr('library.emptyFolder')} />}
         ListFooterComponent={
           slice.status === 'LOADING_MORE' ? (
             <ActivityIndicator style={styles.footer} color={t.accent} />

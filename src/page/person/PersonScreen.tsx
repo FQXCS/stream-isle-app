@@ -17,6 +17,7 @@ import { ROUTES } from '@/constant/navigation';
 import { GRID_COLUMNS } from '@/constant/browse';
 import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
+import { useT } from '@/i18n';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { detailService } from '@/service/DetailService';
 import { AppError } from '@/infra/error';
@@ -28,6 +29,7 @@ const FILMOGRAPHY_COLUMNS = GRID_COLUMNS;
 
 export function PersonScreen() {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const route = useRoute<{ key: string; name: string; params: { personId: string } }>();
   const personId = route.params.personId;
@@ -106,10 +108,14 @@ export function PersonScreen() {
             {person.overview !== undefined && (
               <Text style={styles.overview}>{person.overview}</Text>
             )}
-            <Text style={styles.sectionTitle}>出演作品</Text>
+            <Text style={styles.sectionTitle}>{tr('person.filmography')}</Text>
           </View>
         }
-        ListEmptyComponent={<View style={styles.empty}><Text style={styles.emptyText}>暂无出演作品</Text></View>}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Text style={styles.emptyText}>{tr('person.emptyFilmography')}</Text>
+          </View>
+        }
         contentContainerStyle={styles.listContent}
       />
     </View>

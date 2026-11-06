@@ -10,6 +10,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 import type { MediaItemTypeEnum } from '@/adapter/model';
+import type { LanguagePreference } from '@/i18n/types';
 import type { ResolutionTierKey } from '@/constant/resolution';
 import { DEFAULT_RESOLUTION_TIER } from '@/constant/resolution';
 import { DEFAULT_FEED_TYPES, HISTORY_TYPE_OPTIONS, RESUME_TYPE_OPTIONS } from '@/constant/browse';
@@ -43,6 +44,8 @@ interface SettingsActions {
   setThemeMode(mode: ThemeModeEnum): void;
   /** 强调色配色方案（设置页可切换，默认翡翠；浅色/深色各有适配） */
   setAccentScheme(scheme: AccentSchemeEnum): void;
+  /** 界面语言偏好（system = 跟随系统，默认；zh/en 显式指定） */
+  setLanguage(preference: LanguagePreference): void;
   /** 首页继续观看收录类型多选（至少保留一项，空列表变更忽略） */
   toggleResumeType(type: MediaItemTypeEnum): void;
   /** 观看历史收录类型多选（至少保留一项，空列表变更忽略） */
@@ -68,6 +71,8 @@ interface SettingsState {
   themeMode: ThemeModeEnum;
   /** 强调色配色方案（默认翡翠；persist） */
   accentScheme: AccentSchemeEnum;
+  /** 界面语言偏好（默认跟随系统；persist） */
+  language: LanguagePreference;
   /** 继续观看收录类型（默认 Movie,Episode,Video；persist） */
   resumeTypeList: MediaItemTypeEnum[];
   /** 观看历史收录类型（默认 Movie,Episode,Video；persist；较继续观看多图书/音乐） */
@@ -79,6 +84,11 @@ interface SettingsState {
  * 在指定选项集内切换收录类型：返回按选项固定顺序重排的新列表；
  * 取消最后一项时返回 null（调用方维持原值，避免查询类型为空）。
  */
+/** 持久化语言偏好归一：非法/缺失值回退跟随系统 */
+function normalizeLanguagePreference(value: unknown): LanguagePreference {
+  return value === 'zh' || value === 'en' || value === 'system' ? value : 'system';
+}
+
 function toggleTypeInList(
   currentList: readonly MediaItemTypeEnum[],
   type: MediaItemTypeEnum,
@@ -106,6 +116,7 @@ export const useSettingsStore = create<SettingsState>()(
       batteryGuideShown: false,
       themeMode: 'light',
       accentScheme: DEFAULT_ACCENT_SCHEME,
+      language: 'system',
       resumeTypeList: [...DEFAULT_FEED_TYPES],
       historyTypeList: [...DEFAULT_FEED_TYPES],
 
@@ -165,6 +176,10 @@ export const useSettingsStore = create<SettingsState>()(
           set({ accentScheme: scheme });
         },
 
+        setLanguage: (preference: LanguagePreference) => {
+          set({ language: preference });
+        },
+
         toggleResumeType: (type: MediaItemTypeEnum) => {
           set((state) => {
             const next = toggleTypeInList(state.resumeTypeList, type, RESUME_TYPE_OPTIONS);
@@ -203,15 +218,21 @@ export const useSettingsStore = create<SettingsState>()(
         batteryGuideShown: state.batteryGuideShown,
         themeMode: state.themeMode,
         accentScheme: state.accentScheme,
+        language: state.language,
         resumeTypeList: state.resumeTypeList,
         historyTypeList: state.historyTypeList,
       }),
-      // 兼容已落盘的旧快照（内含 "actions":{}）：回灌时始终保留当前 actions
-      merge: (persistedState, currentState) => ({
-        ...currentState,
-        ...(persistedState ?? {}),
-        actions: currentState.actions,
-      }),
+      // 兼容已落盘的旧快照（内含 "actions":{}）：回灌时始终保留当前 actions；
+      // language 为新增字段，缺失/非法值统一回退跟随系统
+      merge: (persistedState, currentState) => {
+        const persisted = (persistedState ?? {}) as Partial<SettingsState>;
+        return {
+          ...currentState,
+          ...persisted,
+          language: normalizeLanguagePreference(persisted.language),
+          actions: currentState.actions,
+        };
+      },
     }
   )
 );

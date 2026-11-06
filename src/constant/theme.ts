@@ -8,6 +8,8 @@
  */
 import type { ViewStyle } from 'react-native';
 
+import type { MessageKey } from '@/i18n/messages/zh';
+
 /** 主题模式（跟随系统/浅色/深色三态，06 文档 §4.6.1） */
 export type ThemeModeEnum = 'system' | 'light' | 'dark';
 
@@ -33,7 +35,7 @@ export interface AccentColorTokens {
 
 export interface AccentSchemeDefinition {
   key: AccentSchemeEnum;
-  label: string;
+  labelKey: MessageKey;
   /** 设置页色点用（与浅色主色一致） */
   swatch: string;
   light: AccentColorTokens;
@@ -44,49 +46,49 @@ export interface AccentSchemeDefinition {
 export const ACCENT_SCHEME_LIST: readonly AccentSchemeDefinition[] = [
   {
     key: 'EMERALD',
-    label: '翡翠',
+    labelKey: 'accent.emerald',
     swatch: '#047857',
     light: { accent: '#047857', accentOn: '#FFFFFF', accentSoft: '#E3F3EC' },
     dark: { accent: '#4ADE9C', accentOn: '#04281A', accentSoft: 'rgba(74,222,156,0.18)' },
   },
   {
     key: 'BLUE',
-    label: '雾蓝',
+    labelKey: 'accent.blue',
     swatch: '#2F6BFF',
     light: { accent: '#2F6BFF', accentOn: '#FFFFFF', accentSoft: '#E9F0FF' },
     dark: { accent: '#7AA2FF', accentOn: '#081A33', accentSoft: 'rgba(122,162,255,0.18)' },
   },
   {
     key: 'INDIGO',
-    label: '靛紫',
+    labelKey: 'accent.indigo',
     swatch: '#5B5EE8',
     light: { accent: '#5B5EE8', accentOn: '#FFFFFF', accentSoft: '#EDEDFD' },
     dark: { accent: '#A5A7FF', accentOn: '#12123A', accentSoft: 'rgba(165,167,255,0.18)' },
   },
   {
     key: 'CORAL',
-    label: '珊瑚',
+    labelKey: 'accent.coral',
     swatch: '#C24A22',
     light: { accent: '#C24A22', accentOn: '#FFFFFF', accentSoft: '#FBEAE4' },
     dark: { accent: '#FF8F6B', accentOn: '#2B0E05', accentSoft: 'rgba(255,143,107,0.18)' },
   },
   {
     key: 'GRAPHITE',
-    label: '墨黑',
+    labelKey: 'accent.graphite',
     swatch: '#1F2937',
     light: { accent: '#1F2937', accentOn: '#FFFFFF', accentSoft: '#E9EDF1' },
     dark: { accent: '#E5E7EB', accentOn: '#111827', accentSoft: 'rgba(229,231,235,0.14)' },
   },
   {
     key: 'BERRY',
-    label: '莓果',
+    labelKey: 'accent.berry',
     swatch: '#C2185B',
     light: { accent: '#C2185B', accentOn: '#FFFFFF', accentSoft: '#FCE8EF' },
     dark: { accent: '#FF7BA3', accentOn: '#3A0718', accentSoft: 'rgba(255,123,163,0.18)' },
   },
   {
     key: 'CARAMEL',
-    label: '焦糖',
+    labelKey: 'accent.caramel',
     swatch: '#9A5B2E',
     light: { accent: '#9A5B2E', accentOn: '#FFFFFF', accentSoft: '#F8EEE5' },
     dark: { accent: '#F0B27A', accentOn: '#2B1406', accentSoft: 'rgba(240,178,122,0.18)' },
@@ -102,9 +104,9 @@ export const ACCENT_SCHEMES = ACCENT_SCHEME_LIST.reduce(
 );
 
 /** 设置页弹层选项（带色点） */
-export const ACCENT_SCHEME_OPTIONS = ACCENT_SCHEME_LIST.map(({ key, label, swatch }) => ({
+export const ACCENT_SCHEME_OPTIONS = ACCENT_SCHEME_LIST.map(({ key, labelKey, swatch }) => ({
   key,
-  label,
+  labelKey,
   swatchColor: swatch,
 }));
 

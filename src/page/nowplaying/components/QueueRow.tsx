@@ -8,6 +8,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppIcon } from '@/component/AppIcon';
 import { useTheme } from '@/component/useTheme';
 import { SPACING, type ThemeTokens } from '@/constant/theme';
+import { useT } from '@/i18n';
 import type { AudioQueueEntry } from '@/service/AudioService';
 import { PlayingIndicator } from '@/page/nowplaying/components/PlayingIndicator';
 
@@ -32,6 +33,7 @@ export function QueueRow({
   onRemove,
 }: QueueRowProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const subtitle = [entry.artist, entry.album].filter((part) => part !== undefined).join(' - ');
 
@@ -57,7 +59,7 @@ export function QueueRow({
           hitSlop={12}
           style={styles.removeButton}
           onPress={onRemove}
-          accessibilityLabel={`从队列移除${entry.title}`}
+          accessibilityLabel={tr('queue.removeA11y', { title: entry.title })}
         >
           <AppIcon name="close" size={20} color={t.textTertiary} />
         </Pressable>

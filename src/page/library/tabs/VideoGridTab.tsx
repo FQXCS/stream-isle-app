@@ -7,6 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import type { ItemFilterEnum } from '@/adapter/model';
 import { ROUTES } from '@/constant/navigation';
+import { useT } from '@/i18n';
 import { PhotoVideoGrid } from '@/page/photo/PhotoVideoGrid';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { fetchVideoPage } from '@/service/BrowseService';
@@ -22,6 +23,7 @@ interface VideoGridTabProps {
 
 export function VideoGridTab({ libraryId, sort, filters }: VideoGridTabProps) {
   const navigation = useNavigation<VideoNavigation>();
+  const tr = useT();
   const loadPage = useCallback(
     (page: number) => fetchVideoPage(libraryId, page, sort, filters),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -31,7 +33,7 @@ export function VideoGridTab({ libraryId, sort, filters }: VideoGridTabProps) {
     <PhotoVideoGrid
       loadPage={loadPage}
       onPressItem={(item) => navigation.navigate(ROUTES.ITEM, { itemId: item.id })}
-      emptyTitle="暂无视频"
+      emptyTitle={tr('library.emptyVideos')}
     />
   );
 }

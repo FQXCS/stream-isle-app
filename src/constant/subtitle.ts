@@ -3,22 +3,23 @@
  * settingsStore.preferredSubtitleLang 默认 null → 消费时取 DEFAULT_SUBTITLE_LANGUAGE("chi")
  * 自动选轨；「关闭自动选轨」不在取值集内（04 开放问题 5）。
  */
+import type { MessageKey } from '@/i18n/messages/zh';
 import { DEFAULT_SUBTITLE_LANGUAGE } from '@/constant/playback';
 
 /** 字幕语言选项（code: string | null；UI 单选 key 用 code ?? "default"） */
 export interface SubtitleLangOption {
   /** ISO 639-2 三字码；null = 跟随默认（自动选中文字幕） */
   code: string | null;
-  label: string;
+  labelKey: MessageKey;
 }
 
 /** 选项清单（04 §4.5 定稿）：跟随默认（中文）/ 中文 / 英语 / 日语 / 韩语 */
 export const SUBTITLE_LANG_OPTION_LIST: readonly SubtitleLangOption[] = [
-  { code: null, label: `跟随默认（中文）` },
-  { code: 'chi', label: '中文' },
-  { code: 'eng', label: '英语' },
-  { code: 'jpn', label: '日语' },
-  { code: 'kor', label: '韩语' },
+  { code: null, labelKey: 'subtitleLang.followDefault' },
+  { code: 'chi', labelKey: 'subtitleLang.zh' },
+  { code: 'eng', labelKey: 'subtitleLang.en' },
+  { code: 'jpn', labelKey: 'subtitleLang.ja' },
+  { code: 'kor', labelKey: 'subtitleLang.ko' },
 ];
 
 /**

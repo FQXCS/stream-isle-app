@@ -27,6 +27,7 @@ import { ROUTES } from '@/constant/navigation';
 import { type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { AppError, type AppErrorCode } from '@/infra/error';
+import { useT } from '@/i18n';
 import { photoService } from '@/service/PhotoService';
 import type { LibrarySortState } from '@/store/libraryViewStore';
 import type { RootStackParamList } from '@/page/navigation/types';
@@ -41,17 +42,13 @@ interface PhotoGridScreenProps {
   title?: string;
   /** 排序（库页排序菜单；缺省名称升序） */
   sort?: LibrarySortState;
-  /** 空态文案 */
+  /** 空态文案（缺省「暂无照片」，由本组件按当前语言取） */
   emptyTitle?: string;
 }
 
-export function PhotoGridScreen({
-  parentId,
-  title,
-  sort,
-  emptyTitle = '暂无照片',
-}: PhotoGridScreenProps) {
+export function PhotoGridScreen({ parentId, title, sort, emptyTitle }: PhotoGridScreenProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const navigation = useNavigation<WallNavigationProp>();
   const { width: windowWidth, scale: pixelRatio } = useWindowDimensions();
@@ -130,7 +127,7 @@ export function PhotoGridScreen({
   if (itemList.length === 0) {
     return (
       <View style={styles.fill}>
-        <EmptyView title={emptyTitle} />
+        <EmptyView title={emptyTitle ?? tr('photo.empty')} />
       </View>
     );
   }

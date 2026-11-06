@@ -22,6 +22,7 @@ import { LoadingView } from '@/component/LoadingView';
 import { useTheme } from '@/component/useTheme';
 import { FONT_SIZE, SPACING } from '@/constant/theme';
 import { AppError } from '@/infra/error';
+import { useT, type MessageKey } from '@/i18n';
 import { SeekBar } from '@/page/player/components/SeekBar';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { bookReaderService, type BookReadingMode } from '@/service/BookReaderService';
@@ -31,10 +32,10 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 /** 页面阶段：取文件（含下载）→ WebView 就绪渲染中 → 失败 */
 type ReaderPhase = 'loadingFile' | 'rendering' | 'error';
 
-/** 阅读方向选项（底部控制条二选一，取值与 reader.html 的 mode 一致） */
-const READING_MODE_OPTIONS: { mode: BookReadingMode; label: string }[] = [
-  { mode: 'vertical', label: '上下滑动' },
-  { mode: 'horizontal', label: '左右翻页' },
+/** 阅读方向选项（底部控制条二选一，取值与 reader.html 的 mode 一致；文案经 tr(labelKey)） */
+const READING_MODE_OPTIONS: { mode: BookReadingMode; labelKey: MessageKey }[] = [
+  { mode: 'vertical', labelKey: 'reader.modeVertical' },
+  { mode: 'horizontal', labelKey: 'reader.modeHorizontal' },
 ];
 
 /** reader.html → RN 的消息形态（桥协议见 reader.html 头注释） */
@@ -61,6 +62,7 @@ export function BookReaderScreen() {
   const { itemId, name } = route.params;
   const navigation = useNavigation<NavigationProp>();
   const t = useTheme();
+  const tr = useT();
   const insets = useSafeAreaInsets();
 
   // 断点初值同步读 MMKV（mount 时确定，ready 后 HTML 从第 1 页跳至该页）
@@ -236,7 +238,9 @@ export function BookReaderScreen() {
       {phase === 'loadingFile' && (
         <LoadingView
           label={
-            downloadPercent !== null ? `正在加载 ${downloadPercent}%` : '正在加载'
+            downloadPercent !== null
+              ? tr('reader.loadingPercent', { percent: downloadPercent })
+              : tr('reader.loading')
           }
         />
       )}
@@ -260,7 +264,7 @@ export function BookReaderScreen() {
             <Pressable
               hitSlop={12}
               onPress={() => navigation.goBack()}
-              accessibilityLabel="关闭"
+              accessibilityLabel={tr('common.close')}
             >
               <AppIcon name="close" size={16} color="#FFFFFF" />
             </Pressable>
@@ -279,6 +283,7 @@ export function BookReaderScreen() {
               <View style={styles.modeRow}>
                 {READING_MODE_OPTIONS.map((option) => {
                   const selected = readingMode === option.mode;
+                  const label = tr(option.labelKey);
                   return (
                     <Pressable
                       key={option.mode}
@@ -286,12 +291,12 @@ export function BookReaderScreen() {
                       style={[styles.modeChip, selected && styles.modeChipSelected]}
                       accessibilityRole="button"
                       accessibilityState={{ selected }}
-                      accessibilityLabel={`翻页方式：${option.label}`}
+                      accessibilityLabel={tr('reader.modeA11y', { mode: label })}
                     >
                       <Text
                         style={[styles.modeChipText, selected && styles.modeChipTextSelected]}
                       >
-                        {option.label}
+                        {label}
                       </Text>
                     </Pressable>
                   );

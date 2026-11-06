@@ -23,6 +23,7 @@ import { HOT_SONGS_LIMIT } from '@/constant/audio';
 import { ROUTES } from '@/constant/navigation';
 import { POSTER_RADIUS, FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
+import { useT } from '@/i18n';
 import { AppError, type AppErrorCode } from '@/infra/error';
 import { audioService } from '@/service/AudioService';
 import { detailService } from '@/service/DetailService';
@@ -61,6 +62,7 @@ function ActionRow({
   trackList: AudioItem[];
 }) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const handlePlayAll = useCallback(() => {
     void audioService.playQueue(trackList, 0).catch(() => undefined);
@@ -84,13 +86,13 @@ function ActionRow({
     <View style={styles.actionRow}>
       <Pressable style={styles.primaryButton} onPress={handlePlayAll}>
         <AppIcon name="play" size={16} color="#FFFFFF" />
-        <Text style={styles.primaryButtonText}>播放全部</Text>
+        <Text style={styles.primaryButtonText}>{tr('album.playAll')}</Text>
       </Pressable>
       <Pressable style={styles.secondaryButton} onPress={handlePlayShuffled}>
-        <Text style={styles.secondaryButtonText}>随机播放</Text>
+        <Text style={styles.secondaryButtonText}>{tr('album.shuffle')}</Text>
       </Pressable>
       <Pressable style={styles.secondaryButton} onPress={handleAddToQueue}>
-        <Text style={styles.secondaryButtonText}>加入队列</Text>
+        <Text style={styles.secondaryButtonText}>{tr('album.addToQueue')}</Text>
       </Pressable>
     </View>
   );
@@ -99,6 +101,7 @@ function ActionRow({
 /** 专辑/歌单态主体 */
 function AlbumPlaylistBody({ kind, itemId }: { kind: 'album' | 'playlist'; itemId: string }) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const navigation = useNavigation<DetailNavigationProp>();
   const [detail, setDetail] = useState<AlbumDetailModel | null>(null);
@@ -150,7 +153,7 @@ function AlbumPlaylistBody({ kind, itemId }: { kind: 'album' | 'playlist'; itemI
     return <LoadingView />;
   }
   if (detail.trackList.length === 0) {
-    return <EmptyView title="暂无曲目" />;
+    return <EmptyView title={tr('album.emptyTracks')} />;
   }
 
   const metaLine =
@@ -177,7 +180,10 @@ function AlbumPlaylistBody({ kind, itemId }: { kind: 'album' | 'playlist'; itemI
           <Text style={styles.title}>{detail.name}</Text>
           {metaLine !== undefined && <Text style={styles.meta}>{metaLine}</Text>}
           <Text style={styles.meta}>
-            {detail.trackList.length} 首 · 总时长 {formatClock(totalDurationMs)}
+            {tr('album.trackSummary', {
+              count: detail.trackList.length,
+              duration: formatClock(totalDurationMs),
+            })}
           </Text>
         </View>
       </View>
@@ -199,6 +205,7 @@ function AlbumPlaylistBody({ kind, itemId }: { kind: 'album' | 'playlist'; itemI
 /** 艺术家态主体：与专辑详情同款头部 + 三按钮（热门歌曲）+ 简介 + 专辑网格 + 热门歌曲 */
 function ArtistDetailBody({ artistId }: { artistId: string }) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const navigation = useNavigation<DetailNavigationProp>();
   const [detail, setDetail] = useState<ArtistDetailModel | null>(null);
@@ -247,9 +254,13 @@ function ArtistDetailBody({ artistId }: { artistId: string }) {
 
   const metaLine =
     [
-      detail.albumList.length > 0 ? `${detail.albumList.length} 张专辑` : undefined,
+      detail.albumList.length > 0
+        ? tr('album.albumCount', { count: detail.albumList.length })
+        : undefined,
       detail.hotSongList.length > 0
-        ? `${Math.min(detail.hotSongList.length, HOT_SONGS_LIMIT)} 首热门歌曲`
+        ? tr('album.hotSongCount', {
+            count: Math.min(detail.hotSongList.length, HOT_SONGS_LIMIT),
+          })
         : undefined,
     ]
       .filter((part) => part !== undefined)
@@ -288,7 +299,7 @@ function ArtistDetailBody({ artistId }: { artistId: string }) {
       )}
       {detail.albumList.length > 0 && (
         <>
-          <Text style={styles.sectionTitle}>专辑</Text>
+          <Text style={styles.sectionTitle}>{tr('album.sectionAlbums')}</Text>
           <View style={styles.albumRow}>
             {detail.albumList.map((album) => (
               <Pressable
@@ -320,7 +331,9 @@ function ArtistDetailBody({ artistId }: { artistId: string }) {
       {detail.hotSongList.length > 0 && (
         <>
           <Text style={styles.sectionTitle}>
-            热门歌曲（{Math.min(detail.hotSongList.length, HOT_SONGS_LIMIT)}）
+            {tr('album.hotSongsTitle', {
+              count: Math.min(detail.hotSongList.length, HOT_SONGS_LIMIT),
+            })}
           </Text>
           {detail.hotSongList.map((song, index) => (
             <SongRow

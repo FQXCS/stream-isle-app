@@ -10,6 +10,7 @@ import { PosterCard } from '@/component/PosterCard';
 import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { ROUTES } from '@/constant/navigation';
+import { useT } from '@/i18n';
 import type { RootStackParamList } from '@/page/navigation/types';
 
 interface SimilarRowProps {
@@ -23,6 +24,7 @@ const CARD_WIDTH = 110;
 
 export function SimilarRow({ itemList }: SimilarRowProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const navigation = useNavigation<NavigationProp>();
   if (itemList.length === 0) {
@@ -30,7 +32,7 @@ export function SimilarRow({ itemList }: SimilarRowProps) {
   }
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>相似推荐</Text>
+      <Text style={styles.sectionTitle}>{tr('item.similar')}</Text>
       <FlatList
         horizontal
         data={itemList}

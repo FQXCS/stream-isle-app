@@ -14,14 +14,20 @@ import type {
 import { AppIcon, type AppIconName } from '@/component/AppIcon';
 import { useTheme } from '@/component/useTheme';
 import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { useT, type MessageKey, type TFunction } from '@/i18n';
 
 interface InfoRow {
-  label: string;
+  /** 字段名文案 key（渲染时经 useT 翻译，语言切换即时生效） */
+  label: MessageKey;
   value: string;
 }
 
 /** 追加一行（undefined/空串跳过，避免信息卡出现空值行） */
-function pushRow(rowList: InfoRow[], label: string, value: string | number | undefined): void {
+function pushRow(
+  rowList: InfoRow[],
+  label: MessageKey,
+  value: string | number | undefined
+): void {
   if (value === undefined || value === '') {
     return;
   }
@@ -33,56 +39,76 @@ function formatBitrate(bitrateBps: number | undefined): string | undefined {
   return bitrateBps === undefined ? undefined : `${Math.round(bitrateBps / 1000)} kbps`;
 }
 
-function yesNo(value: boolean | undefined): string | undefined {
-  return value === undefined ? undefined : value ? '是' : '否';
+function yesNo(value: boolean | undefined, tr: TFunction): string | undefined {
+  return value === undefined ? undefined : value ? tr('mediaInfo.yes') : tr('mediaInfo.no');
 }
 
-function videoRowList(stream: VideoStreamInfo): InfoRow[] {
+function videoRowList(stream: VideoStreamInfo, tr: TFunction): InfoRow[] {
   const rowList: InfoRow[] = [];
-  pushRow(rowList, '标题', stream.title);
-  pushRow(rowList, '编码', stream.codec);
-  pushRow(rowList, '配置文件', stream.profile);
-  pushRow(rowList, '等级', stream.level);
+  pushRow(rowList, 'mediaInfo.streamTitle', stream.title);
+  pushRow(rowList, 'mediaInfo.codec', stream.codec);
+  pushRow(rowList, 'mediaInfo.profile', stream.profile);
+  pushRow(rowList, 'mediaInfo.level', stream.level);
   pushRow(
     rowList,
-    '分辨率',
+    'mediaInfo.resolution',
     stream.width !== undefined && stream.height !== undefined
       ? `${stream.width}x${stream.height}`
       : undefined
   );
-  pushRow(rowList, '宽高比', stream.aspectRatio);
-  pushRow(rowList, '隔行扫描', yesNo(stream.isInterlaced));
-  pushRow(rowList, '帧率', stream.frameRate === undefined ? undefined : stream.frameRate.toFixed(3));
-  pushRow(rowList, '比特率', formatBitrate(stream.bitrateBps));
-  pushRow(rowList, '视频范围', stream.videoRange);
-  pushRow(rowList, '色域', stream.colorSpace);
-  pushRow(rowList, '位深度', stream.bitDepth === undefined ? undefined : `${stream.bitDepth} bit`);
-  pushRow(rowList, '像素格式', stream.pixelFormat);
-  pushRow(rowList, '参考帧', stream.refFrames);
+  pushRow(rowList, 'mediaInfo.aspectRatio', stream.aspectRatio);
+  pushRow(rowList, 'mediaInfo.interlaced', yesNo(stream.isInterlaced, tr));
+  pushRow(
+    rowList,
+    'mediaInfo.frameRate',
+    stream.frameRate === undefined ? undefined : stream.frameRate.toFixed(3)
+  );
+  pushRow(rowList, 'mediaInfo.bitrate', formatBitrate(stream.bitrateBps));
+  pushRow(rowList, 'mediaInfo.videoRange', stream.videoRange);
+  pushRow(rowList, 'mediaInfo.colorSpace', stream.colorSpace);
+  pushRow(
+    rowList,
+    'mediaInfo.bitDepth',
+    stream.bitDepth === undefined ? undefined : `${stream.bitDepth} bit`
+  );
+  pushRow(rowList, 'mediaInfo.pixelFormat', stream.pixelFormat);
+  pushRow(rowList, 'mediaInfo.refFrames', stream.refFrames);
   return rowList;
 }
 
-function audioRowList(stream: AudioStreamInfo): InfoRow[] {
+function audioRowList(stream: AudioStreamInfo, tr: TFunction): InfoRow[] {
   const rowList: InfoRow[] = [];
-  pushRow(rowList, '标题', stream.title);
-  pushRow(rowList, '编码', stream.codec);
-  pushRow(rowList, '配置文件', stream.profile);
-  pushRow(rowList, '声道布局', stream.channelLayout);
-  pushRow(rowList, '声道数', stream.channels === undefined ? undefined : `${stream.channels} ch`);
-  pushRow(rowList, '采样率', stream.sampleRate);
-  pushRow(rowList, '比特率', formatBitrate(stream.bitrateBps));
-  pushRow(rowList, '默认', yesNo(stream.isDefault));
+  pushRow(rowList, 'mediaInfo.streamTitle', stream.title);
+  pushRow(rowList, 'mediaInfo.codec', stream.codec);
+  pushRow(rowList, 'mediaInfo.profile', stream.profile);
+  pushRow(rowList, 'mediaInfo.channelLayout', stream.channelLayout);
+  pushRow(
+    rowList,
+    'mediaInfo.channels',
+    stream.channels === undefined ? undefined : `${stream.channels} ch`
+  );
+  pushRow(rowList, 'mediaInfo.sampleRate', stream.sampleRate);
+  pushRow(rowList, 'mediaInfo.bitrate', formatBitrate(stream.bitrateBps));
+  pushRow(rowList, 'mediaInfo.default', yesNo(stream.isDefault, tr));
   return rowList;
 }
 
-function subtitleRowList(stream: SubtitleStreamInfo): InfoRow[] {
+function subtitleRowList(stream: SubtitleStreamInfo, tr: TFunction): InfoRow[] {
   const rowList: InfoRow[] = [];
-  pushRow(rowList, '标题', stream.title);
-  pushRow(rowList, '语言', stream.language);
-  pushRow(rowList, '格式', stream.format);
-  pushRow(rowList, '类型', stream.isExternal === undefined ? undefined : stream.isExternal ? '外挂' : '内嵌');
-  pushRow(rowList, '默认', yesNo(stream.isDefault));
-  pushRow(rowList, '强制', yesNo(stream.isForced));
+  pushRow(rowList, 'mediaInfo.streamTitle', stream.title);
+  pushRow(rowList, 'mediaInfo.language', stream.language);
+  pushRow(rowList, 'mediaInfo.format', stream.format);
+  pushRow(
+    rowList,
+    'mediaInfo.type',
+    stream.isExternal === undefined
+      ? undefined
+      : stream.isExternal
+        ? tr('mediaInfo.external')
+        : tr('mediaInfo.embedded')
+  );
+  pushRow(rowList, 'mediaInfo.default', yesNo(stream.isDefault, tr));
+  pushRow(rowList, 'mediaInfo.forced', yesNo(stream.isForced, tr));
   return rowList;
 }
 
@@ -94,6 +120,7 @@ interface StreamCardProps {
 
 function StreamCard({ icon, title, rowList }: StreamCardProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   return (
     <View style={styles.card}>
@@ -103,7 +130,7 @@ function StreamCard({ icon, title, rowList }: StreamCardProps) {
       </View>
       {rowList.map((row) => (
         <Text key={row.label} style={styles.rowText}>
-          <Text style={styles.rowLabel}>{row.label}: </Text>
+          <Text style={styles.rowLabel}>{tr(row.label)}: </Text>
           {row.value}
         </Text>
       ))}
@@ -117,6 +144,7 @@ interface MediaInfoSectionProps {
 
 export function MediaInfoSection({ detail }: MediaInfoSectionProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const source = detail.mediaSourceList[0];
   if (source === undefined) {
@@ -130,7 +158,7 @@ export function MediaInfoSection({ detail }: MediaInfoSectionProps) {
   }
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>音视频字幕信息</Text>
+      <Text style={styles.sectionTitle}>{tr('mediaInfo.title')}</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -140,24 +168,24 @@ export function MediaInfoSection({ detail }: MediaInfoSectionProps) {
           <StreamCard
             key={`video-${stream.index}`}
             icon="video"
-            title="视频"
-            rowList={videoRowList(stream)}
+            title={tr('mediaInfo.videoStream')}
+            rowList={videoRowList(stream, tr)}
           />
         ))}
         {audioList.map((stream) => (
           <StreamCard
             key={`audio-${stream.index}`}
             icon="audio"
-            title="音频"
-            rowList={audioRowList(stream)}
+            title={tr('mediaInfo.audioStream')}
+            rowList={audioRowList(stream, tr)}
           />
         ))}
         {subtitleList.map((stream) => (
           <StreamCard
             key={`subtitle-${stream.index}`}
             icon="subtitle"
-            title="字幕"
-            rowList={subtitleRowList(stream)}
+            title={tr('mediaInfo.subtitleStream')}
+            rowList={subtitleRowList(stream, tr)}
           />
         ))}
       </ScrollView>

@@ -14,6 +14,7 @@ import type { MediaDetail } from '@/adapter/model';
 import type { AnchorRect } from '@/component/AnchorMenu';
 import { AppIcon } from '@/component/AppIcon';
 import { FONT_SIZE, SPACING } from '@/constant/theme';
+import { useT } from '@/i18n';
 import { useTransitionStore } from '@/store/transitionStore';
 
 interface HeroHeaderProps {
@@ -31,6 +32,7 @@ export function HeroHeader({ detail, metaText, rating, onBack, onMore }: HeroHea
   // M6 转场：本页为飞行目标时真图延后淡入（active.uri 与海报同源时才生效，异源直接显示）
   const active = useTransitionStore((state) => state.active);
   const markTarget = useTransitionStore((state) => state.markTarget);
+  const tr = useT();
   const isTransitionTarget = active !== null;
   const [showHero, setShowHero] = useState(!isTransitionTarget);
   const containerRef = useRef<ComponentRef<typeof View> | null>(null);
@@ -77,14 +79,19 @@ export function HeroHeader({ detail, metaText, rating, onBack, onMore }: HeroHea
       />
       {/* 顶部浮层：返回 / 更多（参考稿） */}
       <View style={[styles.topBar, { paddingTop: insets.top + SPACING.xs }]}>
-        <Pressable style={styles.topButton} hitSlop={8} onPress={onBack} accessibilityLabel="返回">
+        <Pressable
+          style={styles.topButton}
+          hitSlop={8}
+          onPress={onBack}
+          accessibilityLabel={tr('nav.back')}
+        >
           <AppIcon name="back" size={24} color="#FFFFFF" />
         </Pressable>
         <Pressable
           ref={moreRef}
           style={styles.topButton}
           hitSlop={8}
-          accessibilityLabel="更多"
+          accessibilityLabel={tr('action.more')}
           onPress={() => {
             moreRef.current?.measureInWindow((x, y, width, height) => {
               onMore({ x, y, width, height });

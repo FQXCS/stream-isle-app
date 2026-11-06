@@ -16,6 +16,7 @@ import { SortableSettingsList } from '@/component/SortableSettingsList';
 import { useTheme } from '@/component/useTheme';
 import { MAX_LIBRARY_TABS, tabsOfFlavor } from '@/constant/libraryTabs';
 import { FONT_SIZE, CARD_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { useT } from '@/i18n';
 import { useLibraryDisplayStore } from '@/store/libraryDisplayStore';
 import { resolveDefaultTabId, resolveTabList, tabScopeKeyOf } from '@/util/libraryConfig';
 
@@ -26,6 +27,7 @@ interface LibraryTabEditorParams {
 
 export function LibraryTabEditorScreen() {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const route = useRoute<{ key: string; name: string; params: LibraryTabEditorParams }>();
   const { flavor, libraryType } = route.params;
@@ -48,7 +50,7 @@ export function LibraryTabEditorScreen() {
   const defaultTab = enabledTabs.find((tab) => tab.id === defaultTabId);
   const defaultMenuItems = enabledTabs.map((tab) => ({
     key: tab.id,
-    label: tab.label,
+    label: tr(tab.labelKey),
     icon: tab.id === defaultTabId ? ('radioChecked' as const) : ('radioUnchecked' as const),
     onPress: () => actions.setDefaultTab(flavor, libraryType, tab.id),
   }));
@@ -74,20 +76,23 @@ export function LibraryTabEditorScreen() {
         }
         header={
           <View>
-            <Text style={styles.sectionTitle}>默认显示</Text>
+            <Text style={styles.sectionTitle}>{tr('server.defaultDisplay')}</Text>
             <View ref={defaultRowRef} style={styles.card}>
               <SettingRow
-                label="进入媒体库时打开"
-                value={defaultTab?.label}
+                label={tr('server.defaultTabLabel')}
+                value={defaultTab === undefined ? undefined : tr(defaultTab.labelKey)}
                 onPress={handleOpenDefaultMenu}
               />
             </View>
             <View style={styles.hintRow}>
               <Text style={styles.hintText}>
-                已启用（{enabledTabs.length}/{MAX_LIBRARY_TABS}）· 长按
+                {tr('server.enabledTabsHint', {
+                  count: enabledTabs.length,
+                  max: MAX_LIBRARY_TABS,
+                })}
               </Text>
               <AppIcon name="dragHandle" size={12} color={t.textSecondary} />
-              <Text style={styles.hintText}>拖动排序</Text>
+              <Text style={styles.hintText}>{tr('server.dragToReorder')}</Text>
             </View>
           </View>
         }
@@ -95,10 +100,10 @@ export function LibraryTabEditorScreen() {
           <View style={styles.rowCard}>
             <SelectableRow
               leading={<DragHandle onLongPress={drag} />}
-              label={tab.label}
+              label={tr(tab.labelKey)}
               checked
               disabled={atMin}
-              description={atMin ? '至少保留 1 个' : undefined}
+              description={atMin ? tr('server.keepOne') : undefined}
               onToggle={() => actions.toggleTab(flavor, libraryType, tab.id)}
             />
           </View>
@@ -107,15 +112,15 @@ export function LibraryTabEditorScreen() {
           <View>
             {disabledTabs.length > 0 && (
               <>
-                <Text style={styles.sectionTitle}>未启用</Text>
+                <Text style={styles.sectionTitle}>{tr('server.disabledSection')}</Text>
                 <View style={styles.card}>
                   {disabledTabs.map((tab, index) => (
                     <SelectableRow
                       key={tab.id}
-                      label={tab.label}
+                      label={tr(tab.labelKey)}
                       checked={false}
                       disabled={atMax}
-                      description={atMax ? '最多 5 个' : undefined}
+                      description={atMax ? tr('server.maxTabs', { max: MAX_LIBRARY_TABS }) : undefined}
                       divider={index < disabledTabs.length - 1}
                       onToggle={() => actions.toggleTab(flavor, libraryType, tab.id)}
                     />
@@ -127,7 +132,7 @@ export function LibraryTabEditorScreen() {
               style={styles.resetButton}
               onPress={() => actions.resetTabs(flavor, libraryType)}
             >
-              <Text style={styles.resetText}>恢复默认</Text>
+              <Text style={styles.resetText}>{tr('server.resetDefault')}</Text>
             </Pressable>
           </View>
         }

@@ -9,6 +9,7 @@ import type { LibraryTypeEnum, MediaLibrary } from '@/adapter/model';
 import { AppIcon, type AppIconName } from '@/component/AppIcon';
 import { POSTER_RADIUS, FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
+import { useT } from '@/i18n';
 
 /** 库类型 → 图标（服务器无库图时的占位；LibraryTile 复用同一映射） */
 export const LIBRARY_ICON_MAP: Record<LibraryTypeEnum, AppIconName> = {
@@ -35,6 +36,7 @@ interface LibraryCardProps {
 
 export function LibraryCard({ library, onPress }: LibraryCardProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   return (
     <Pressable
@@ -59,7 +61,7 @@ export function LibraryCard({ library, onPress }: LibraryCardProps) {
           {library.name}
         </Text>
         {library.itemCount !== undefined && (
-          <Text style={styles.count}>{library.itemCount} 项</Text>
+          <Text style={styles.count}>{tr('server.itemCount', { count: library.itemCount })}</Text>
         )}
       </View>
     </Pressable>

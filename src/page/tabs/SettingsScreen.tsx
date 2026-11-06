@@ -22,6 +22,8 @@ import { SERVER_FLAVOR_OPTIONS } from '@/constant/server';
 import { ACCENT_SCHEME_OPTIONS, CARD_RADIUS, CARD_SHADOW, FONT_SIZE, SPACING } from '@/constant/theme';
 import { useMiniPlayerPadding } from '@/component/MiniPlayer';
 import { useTheme } from '@/component/useTheme';
+import { useT } from '@/i18n';
+import type { LanguagePreference, MessageKey } from '@/i18n';
 import type { ThemeModeEnum } from '@/constant/theme';
 import { ROUTES } from '@/constant/navigation';
 import { PlaybackSettingsSection } from '@/page/tabs/components/PlaybackSettingsSection';
@@ -32,10 +34,17 @@ import { useSettingsStore } from '@/store/settingsStore';
 type SubtitleOptionKey = string;
 
 /** 主题三态选项（06 文档 §4.6.1：跟随系统/浅色/深色） */
-const THEME_MODE_OPTIONS: readonly { key: ThemeModeEnum; label: string }[] = [
-  { key: 'system', label: '跟随系统' },
-  { key: 'light', label: '浅色' },
-  { key: 'dark', label: '深色' },
+const THEME_MODE_OPTIONS: readonly { key: ThemeModeEnum; labelKey: MessageKey }[] = [
+  { key: 'system', labelKey: 'theme.system' },
+  { key: 'light', labelKey: 'theme.light' },
+  { key: 'dark', labelKey: 'theme.dark' },
+];
+
+/** 界面语言选项：简体中文/English 固定自称，跟随系统随 UI 语言翻译 */
+const LANGUAGE_OPTIONS: readonly { key: LanguagePreference; labelKey: MessageKey }[] = [
+  { key: 'system', labelKey: 'settings.languageSystem' },
+  { key: 'zh', labelKey: 'settings.languageZh' },
+  { key: 'en', labelKey: 'settings.languageEn' },
 ];
 
 /** GitHub Releases 外链（06 文档 §4.9.3「关于」行；设计文档 §14.4 分发渠道） */
@@ -44,14 +53,17 @@ const GITHUB_RELEASES_URL = 'https://github.com/renym/stream-isle-app/releases';
 export function SettingsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const t = useTheme();
+  const tr = useT();
   // 迷你条浮在 Tab 栏上方：底部让位，设置项不被条子覆盖（停止播放后自动归零）
   const miniPadding = useMiniPlayerPadding();
   const preferredSubtitleLang = useSettingsStore((state) => state.preferredSubtitleLang);
   const themeMode = useSettingsStore((state) => state.themeMode);
   const accentScheme = useSettingsStore((state) => state.accentScheme);
+  const language = useSettingsStore((state) => state.language);
   const [subtitleSheetOpen, setSubtitleSheetOpen] = useState(false);
   const [themeSheetOpen, setThemeSheetOpen] = useState(false);
   const [accentSheetOpen, setAccentSheetOpen] = useState(false);
+  const [languageSheetOpen, setLanguageSheetOpen] = useState(false);
 
   /** 当前选中 key：null → "default"（04 §4.5 UI 单选 key 约定） */
   const selectedSubtitleKey: SubtitleOptionKey = preferredSubtitleLang ?? 'default';
@@ -60,6 +72,7 @@ export function SettingsScreen() {
   );
   const selectedThemeOption = THEME_MODE_OPTIONS.find((option) => option.key === themeMode);
   const selectedAccentOption = ACCENT_SCHEME_OPTIONS.find((option) => option.key === accentScheme);
+  const selectedLanguageOption = LANGUAGE_OPTIONS.find((option) => option.key === language);
 
   /** 写回 setPreferredSubtitleLang（M3 既有签名；null = 跟随默认自动选中文字幕） */
   const handleSelectSubtitle = (key: SubtitleOptionKey) => {
@@ -77,47 +90,67 @@ export function SettingsScreen() {
       style={[styles.container, { backgroundColor: t.bg, marginBottom: miniPadding }]}
       contentContainerStyle={styles.content}
     >
-      <Text style={[styles.title, { color: t.textPrimary }]}>设置</Text>
+      <Text style={[styles.title, { color: t.textPrimary }]}>{tr('settings.title')}</Text>
       {/* 播放分区：M3 PlaybackSettingsSection 原样收编（行为零改动，04 §4.5）+ M4 字幕语言行 */}
       <View style={styles.playGroup}>
         <PlaybackSettingsSection />
         <View style={[styles.card, { backgroundColor: t.surface }]}>
           <SettingRow
-            label="默认字幕语言"
-            description="播放时按该语言自动选轨（仅外挂文本轨）"
-            value={selectedOption?.label ?? '跟随默认（中文）'}
+            label={tr('settings.defaultSubtitle')}
+            description={tr('settings.defaultSubtitleDesc')}
+            value={
+              selectedOption === undefined
+                ? tr('subtitleLang.followDefault')
+                : tr(selectedOption.labelKey)
+            }
             onPress={() => setSubtitleSheetOpen(true)}
           />
         </View>
       </View>
-      {/* M6 外观分区（06 §4.4.5/§4.6.1）：主题三态（默认亮色） */}
+      {/* M6 外观分区（06 §4.4.5/§4.6.1）：语言 + 主题三态（默认亮色） */}
       <View style={[styles.card, { backgroundColor: t.surface }]}>
-        <Text style={[styles.groupTitle, { color: t.textTertiary }]}>外观</Text>
+        <Text style={[styles.groupTitle, { color: t.textTertiary }]}>{tr('settings.appearance')}</Text>
         <SettingRow
-          label="主题"
-          description="默认亮色；媒体沉浸页（播放器/照片查看器/正在播放）固定深色"
-          value={selectedThemeOption?.label ?? '浅色'}
+          label={tr('settings.language')}
+          description={tr('settings.languageDesc')}
+          value={
+            selectedLanguageOption === undefined
+              ? tr('settings.languageSystem')
+              : tr(selectedLanguageOption.labelKey)
+          }
+          onPress={() => setLanguageSheetOpen(true)}
+        />
+        <SettingRow
+          label={tr('settings.theme')}
+          description={tr('settings.themeDesc')}
+          value={selectedThemeOption === undefined ? tr('theme.light') : tr(selectedThemeOption.labelKey)}
           onPress={() => setThemeSheetOpen(true)}
         />
         <SettingRow
-          label="配色方案"
-          description="全局强调色，浅色与深色主题各自适配"
-          value={selectedAccentOption?.label ?? '翡翠'}
+          label={tr('settings.accentScheme')}
+          description={tr('settings.accentSchemeDesc')}
+          value={
+            selectedAccentOption === undefined
+              ? tr('accent.emerald')
+              : tr(selectedAccentOption.labelKey)
+          }
           onPress={() => setAccentSheetOpen(true)}
         />
       </View>
       {/* 收录类型二级页入口：继续观看/观看历史分别设置（类型集不同） */}
       <View style={[styles.card, { backgroundColor: t.surface }]}>
         <SettingRow
-          label="收录类型"
-          description="继续观看与观看历史分别设置"
+          label={tr('settings.includedTypes')}
+          description={tr('settings.includedTypesDesc')}
           showArrow
           onPress={() => navigation.navigate(ROUTES.MEDIA_TYPE_SETTINGS)}
         />
       </View>
       {/* 库页配置入口：服务器类型直接列在设置页，进入后配置 Tab 分类/排序项 */}
       <View style={[styles.card, { backgroundColor: t.surface }]}>
-        <Text style={[styles.groupTitle, { color: t.textTertiary }]}>同类型服务器配置</Text>
+        <Text style={[styles.groupTitle, { color: t.textTertiary }]}>
+          {tr('settings.sameFlavorConfig')}
+        </Text>
         {SERVER_FLAVOR_OPTIONS.map((option) => (
           <SettingRow
             key={option.value}
@@ -132,26 +165,26 @@ export function SettingsScreen() {
       {/* M6 下载与历史入口（06 §4.4.5 设置页入口行） */}
       <View style={[styles.card, { backgroundColor: t.surface }]}>
         <SettingRow
-          label="下载管理"
-          description="离线任务进度/暂停/删除，断网可播"
+          label={tr('settings.downloads')}
+          description={tr('settings.downloadsDesc')}
           showArrow
           onPress={() => navigation.navigate(ROUTES.DOWNLOADS)}
         />
         <SettingRow
-          label="观看历史"
-          description="服务端已看条目，按观看时间倒序"
+          label={tr('settings.history')}
+          description={tr('settings.historyDesc')}
           showArrow
           onPress={() => navigation.navigate(ROUTES.HISTORY)}
         />
       </View>
       {/* 关于分区（04 §4.5 容器；M6 增补版本 Code 与 GitHub Releases 外链，06 §4.9.3） */}
       <View style={[styles.card, { backgroundColor: t.surface }]}>
-        <Text style={[styles.groupTitle, { color: t.textTertiary }]}>关于</Text>
-        <SettingRow label="应用名" value={CLIENT_NAME} />
-        <SettingRow label="版本号" value={`${APP_VERSION} (${versionCode})`} />
+        <Text style={[styles.groupTitle, { color: t.textTertiary }]}>{tr('settings.about')}</Text>
+        <SettingRow label={tr('settings.appName')} value={CLIENT_NAME} />
+        <SettingRow label={tr('settings.version')} value={`${APP_VERSION} (${versionCode})`} />
         <SettingRow
-          label="GitHub Releases"
-          description="查看更新与历史版本"
+          label={tr('settings.githubReleases')}
+          description={tr('settings.githubReleasesDesc')}
           showArrow
           onPress={() => {
             void Linking.openURL(GITHUB_RELEASES_URL).catch(() => {
@@ -161,33 +194,52 @@ export function SettingsScreen() {
         />
       </View>
       <RadioOptionSheet
-        title="默认字幕语言"
+        title={tr('settings.defaultSubtitle')}
         visible={subtitleSheetOpen}
         selectedKey={selectedSubtitleKey}
         optionList={SUBTITLE_LANG_OPTION_LIST.map((option) => ({
           key: option.code ?? 'default',
-          label: option.label,
+          label: tr(option.labelKey),
         }))}
         onSelect={handleSelectSubtitle}
         onClose={() => setSubtitleSheetOpen(false)}
       />
       {/* M6 主题三态弹层（06 §4.6.1） */}
       <RadioOptionSheet
-        title="主题"
+        title={tr('settings.theme')}
         visible={themeSheetOpen}
         selectedKey={themeMode}
-        optionList={THEME_MODE_OPTIONS.map((option) => ({ key: option.key, label: option.label }))}
+        optionList={THEME_MODE_OPTIONS.map((option) => ({
+          key: option.key,
+          label: tr(option.labelKey),
+        }))}
         onSelect={(key) => useSettingsStore.getState().actions.setThemeMode(key)}
         onClose={() => setThemeSheetOpen(false)}
       />
       {/* 配色方案弹层：色点 + 名称，选中即全局生效 */}
       <RadioOptionSheet
-        title="配色方案"
+        title={tr('settings.accentScheme')}
         visible={accentSheetOpen}
         selectedKey={accentScheme}
-        optionList={ACCENT_SCHEME_OPTIONS}
+        optionList={ACCENT_SCHEME_OPTIONS.map((option) => ({
+          key: option.key,
+          label: tr(option.labelKey),
+          swatchColor: option.swatchColor,
+        }))}
         onSelect={(key) => useSettingsStore.getState().actions.setAccentScheme(key)}
         onClose={() => setAccentSheetOpen(false)}
+      />
+      {/* 界面语言弹层：切换立即重渲染（useT 订阅 store），持久化由 settingsStore 负责 */}
+      <RadioOptionSheet
+        title={tr('settings.language')}
+        visible={languageSheetOpen}
+        selectedKey={language}
+        optionList={LANGUAGE_OPTIONS.map((option) => ({
+          key: option.key,
+          label: tr(option.labelKey),
+        }))}
+        onSelect={(key) => useSettingsStore.getState().actions.setLanguage(key)}
+        onClose={() => setLanguageSheetOpen(false)}
       />
     </ScrollView>
   );

@@ -7,7 +7,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
-import { errorMessageOf, isRetryable, type AppError } from '@/infra/error';
+import { useT } from '@/i18n';
+import { errorMessageKeyOf, isRetryable, type AppError } from '@/infra/error';
 
 interface ErrorViewProps {
   /** 业务错误（文案经 errorMessageOf 查询，页面不自行定义文案） */
@@ -20,11 +21,12 @@ interface ErrorViewProps {
 
 export function ErrorView({ error, onRetry, extraAction }: ErrorViewProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const showRetry = onRetry !== undefined && isRetryable(error.code);
   return (
     <View style={styles.container}>
-      <Text style={styles.message}>{errorMessageOf(error.code)}</Text>
+      <Text style={styles.message}>{tr(errorMessageKeyOf(error.code))}</Text>
       {extraAction !== undefined && (
         <Pressable style={[styles.button, styles.extraButton]} onPress={extraAction.onPress}>
           <Text style={styles.buttonText}>{extraAction.label}</Text>
@@ -32,7 +34,7 @@ export function ErrorView({ error, onRetry, extraAction }: ErrorViewProps) {
       )}
       {showRetry && (
         <Pressable style={styles.button} onPress={onRetry}>
-          <Text style={[styles.buttonText, styles.buttonTextOnAccent]}>重试</Text>
+          <Text style={[styles.buttonText, styles.buttonTextOnAccent]}>{tr('common.retry')}</Text>
         </Pressable>
       )}
     </View>

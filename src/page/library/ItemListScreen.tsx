@@ -8,6 +8,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import type { ItemQuery } from '@/adapter/model';
 import { PAGE_SIZE } from '@/constant/browse';
+import { useT } from '@/i18n';
 import type { ItemListParams, RootStackParamList } from '@/page/navigation/types';
 import { navigateMediaItem } from '@/page/library/tabs/navigation';
 import { PhotoVideoGrid } from '@/page/photo/PhotoVideoGrid';
@@ -19,6 +20,7 @@ type ItemListNavigation = NativeStackNavigationProp<RootStackParamList>;
 export function ItemListScreen() {
   const route = useRoute<{ key: string; name: string; params: ItemListParams }>();
   const navigation = useNavigation<ItemListNavigation>();
+  const tr = useT();
   const userId = useAccountStore((state) => state.active?.userId ?? '');
   const {
     title,
@@ -54,7 +56,7 @@ export function ItemListScreen() {
     <PhotoVideoGrid
       loadPage={loadPage}
       onPressItem={(item) => navigateMediaItem(navigation, item)}
-      emptyTitle={`${title}暂无内容`}
+      emptyTitle={tr('itemList.empty', { title })}
     />
   );
 }

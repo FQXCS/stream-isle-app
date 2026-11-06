@@ -11,6 +11,7 @@ import { AppIcon } from '@/component/AppIcon';
 import { audioService } from '@/service/AudioService';
 import { usePlayerStore } from '@/store/playerStore';
 import { COLORS } from '@/constant/theme';
+import { useT } from '@/i18n';
 import { PLAYBACK_MODE_META, combinedPlaybackMode } from '@/util/playbackMode';
 
 interface ModeButtonProps {
@@ -21,13 +22,14 @@ interface ModeButtonProps {
 }
 
 export function ModeButton({ iconColor = COLORS.textPrimary, onModeChange }: ModeButtonProps) {
+  const tr = useT();
   const repeatMode = usePlayerStore((state) => state.audio.repeatMode);
   const shuffle = usePlayerStore((state) => state.audio.shuffle);
   const mode = combinedPlaybackMode(repeatMode, shuffle);
 
   const handleCycle = () => {
     void audioService.cyclePlaybackMode().then((nextMode) => {
-      onModeChange?.(PLAYBACK_MODE_META[nextMode].label);
+      onModeChange?.(tr(PLAYBACK_MODE_META[nextMode].labelKey));
     });
   };
 
@@ -36,7 +38,7 @@ export function ModeButton({ iconColor = COLORS.textPrimary, onModeChange }: Mod
       hitSlop={8}
       style={styles.button}
       onPress={handleCycle}
-      accessibilityLabel={PLAYBACK_MODE_META[mode].label}
+      accessibilityLabel={tr(PLAYBACK_MODE_META[mode].labelKey)}
     >
       <AppIcon name={PLAYBACK_MODE_META[mode].icon} size={24} color={iconColor} />
     </Pressable>

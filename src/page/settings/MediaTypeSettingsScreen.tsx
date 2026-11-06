@@ -8,10 +8,12 @@ import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useTheme } from '@/component/useTheme';
 import { HISTORY_TYPE_OPTIONS, RESUME_TYPE_OPTIONS } from '@/constant/browse';
 import { FONT_SIZE, CARD_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { useT } from '@/i18n';
 import { useSettingsStore } from '@/store/settingsStore';
 
 export function MediaTypeSettingsScreen() {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const resumeTypeList = useSettingsStore((state) => state.resumeTypeList);
   const historyTypeList = useSettingsStore((state) => state.historyTypeList);
@@ -19,7 +21,7 @@ export function MediaTypeSettingsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.sectionTitle}>继续观看</Text>
+      <Text style={styles.sectionTitle}>{tr('server.sectionResume')}</Text>
       <View style={styles.card}>
         {RESUME_TYPE_OPTIONS.map((option, index) => {
           const active = resumeTypeList.includes(option.type);
@@ -28,7 +30,7 @@ export function MediaTypeSettingsScreen() {
               key={option.type}
               style={[styles.row, index < RESUME_TYPE_OPTIONS.length - 1 && styles.rowDivider]}
             >
-              <Text style={styles.rowLabel}>{option.label}</Text>
+              <Text style={styles.rowLabel}>{tr(option.labelKey)}</Text>
               <Switch
                 value={active}
                 disabled={active && resumeTypeList.length === 1}
@@ -39,7 +41,7 @@ export function MediaTypeSettingsScreen() {
         })}
       </View>
 
-      <Text style={styles.sectionTitle}>观看历史</Text>
+      <Text style={styles.sectionTitle}>{tr('settings.history')}</Text>
       <View style={styles.card}>
         {HISTORY_TYPE_OPTIONS.map((option, index) => {
           const active = historyTypeList.includes(option.type);
@@ -48,7 +50,7 @@ export function MediaTypeSettingsScreen() {
               key={option.type}
               style={[styles.row, index < HISTORY_TYPE_OPTIONS.length - 1 && styles.rowDivider]}
             >
-              <Text style={styles.rowLabel}>{option.label}</Text>
+              <Text style={styles.rowLabel}>{tr(option.labelKey)}</Text>
               <Switch
                 value={active}
                 disabled={active && historyTypeList.length === 1}

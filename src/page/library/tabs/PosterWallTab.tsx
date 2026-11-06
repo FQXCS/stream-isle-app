@@ -20,6 +20,7 @@ import { useTheme } from '@/component/useTheme';
 import { GRID_COLUMNS, PAGE_END_THRESHOLD, PAGE_SIZE } from '@/constant/browse';
 import type { TabSpec } from '@/constant/libraryTabs';
 import { SPACING, type ThemeTokens } from '@/constant/theme';
+import { useT, type TFunction } from '@/i18n';
 import { AppError, errorMessageOf } from '@/infra/error';
 import { navigateTabItem } from '@/page/library/tabs/navigation';
 import { WallGridCell } from '@/page/library/components/WallGridCell';
@@ -44,21 +45,22 @@ function toastError(err: unknown): void {
   showToast(errorMessageOf(code), 'error');
 }
 
-function emptyTitleOf(tab: TabSpec): string {
+function emptyTitleOf(tab: TabSpec, tr: TFunction): string {
   if (tab.filters?.includes('IsFavorite')) {
-    return '暂无收藏内容';
+    return tr('library.emptyFavorites');
   }
   if (tab.filters?.includes('IsUnplayed')) {
-    return '暂无未看内容';
+    return tr('library.emptyUnplayed');
   }
   if (tab.filters?.includes('IsPlayed')) {
-    return '暂无已看内容';
+    return tr('library.emptyPlayed');
   }
-  return '库内暂无条目';
+  return tr('library.emptyItems');
 }
 
 export function PosterWallTab({ tab, libraryId, sort, onClearFilter }: PosterWallTabProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const navigation = useNavigation<WallNavigation>();
   const active = useAccountStore((state) => state.active);
@@ -213,8 +215,8 @@ export function PosterWallTab({ tab, libraryId, sort, onClearFilter }: PosterWal
         onEndReachedThreshold={PAGE_END_THRESHOLD}
         ListEmptyComponent={
           <EmptyView
-            title={emptyTitleOf(tab)}
-            actionLabel={showClearView ? '查看全部' : undefined}
+            title={emptyTitleOf(tab, tr)}
+            actionLabel={showClearView ? tr('library.viewAll') : undefined}
             onAction={showClearView ? onClearFilter : undefined}
           />
         }

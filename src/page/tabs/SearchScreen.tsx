@@ -27,6 +27,7 @@ import { PosterRow } from '@/component/PosterRow';
 import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { SEARCH_DEBOUNCE_MS, SEARCH_GROUP_TITLE_MAP } from '@/constant/search';
+import { useT } from '@/i18n';
 import { AppError } from '@/infra/error';
 import { searchService } from '@/service/SearchService';
 import { useDebouncedValue } from '@/util/useDebouncedValue';
@@ -36,6 +37,7 @@ const INPUT_RADIUS = 14;
 
 export function SearchScreen() {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const [input, setInput] = useState('');
   // 400ms 防抖：输入连续变更仅末次生效（04 §4.3）
@@ -103,7 +105,7 @@ export function SearchScreen() {
           style={styles.input}
           value={input}
           onChangeText={setInput}
-          placeholder="搜索电影、剧集、人物"
+          placeholder={tr('server.searchPlaceholder')}
           placeholderTextColor={t.textTertiary}
           autoCapitalize="none"
           autoCorrect={false}
@@ -124,7 +126,7 @@ export function SearchScreen() {
             style={styles.inputTail}
             onPress={() => setInput('')}
             hitSlop={8}
-            accessibilityLabel="清除搜索"
+            accessibilityLabel={tr('server.clearSearch')}
           >
             <AppIcon name="close" size={16} color={t.textTertiary} />
           </Pressable>
@@ -133,19 +135,19 @@ export function SearchScreen() {
 
       {/* 状态机（04 §4.3）：空词引导态优先（清输入即出，不依赖 effect 清态） */}
       {!hasQuery ? (
-        <EmptyView title="输入关键词搜索电影、剧集、人物" />
+        <EmptyView title={tr('server.searchEmptyTitle')} />
       ) : error !== null ? (
         <ErrorView error={error} onRetry={() => void runSearch(trimmed)} />
       ) : isInitialLoading ? (
         <LoadingView />
       ) : groups !== null && groups.length === 0 ? (
-        <EmptyView title={`没有找到与「${keyword}」相关的内容`} />
+        <EmptyView title={tr('server.searchNoResult', { keyword })} />
       ) : groups !== null ? (
         <ScrollView contentContainerStyle={styles.resultContent}>
           {groups.map((group) => (
             <View key={group.kind} style={styles.section}>
               {/* 组标题来自 SEARCH_GROUP_TITLE_MAP（SearchResultGroup 不携带，04 §4.3） */}
-              <Text style={styles.sectionTitle}>{SEARCH_GROUP_TITLE_MAP[group.kind]}</Text>
+              <Text style={styles.sectionTitle}>{tr(SEARCH_GROUP_TITLE_MAP[group.kind])}</Text>
               {group.kind === 'PERSON' ? (
                 <PersonRow itemList={group.itemList} />
               ) : (

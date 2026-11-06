@@ -12,6 +12,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppIcon, type AppIconName } from '@/component/AppIcon';
 import { FONT_SIZE, POSTER_RADIUS, SPACING } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
+import { useT } from '@/i18n';
 import { ROUTES } from '@/constant/navigation';
 import { errorMessageOf } from '@/infra/error';
 import type { RootStackParamList } from '@/page/navigation/types';
@@ -33,14 +34,15 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export function DownloadBadge({ itemId, onStart, onPlayLocal, compact = false }: DownloadBadgeProps) {
   const t = useTheme();
+  const tr = useT();
   const navigation = useNavigation<NavigationProp>();
   const task = useDownloadStore((state) => state.taskMap[itemId]);
 
   const badgeContent = (): BadgeContent => {
     if (task === undefined) {
       return compact
-        ? { icon: 'download', text: '', accessibilityLabel: '下载' }
-        : { text: '下载', accessibilityLabel: '下载' };
+        ? { icon: 'download', text: '', accessibilityLabel: tr('action.download') }
+        : { text: tr('action.download'), accessibilityLabel: tr('action.download') };
     }
     switch (task.status) {
       case 'queued':
@@ -48,27 +50,32 @@ export function DownloadBadge({ itemId, onStart, onPlayLocal, compact = false }:
         const total = task.totalBytes ?? 0;
         const percent =
           total > 0 ? Math.min(99, Math.round((task.progressBytes / total) * 100)) : 0;
+        const downloading = tr('download.inProgress', { percent });
         return {
-          text: compact ? `${percent}%` : `下载中 ${percent}%`,
-          accessibilityLabel: `下载中 ${percent}%`,
+          text: compact ? `${percent}%` : downloading,
+          accessibilityLabel: downloading,
         };
       }
       case 'paused':
         return compact
-          ? { icon: 'pause', text: '继续', accessibilityLabel: '继续下载' }
-          : { text: '继续', accessibilityLabel: '继续下载' };
+          ? { icon: 'pause', text: tr('action.resume'), accessibilityLabel: tr('download.resume') }
+          : { text: tr('action.resume'), accessibilityLabel: tr('download.resume') };
       case 'completed':
         return compact
-          ? { icon: 'play', text: '本地', accessibilityLabel: '本地播放' }
-          : { text: '已下载 · 本地播放', accessibilityLabel: '本地播放' };
+          ? {
+              icon: 'play',
+              text: tr('download.localShort'),
+              accessibilityLabel: tr('download.playLocal'),
+            }
+          : { text: tr('download.completedAction'), accessibilityLabel: tr('download.playLocal') };
       case 'failed':
         return compact
-          ? { icon: 'refresh', text: '重试', accessibilityLabel: '重试下载' }
-          : { text: '重试', accessibilityLabel: '重试下载' };
+          ? { icon: 'refresh', text: tr('common.retry'), accessibilityLabel: tr('download.retry') }
+          : { text: tr('common.retry'), accessibilityLabel: tr('download.retry') };
       default:
         return compact
-          ? { icon: 'download', text: '', accessibilityLabel: '下载' }
-          : { text: '下载', accessibilityLabel: '下载' };
+          ? { icon: 'download', text: '', accessibilityLabel: tr('action.download') }
+          : { text: tr('action.download'), accessibilityLabel: tr('action.download') };
     }
   };
 
@@ -85,7 +92,10 @@ export function DownloadBadge({ itemId, onStart, onPlayLocal, compact = false }:
         break;
       case 'paused':
         void downloadService.resumeDownload(itemId).catch((err: unknown) => {
-          showToast(err instanceof Error ? errorMessageOf('UNKNOWN') : '继续失败', 'error');
+          showToast(
+            err instanceof Error ? errorMessageOf('UNKNOWN') : tr('download.resumeFailed'),
+            'error'
+          );
         });
         break;
       case 'completed':

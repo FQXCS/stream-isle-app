@@ -453,7 +453,7 @@ describe('DownloadService（06 §6.1 DownloadService 行）', () => {
     expect(row?.status).toBe('paused');
   });
 
-  it('AppError 语义：下载错误码映射自 constant/errors（A2 文案走 ERROR_MESSAGE_MAP）', () => {
-    expect(new AppError('DOWNLOAD_UNAVAILABLE').message).toBe('该条目需服务器转码，暂不支持下载');
+  it('AppError 语义：message 固定为错误码，展示文案由 errorMessageOf 按语言解析', () => {
+    expect(new AppError('DOWNLOAD_UNAVAILABLE').message).toBe('DOWNLOAD_UNAVAILABLE');
   });
 });

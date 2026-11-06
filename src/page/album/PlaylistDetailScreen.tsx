@@ -17,6 +17,7 @@ import { useTheme } from '@/component/useTheme';
 import { GRID_COLUMNS } from '@/constant/browse';
 import { SPACING, type ThemeTokens } from '@/constant/theme';
 import { AppError } from '@/infra/error';
+import { useT } from '@/i18n';
 import { usePagedLoad } from '@/page/library/components/usePagedLoad';
 import { SongFlashList } from '@/page/library/components/SongFlashList';
 import { navigateMediaItem } from '@/page/library/tabs/navigation';
@@ -28,6 +29,7 @@ type PlaylistNavigation = NativeStackNavigationProp<RootStackParamList>;
 
 export function PlaylistDetailScreen() {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const navigation = useNavigation<PlaylistNavigation>();
   const route = useRoute<{ key: string; name: string; params: { playlistId: string } }>();
@@ -78,7 +80,7 @@ export function PlaylistDetailScreen() {
     );
   }
   if (state.itemList.length === 0) {
-    return <EmptyView title="歌单为空" />;
+    return <EmptyView title={tr('playlist.empty')} />;
   }
   if (allAudio) {
     return <SongFlashList songList={audioList} onPressSong={handlePressSong} />;

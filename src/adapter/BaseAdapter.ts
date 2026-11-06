@@ -2191,7 +2191,8 @@ export abstract class BaseAdapter implements ServerAdapter {
       const track: SubtitleTrack = {
         streamIndex,
         language: stream.Language,
-        title: stream.DisplayTitle ?? stream.Title ?? stream.Language ?? `字幕 ${streamIndex + 1}`,
+        // 轨道名回退交由 UI 侧本地化（无标题时 SubtitleMenu 用 player.subtitleFallback）
+        title: stream.DisplayTitle ?? stream.Title ?? stream.Language,
         format: stream.Codec,
         isExternal,
         isForced: stream.IsForced,

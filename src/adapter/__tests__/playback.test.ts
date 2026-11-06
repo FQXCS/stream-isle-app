@@ -227,8 +227,8 @@ describe('resolvePlayback（转码分支，M3）', () => {
     expect(ass.vttUrl).toBeUndefined(); // 烧录轨不产出 vttUrl
     const noDelivery = source.subtitleList[2];
     expect(noDelivery).toMatchObject({ streamIndex: 5, isExternal: false, burnIn: false });
-    // 缺省 title 兜底（DisplayTitle/Title/Language 均缺）:字幕 ${index+1}
-    expect(noDelivery.title).toBe('字幕 6');
+    // 缺省 title 不下发（UI 层按当前语言生成「字幕 N」兜底）
+    expect(noDelivery.title).toBeUndefined();
   });
 
   it('vttUrl：DeliveryUrl 缺 api_key 时补齐（不重复追加）', async () => {

@@ -16,6 +16,7 @@ import { useTheme } from '@/component/useTheme';
 import { tabsOfFlavor } from '@/constant/libraryTabs';
 import { SORT_CHAIN, SORT_OPTION_META, SORT_SETS } from '@/constant/sortCatalog';
 import { FONT_SIZE, CARD_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { useT } from '@/i18n';
 import { useLibraryDisplayStore } from '@/store/libraryDisplayStore';
 import { resolveTabSortOptions } from '@/util/libraryConfig';
 
@@ -27,6 +28,7 @@ interface LibrarySortEditorParams {
 
 export function LibrarySortEditorScreen() {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const route = useRoute<{ key: string; name: string; params: LibrarySortEditorParams }>();
   const { flavor, libraryType, tabId } = route.params;
@@ -35,14 +37,14 @@ export function LibrarySortEditorScreen() {
   const tab = tabsOfFlavor(libraryType, flavor).find((item) => item.id === tabId);
 
   if (tab === undefined) {
-    return <EmptyView title="分类不存在" />;
+    return <EmptyView title={tr('server.categoryMissing')} />;
   }
 
   if (tab.sortSet === 'none') {
     return (
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.sectionTitle}>该分类不支持排序</Text>
+          <Text style={styles.sectionTitle}>{tr('server.categoryNotSortable')}</Text>
         </ScrollView>
       </View>
     );
@@ -88,19 +90,21 @@ export function LibrarySortEditorScreen() {
         }
         header={
           <View style={styles.hintRow}>
-            <Text style={styles.hintText}>已启用（{enabledOptions.length} 项）· 长按</Text>
+            <Text style={styles.hintText}>
+              {tr('server.enabledSortsHint', { count: enabledOptions.length })}
+            </Text>
             <AppIcon name="dragHandle" size={12} color={t.textSecondary} />
-            <Text style={styles.hintText}>拖动排序</Text>
+            <Text style={styles.hintText}>{tr('server.dragToReorder')}</Text>
           </View>
         }
         renderItem={(option, drag) => (
           <View style={styles.rowCard}>
             <SelectableRow
               leading={<DragHandle onLongPress={drag} />}
-              label={option.label}
+              label={tr(option.labelKey)}
               checked
               disabled={atMin}
-              description={atMin ? '至少保留 1 个' : undefined}
+              description={atMin ? tr('server.keepOne') : undefined}
               trailing={directionMark(option)}
               onToggle={() => actions.toggleSort(flavor, libraryType, tab.id, option.value)}
             />
@@ -110,12 +114,12 @@ export function LibrarySortEditorScreen() {
           <View>
             {disabledOptions.length > 0 && (
               <>
-                <Text style={styles.sectionTitle}>未启用</Text>
+                <Text style={styles.sectionTitle}>{tr('server.disabledSection')}</Text>
                 <View style={styles.card}>
                   {disabledOptions.map((option, index) => (
                     <SelectableRow
                       key={option.value}
-                      label={option.label}
+                      label={tr(option.labelKey)}
                       checked={false}
                       divider={index < disabledOptions.length - 1}
                       trailing={directionMark(option)}
@@ -131,7 +135,7 @@ export function LibrarySortEditorScreen() {
               style={styles.resetButton}
               onPress={() => actions.resetSorts(flavor, libraryType, tab.id)}
             >
-              <Text style={styles.resetText}>恢复默认</Text>
+              <Text style={styles.resetText}>{tr('server.resetDefault')}</Text>
             </Pressable>
           </View>
         }

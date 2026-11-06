@@ -20,6 +20,7 @@ import type { TabSpec } from '@/constant/libraryTabs';
 import { ROUTES } from '@/constant/navigation';
 import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
 import { AppError } from '@/infra/error';
+import { useT, type TFunction } from '@/i18n';
 import { usePagedLoad } from '@/page/library/components/usePagedLoad';
 import type { RootStackParamList } from '@/page/navigation/types';
 import {
@@ -53,20 +54,20 @@ function liveKindOf(tab: TabSpec): LiveListKind | null {
   }
 }
 
-function emptyTitleOf(kind: LiveListKind): string {
+function emptyTitleOf(kind: LiveListKind, tr: TFunction): string {
   if (kind === 'channels') {
-    return '暂无频道';
+    return tr('library.emptyChannels');
   }
   if (kind === 'programs') {
-    return '暂无节目';
+    return tr('library.emptyPrograms');
   }
   if (kind === 'recordings') {
-    return '暂无录制';
+    return tr('library.emptyRecordings');
   }
   if (kind === 'timers') {
-    return '暂无计划';
+    return tr('library.emptyTimers');
   }
-  return '暂无系列计划';
+  return tr('library.emptySeriesTimers');
 }
 
 function timeOfDay(ms: number): string {
@@ -84,9 +85,11 @@ function timeRangeOf(item: MediaLibraryItem): string | undefined {
   return item.endMs === undefined ? start : `${start}-${timeOfDay(item.endMs)}`;
 }
 
-function subtextOf(item: MediaLibraryItem, kind: LiveListKind): string | undefined {
+function subtextOf(item: MediaLibraryItem, kind: LiveListKind, tr: TFunction): string | undefined {
   if (kind === 'channels') {
-    return item.channelNumber !== undefined ? `频道 ${item.channelNumber}` : '频道';
+    return item.channelNumber !== undefined
+      ? tr('library.channelLabel', { number: item.channelNumber })
+      : tr('library.channel');
   }
   if (kind === 'programs') {
     const range = timeRangeOf(item);
@@ -94,7 +97,10 @@ function subtextOf(item: MediaLibraryItem, kind: LiveListKind): string | undefin
   }
   const range = timeRangeOf(item);
   if (kind === 'recordings') {
-    return [item.status, range].filter((part) => part !== undefined).join(' · ') || '录制';
+    return (
+      [item.status, range].filter((part) => part !== undefined).join(' · ') ||
+      tr('library.recording')
+    );
   }
   return [range, item.status].filter((part) => part !== undefined).join(' · ') || undefined;
 }
@@ -114,6 +120,7 @@ function sortTimers(items: MediaLibraryItem[], sort: LibrarySortState): MediaLib
 
 export function LiveListTab({ tab, sort }: LiveListTabProps) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const navigation = useNavigation<LiveNavigation>();
   const miniPlayerPadding = useMiniPlayerPadding();
@@ -147,14 +154,14 @@ export function LiveListTab({ tab, sort }: LiveListTabProps) {
         const session = await playbackService.resolve(targetId);
         navigation.navigate(ROUTES.PLAYER, { session });
       } catch {
-        showToast('该服务器暂不支持此直播播放', 'error');
+        showToast(tr('library.livePlayUnsupported'), 'error');
       }
     },
-    [navigation]
+    [navigation, tr]
   );
 
   if (kind === null) {
-    return <EmptyView title="直播分类待接入" />;
+    return <EmptyView title={tr('library.liveUnsupported')} />;
   }
   if (state.errorCode !== null && state.itemList.length === 0) {
     return <ErrorView error={new AppError(state.errorCode)} onRetry={state.retry} />;
@@ -167,7 +174,7 @@ export function LiveListTab({ tab, sort }: LiveListTabProps) {
     );
   }
   if (state.itemList.length === 0) {
-    return <EmptyView title={emptyTitleOf(kind)} />;
+    return <EmptyView title={emptyTitleOf(kind, tr)} />;
   }
 
   const playable = kind !== 'timers' && kind !== 'seriesTimers';
@@ -177,7 +184,7 @@ export function LiveListTab({ tab, sort }: LiveListTabProps) {
       data={state.itemList}
       keyExtractor={(item) => item.id}
       renderItem={({ item }: { item: MediaLibraryItem }) => {
-        const subtext = subtextOf(item, kind);
+        const subtext = subtextOf(item, kind, tr);
         return (
           <Pressable
             style={styles.row}

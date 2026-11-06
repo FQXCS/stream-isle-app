@@ -19,6 +19,7 @@ import { PHOTO_PAGE_SIZE, PHOTO_VIEWER_PRELOAD_REMAINING } from '@/constant/phot
 import { useImmersiveAccent } from '@/component/useTheme';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
 import { errorMessageOf } from '@/infra/error';
+import { t, useT } from '@/i18n';
 import { photoService } from '@/service/PhotoService';
 import { formatDate } from '@/util/format';
 import { getPhotoViewerMaxWidth } from '@/util/photo';
@@ -36,7 +37,7 @@ interface PhotoViewerParams {
 async function savePhotoWithFeedback(photo: PhotoItem): Promise<void> {
   try {
     await photoService.saveToGallery(photo);
-    showToast('已保存到 Stream Isle 相册', 'info');
+    showToast(t('photo.saved'), 'info');
   } catch (err) {
     const code = (err as { code?: string }).code;
     showToast(
@@ -51,6 +52,7 @@ async function savePhotoWithFeedback(photo: PhotoItem): Promise<void> {
 export function PhotoViewerScreen() {
   const route = useRoute<{ key: string; name: string; params: PhotoViewerParams }>();
   const navigation = useNavigation();
+  const tr = useT();
   const { albumId, totalCount: initialTotal, photoList: initialList, initialIndex } = route.params;
   const { width: windowWidth, scale: pixelRatio } = useWindowDimensions();
 
@@ -115,20 +117,20 @@ export function PhotoViewerScreen() {
     }
     Alert.alert(currentPhoto.fileName ?? currentPhoto.name, undefined, [
       {
-        text: '查看原图',
+        text: tr('photo.viewOriginal'),
         onPress: () => {
           setOriginalIndex(index);
         },
       },
       {
-        text: '保存到本地相册',
+        text: tr('photo.save'),
         onPress: () => {
           void savePhotoWithFeedback(currentPhoto);
         },
       },
-      { text: '取消', style: 'cancel' },
+      { text: tr('common.cancel'), style: 'cancel' },
     ]);
-  }, [currentPhoto, index]);
+  }, [currentPhoto, index, tr]);
 
   return (
     <View style={styles.fill}>
@@ -183,9 +185,10 @@ function HeaderComponent({
   viewingOriginal: boolean;
 }) {
   const { accent } = useImmersiveAccent();
+  const tr = useT();
   return (
     <View style={styles.header}>
-      <Pressable hitSlop={8} onPress={onClose} accessibilityLabel="关闭">
+      <Pressable hitSlop={8} onPress={onClose} accessibilityLabel={tr('common.close')}>
         <AppIcon name="close" size={16} color={COLORS.textPrimary} />
       </Pressable>
       <View style={styles.headerCenter}>
@@ -195,7 +198,11 @@ function HeaderComponent({
         {photo?.takenAtMs !== undefined && (
           <Text style={styles.takenAt}>{formatDate(photo.takenAtMs)}</Text>
         )}
-        {viewingOriginal && <Text style={[styles.originalBadge, { color: accent }]}>原图</Text>}
+        {viewingOriginal && (
+          <Text style={[styles.originalBadge, { color: accent }]}>
+            {tr('photo.originalBadge')}
+          </Text>
+        )}
       </View>
     </View>
   );
@@ -220,19 +227,22 @@ function FooterComponent({
   onSave: () => void;
 }) {
   const hasServerTotal = totalCount > 0;
+  const tr = useT();
   return (
     <View style={styles.footer}>
       <Pressable hitSlop={8} onPress={onToggleOriginal}>
-        <Text style={styles.footerAction}>{viewingOriginal ? '看缩放图' : '查看原图'}</Text>
+        <Text style={styles.footerAction}>
+          {viewingOriginal ? tr('photo.viewScaled') : tr('photo.viewOriginal')}
+        </Text>
       </Pressable>
       <Text style={styles.pageText}>
         {hasServerTotal
           ? `${index + 1} / ${totalCount}`
-          : `${index + 1} / 已加载 ${loadedCount}`}
-        {loadingMore ? ' · 加载中…' : ''}
+          : tr('photo.pageLoaded', { index: index + 1, loaded: loadedCount })}
+        {loadingMore ? tr('photo.loadingMore') : ''}
       </Text>
       <Pressable hitSlop={8} onPress={onSave}>
-        <Text style={styles.footerAction}>保存</Text>
+        <Text style={styles.footerAction}>{tr('common.save')}</Text>
       </Pressable>
     </View>
   );

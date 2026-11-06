@@ -13,13 +13,15 @@ import { showToast } from '@/component/Toast';
 import { useTheme } from '@/component/useTheme';
 import { ROUTES } from '@/constant/navigation';
 import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
+import { useT } from '@/i18n';
 import type { RootStackParamList } from '@/page/navigation/types';
-import { activeRouteIdOf, routesOf, useAccountStore } from '@/store/accountStore';
+import { activeRouteIdOf, isDefaultRouteName, routesOf, useAccountStore } from '@/store/accountStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, typeof ROUTES.SERVER_ROUTES>;
 
 export function ServerRoutesScreen({ route, navigation }: Props) {
   const t = useTheme();
+  const tr = useT();
   const styles = createStyles(t);
   const { serverId } = route.params;
   const server = useAccountStore((state) => state.servers.find((item) => item.serverId === serverId));
@@ -29,23 +31,23 @@ export function ServerRoutesScreen({ route, navigation }: Props) {
   // 导航头：标题 + 右侧「+」（添加备用线路）
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: '线路管理',
+      title: tr('server.routesTitle'),
       headerRight: () => (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="添加备用线路"
+          accessibilityLabel={tr('server.addBackupRoute')}
           onPress={() => navigation.navigate(ROUTES.SERVER_ROUTE_EDIT, { serverId })}
         >
           <AppIcon name="plus" size={22} color={t.textPrimary} />
         </Pressable>
       ),
     });
-  }, [navigation, serverId, t.textPrimary]);
+  }, [navigation, serverId, t.textPrimary, tr]);
 
   if (server === undefined) {
     return (
       <View style={[styles.container, styles.emptyBox, { backgroundColor: t.bg }]}>
-        <Text style={styles.emptyText}>服务器不存在</Text>
+        <Text style={styles.emptyText}>{tr('server.serverMissing')}</Text>
       </View>
     );
   }
@@ -61,7 +63,7 @@ export function ServerRoutesScreen({ route, navigation }: Props) {
   const menuItemList: AnchorMenuItem[] = [
     {
       key: 'edit',
-      label: '编辑',
+      label: tr('server.edit'),
       icon: 'edit',
       onPress: () => {
         if (menuRouteId !== null) {
@@ -71,7 +73,7 @@ export function ServerRoutesScreen({ route, navigation }: Props) {
     },
     {
       key: 'delete',
-      label: '删除',
+      label: tr('common.delete'),
       icon: 'trash',
       tone: 'danger',
       onPress: () => {
@@ -79,10 +81,10 @@ export function ServerRoutesScreen({ route, navigation }: Props) {
           return;
         }
         const targetId = menuRouteId;
-        Alert.alert('删除线路', '删除后该地址将不再参与故障转移，确定删除吗？', [
-          { text: '取消', style: 'cancel' },
+        Alert.alert(tr('server.routeDeleteTitle'), tr('server.routeDeleteConfirm'), [
+          { text: tr('common.cancel'), style: 'cancel' },
           {
-            text: '删除',
+            text: tr('common.delete'),
             style: 'destructive',
             onPress: () => {
               useAccountStore.getState().actions.removeRoute(serverId, targetId);
@@ -103,7 +105,11 @@ export function ServerRoutesScreen({ route, navigation }: Props) {
               key={item.id}
               onPress={() => {
                 useAccountStore.getState().actions.setActiveRoute(serverId, item.id);
-                showToast(`已切换到「${item.name}」`);
+                showToast(
+                  tr('server.routeSwitched', {
+                    name: isDefaultRouteName(item.name) ? tr('server.defaultRoute') : item.name,
+                  })
+                );
               }}
               onLongPress={(event) =>
                 openMenu(item.id, event.nativeEvent.pageX, event.nativeEvent.pageY)
@@ -112,7 +118,7 @@ export function ServerRoutesScreen({ route, navigation }: Props) {
             >
               <View style={styles.routeMeta}>
                 <Text style={styles.routeName} numberOfLines={1}>
-                  {item.name}
+                  {isDefaultRouteName(item.name) ? tr('server.defaultRoute') : item.name}
                 </Text>
                 <Text style={styles.routeUrl} numberOfLines={1}>
                   {item.baseUrl}
@@ -122,9 +128,7 @@ export function ServerRoutesScreen({ route, navigation }: Props) {
             </Pressable>
           );
         })}
-        <Text style={styles.hint}>
-          当前线路请求失败时会自动切换到下一条线路；也可以点击线路手动切换。
-        </Text>
+        <Text style={styles.hint}>{tr('server.routesHint')}</Text>
       </ScrollView>
       <AnchorMenu
         anchor={menuAnchor}

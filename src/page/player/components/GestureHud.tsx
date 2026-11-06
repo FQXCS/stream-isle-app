@@ -6,6 +6,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { AppIcon, type AppIconName } from '@/component/AppIcon';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
+import { useT } from '@/i18n';
 import { formatClock } from '@/util/format';
 
 /** HUD 状态（页面在手势回调中维护） */
@@ -22,6 +23,7 @@ interface GestureHudProps {
 }
 
 export function GestureHud({ hud }: GestureHudProps) {
+  const tr = useT();
   if (hud === null) {
     return null;
   }
@@ -30,7 +32,10 @@ export function GestureHud({ hud }: GestureHudProps) {
   if (hud.kind === 'seek') {
     const deltaMs = hud.deltaMs ?? 0;
     const sign = deltaMs >= 0 ? '+' : '-';
-    text = `${sign}${formatClock(Math.abs(deltaMs))}（${formatClock(hud.value)}）`;
+    text = tr('player.hudSeek', {
+      delta: `${sign}${formatClock(Math.abs(deltaMs))}`,
+      position: formatClock(hud.value),
+    });
   } else if (hud.kind === 'brightness') {
     icon = 'brightness';
     text = `${Math.round(hud.value * 100)}%`;
