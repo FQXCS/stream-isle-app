@@ -43,7 +43,7 @@ npx expo run:android            # 真机构建安装（Android 8+ / minSdk 26）
 
 - 测试服务器：Emby **RYM 4.10.2.0**（宿主机 Windows 服务），主机地址 `http://localhost:8096/`，账密 `test / 123456`（本地测试账号）。
 - **模拟器内连接必须用 `http://10.0.2.2:8096/`**：Android 模拟器的 `localhost` 指模拟器自身，`10.0.2.2` 才映射到宿主机；真机调试则用局域网 IP。
-- 本机构建 JDK：默认 JAVA_HOME 为 JDK 8；Gradle 9 launcher 只认环境变量（要求 ≥17），CLI 构建需带 `JAVA_HOME=D:/Java/jdk-21.0.10` 前缀（机器级约定、不入仓库；`android/gradle.properties` 为 prebuild 产物，不含 pin）；Android Studio 构建走 IDE 自身 JDK。
+- Gradle 9 launcher 只认环境变量（要求 ≥17）。
 - 排障：Emby 服务端日志在 `E:/emby/programdata/logs/embyserver.txt`，可核对请求是否到达服务器、状态码与认证头（曾借此定位「服务器 200 但客户端报错」的 SecureStore key 问题）。
 
 ## 专项规则（触发式加载）
