@@ -51,7 +51,6 @@
   },
   "devDependencies": {
     "@types/react": "~19.3.0",
-    "patch-package": "^8.0.1",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -61,8 +60,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test": "jest",
-    "postinstall": "patch-package"
+    "test": "jest"
   },
   "private": true
 }
