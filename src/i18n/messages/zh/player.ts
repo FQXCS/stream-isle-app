@@ -24,6 +24,15 @@ export const zhPlayer = {
   'player.currentBadge': '当前',
   'player.collapse': '收起',
   'player.cellularForced': '蜂窝网络 · 已自动降至 480p',
+  'player.moreMenu': '更多',
+  'player.pip': '画中画',
+  'player.abLoop': 'AB 循环',
+  'player.abLoopSetA': '已设 A 点 {time}，再按一次设 B 点',
+  'player.abLoopActive': 'AB 循环 {a} – {b}',
+  'player.abLoopCleared': '已清除 AB 循环',
+  'player.snapshot': '截图',
+  'player.snapshotSaved': '截图已保存到相册',
+  'player.rotate': '旋转屏幕',
 
   // —— 播放器状态、错误与提示 ——
   'player.errorTranscode': '转码播放失败，请重试',

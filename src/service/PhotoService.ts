@@ -45,28 +45,45 @@ export class PhotoService {
    * PHOTO_SAVE_PERMISSION_DENIED / PHOTO_SAVE_FAILED，调用方 toast。
    */
   async saveToGallery(photo: PhotoItem): Promise<void> {
-    // 1) 相册写入权限（Android 10+ 系统自动放行，API 26–28 弹运行时权限；SDK 58 签名 = 布尔参）
+    // 原图下载到 cacheDirectory（系统可回收；保存走原图，网格/查看器缩放图不落盘）
+    const fileName = photo.fileName ?? 'photo';
+    const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
+    try {
+      await FileSystem.downloadAsync(photo.originalImageUrl, fileUri);
+    } catch (error) {
+      throw new AppError('PHOTO_SAVE_FAILED', { cause: error });
+    }
+    await this.saveFileToGallery(fileUri);
+  }
+
+  /**
+   * 本地文件保存到系统相册（照片原图与播放截图共用权限与建资产链路）：
+   * 权限 → createAssetAsync；withAlbum 时再取/建「Stream Isle」相册入相册。
+   * 截图传 false：入相册的 move 在 Android R+ 每次弹系统「修改此照片」确认，逐次截图不可接受。
+   * 失败抛 PHOTO_SAVE_* 由调用方 toast。
+   */
+  async saveFileToGallery(fileUri: string, withAlbum = true): Promise<void> {
+    // 1) 相册权限：取/建相册（getAlbumAsync）需读权限，writeOnly 在新版 Android 会被拒，
+    //    故请求完整权限（Android 10+ 弹系统授权框；SDK 58 签名 = 布尔参）
     let permission: MediaLibrary.PermissionResponse;
     try {
-      permission = await MediaLibrary.requestPermissionsAsync(true);
+      permission = await MediaLibrary.requestPermissionsAsync(false);
     } catch (error) {
       throw new AppError('PHOTO_SAVE_FAILED', { cause: error });
     }
     if (!permission.granted) {
       throw new AppError('PHOTO_SAVE_PERMISSION_DENIED');
     }
-    // 2) 原图下载到 cacheDirectory（系统可回收；保存走原图，网格/查看器缩放图不落盘）
-    const fileName = photo.fileName ?? 'photo';
-    const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
+    // 2) 建立系统媒体库资产；照片再取/建「Stream Isle」相册入相册
     try {
-      await FileSystem.downloadAsync(photo.originalImageUrl, fileUri);
-      // 3) 建立系统媒体库资产 → 取/建「Stream Isle」相册 → 资产入相册
       const asset = await MediaLibrary.createAssetAsync(fileUri);
-      let album = await MediaLibrary.getAlbumAsync(SAVE_ALBUM_NAME);
-      if (album === null) {
-        album = await MediaLibrary.createAlbumAsync(SAVE_ALBUM_NAME, asset, false);
+      if (withAlbum) {
+        let album = await MediaLibrary.getAlbumAsync(SAVE_ALBUM_NAME);
+        if (album === null) {
+          album = await MediaLibrary.createAlbumAsync(SAVE_ALBUM_NAME, asset, false);
+        }
+        await MediaLibrary.addAssetsToAlbumAsync([asset.id], album.id, false);
       }
-      await MediaLibrary.addAssetsToAlbumAsync([asset.id], album.id, false);
     } catch (error) {
       throw new AppError('PHOTO_SAVE_FAILED', { cause: error });
     }

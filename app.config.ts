@@ -92,7 +92,7 @@ export default {
       // minSdk 显式落 26（设计文档文档属性表 Android 8+ / M1 §4.1）：SDK 58 版本目录默认 24，
       // 必须经 expo-build-properties 写 gradle.properties 的 android.minSdkVersion=26
       ["expo-build-properties", { android: { minSdkVersion: 26 } }],
-      "react-native-video", // 基础 plugin；M3 按需追加解码器扩展参数
+      ["react-native-video", { enableAndroidPictureInPicture: true }], // 播放页画中画（manifest supportsPictureInPicture）
       // M2：横屏锁定（Android 生效靠上方 screenOrientation: "all" → fullSensor；本 plugin 配置 iOS Info.plist）
       "expo-screen-orientation",
       // M5：保存到系统相册的写权限声明（05 文档 §4.9/§4.14）

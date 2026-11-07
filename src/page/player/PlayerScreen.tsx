@@ -30,10 +30,13 @@ import Video, {
 } from 'react-native-video';
 import NetInfo from '@react-native-community/netinfo';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import * as FileSystem from 'expo-file-system/legacy';
 
 import type { AudioTrack, PlaybackSession, SubtitleTrack } from '@/adapter/model';
 import { AppIcon } from '@/component/AppIcon';
+import { showToast } from '@/component/Toast';
 import PlaybackGestures from '../../../modules/expo-playback-gestures';
+import PlayerSnapshot from '../../../modules/expo-player-snapshot';
 import type { ResolutionTierKey } from '@/constant/resolution';
 import {
   CELLULAR_RESOLUTION_TIER,
@@ -48,18 +51,23 @@ import {
 import { useImmersiveAccent } from '@/component/useTheme';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
 import { useT } from '@/i18n';
+import { errorMessageOf } from '@/infra/error';
 import { AudioTrackMenu } from '@/page/player/components/AudioTrackMenu';
 import { ResolutionMenu } from '@/page/player/components/ResolutionMenu';
 import { ControlOverlay } from '@/page/player/components/ControlOverlay';
 import { GestureHud, type HudState } from '@/page/player/components/GestureHud';
 import { GestureLayer } from '@/page/player/components/GestureLayer';
+import { PlayerMoreMenu, type PlayerSubMenu } from '@/page/player/components/PlayerMoreMenu';
 import { SessionRestartOverlay } from '@/page/player/components/SessionRestartOverlay';
 import { SubtitleMenu } from '@/page/player/components/SubtitleMenu';
 import type { RootStackParamList } from '@/page/navigation/types';
+import { photoService } from '@/service/PhotoService';
 import { ProgressService } from '@/service/ProgressService';
 import { playbackService } from '@/service/PlaybackService';
 import { usePlayerStore } from '@/store/playerStore';
 import { useSettingsStore } from '@/store/settingsStore';
+import { abLoopSeekTarget, advanceAbLoop, type AbLoop } from '@/util/abLoop';
+import { formatClock } from '@/util/format';
 import { resolveResolutionTierForNetwork } from '@/util/resolution';
 import { selectAutoSubtitleStreamIndex } from '@/util/subtitleSelect';
 import { sanitizedForLog } from '@/util/sanitize';
@@ -70,8 +78,8 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 /** HUD 延迟隐藏（手势结束后气泡停留时长） */
 const HUD_HIDE_DELAY_MS = 600;
 
-/** 控制层菜单显隐（三菜单互斥，none=全关） */
-type VisibleMenu = 'none' | 'subtitle' | 'audio' | 'resolution';
+/** 控制层菜单显隐（更多菜单与三子菜单互斥，none=全关） */
+type VisibleMenu = 'none' | 'more' | PlayerSubMenu;
 
 /**
  * 起播默认字幕策略（03 §4.8.3 + 04 §4.5 匹配定稿，仅首次起播/连播新集执行）：
@@ -136,6 +144,20 @@ export function PlayerScreen() {
   const [engineTextTracks, setEngineTextTracks] = useState<
     { index: number; title?: string; language?: string }[]
   >([]);
+  /** AB 循环区间（null=未设；bMs=null=仅 A 点）；按会话 ID 键控——换会话自然失效，ref 镜像供 handleProgress */
+  const [abLoopEntry, setAbLoopEntry] = useState<{ sessionId: string; loop: AbLoop } | null>(null);
+  const abLoopRef = useRef<{ sessionId: string; loop: AbLoop } | null>(null);
+  const abLoop =
+    abLoopEntry !== null && abLoopEntry.sessionId === session.playSessionId ? abLoopEntry.loop : null;
+  /** 画中画态（PiP 期间隐藏全部浮层；ref 供 AppState 后台守卫） */
+  const [isPip, setIsPip] = useState(false);
+  const pipRef = useRef(false);
+  /** 进 PiP 请求时刻：状态回调可能晚于 AppState background，宽限期内不暂停 */
+  const pipEnterAtRef = useRef(0);
+  /** 旋转切换：默认横屏（进页锁定），点按切竖屏锁 */
+  const [isPortrait, setIsPortrait] = useState(false);
+  /** 截图防重入（原生抓帧 + 入相册为异步链路） */
+  const snapshotBusyRef = useRef(false);
 
   // —— 进页初始化：store 会话 + 状态（首次起播：选中态重置 + 默认字幕选轨，03 §4.8.3）——
   useEffect(() => {
@@ -221,17 +243,28 @@ export function PlayerScreen() {
 
   // —— AppState：进后台 → 立即暂停并即时上报一次（设计文档 §7.2/§11）；回前台不自动恢复 ——
   // 暂停 ≠ 退出：不停会话（转码分片由服务器会话超时兜底，03 §4.6.3/§7 风险 8）
+  // PiP 例外：小窗仍可见，进后台不暂停；回前台按 store 重新对齐 native（PiP 窗内按钮只改 native 态）
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state !== 'background') {
+      const store = usePlayerStore.getState();
+      if (state === 'background') {
+        if (pipRef.current || Date.now() - pipEnterAtRef.current < 2000) {
+          return;
+        }
+        videoRef.current?.pause();
+        if (store.status === 'playing') {
+          store.setStatus('paused');
+          if (store.session !== null) {
+            progressRef.current.notifyPaused(store.session, store.positionMs);
+          }
+        }
         return;
       }
-      const store = usePlayerStore.getState();
-      videoRef.current?.pause();
-      if (store.status === 'playing') {
-        store.setStatus('paused');
-        if (store.session !== null) {
-          progressRef.current.notifyPaused(store.session, store.positionMs);
+      if (state === 'active') {
+        if (store.status === 'playing') {
+          videoRef.current?.resume();
+        } else if (store.status === 'paused') {
+          videoRef.current?.pause();
         }
       }
     });
@@ -278,6 +311,20 @@ export function PlayerScreen() {
     store.updateProgress(position, buffered, duration);
     if (store.session !== null) {
       progressRef.current.notifyProgress(store.session, position, store.status !== 'playing');
+    }
+    // AB 循环：到达 B 点回跳 A（ref 镜像避免回调重建；会话 ID 不符视为已失效）
+    const loopEntry = abLoopRef.current;
+    const loop =
+      loopEntry !== null && loopEntry.sessionId === store.session?.playSessionId
+        ? loopEntry.loop
+        : null;
+    const loopTarget = abLoopSeekTarget(loop, position);
+    if (loopTarget !== null) {
+      videoRef.current?.seek(loopTarget / 1000);
+      store.updateProgress(loopTarget, buffered, duration);
+      if (store.session !== null) {
+        progressRef.current.notifySeek(store.session, loopTarget);
+      }
     }
   }, []);
 
@@ -366,6 +413,85 @@ export function PlayerScreen() {
       progressRef.current.notifySeek(store.session, targetMs);
     }
   }, []);
+
+  // —— AB 循环三态按钮（设 A → 设 B → 清除）；越 B 回 A 判定在 handleProgress ——
+  const handleAbLoop = useCallback(() => {
+    const store = usePlayerStore.getState();
+    const sessionId = store.session?.playSessionId ?? initialSession.playSessionId;
+    const entry = abLoopRef.current;
+    const current = entry !== null && entry.sessionId === sessionId ? entry.loop : null;
+    const next = advanceAbLoop(current, store.positionMs);
+    const nextEntry = next === null ? null : { sessionId, loop: next };
+    abLoopRef.current = nextEntry;
+    setAbLoopEntry(nextEntry);
+    if (next === null) {
+      showToast(tr('player.abLoopCleared'), 'info');
+    } else if (next.bMs === null) {
+      showToast(tr('player.abLoopSetA', { time: formatClock(next.aMs) }), 'info');
+    } else {
+      showToast(tr('player.abLoopActive', { a: formatClock(next.aMs), b: formatClock(next.bMs) }), 'info');
+    }
+  }, [tr, initialSession.playSessionId]);
+
+  // —— 画中画：原生 enterPictureInPicture；浮层显隐随状态回调 ——
+  const handleEnterPip = useCallback(() => {
+    pipEnterAtRef.current = Date.now();
+    videoRef.current?.enterPictureInPicture();
+  }, []);
+
+  const handlePipStatus = useCallback((data: { isActive: boolean }) => {
+    pipRef.current = data.isActive;
+    setIsPip(data.isActive);
+    // 退出 PiP：native 可能以旧 startPosition 重建 surface，seek 回 store 当前进度防回退
+    if (!data.isActive) {
+      videoRef.current?.seek(usePlayerStore.getState().positionMs / 1000);
+    }
+  }, []);
+
+  // —— 旋转切换：横屏/竖屏锁互切（退出播放页由 focus 清理恢复跟随系统） ——
+  const handleRotate = useCallback(() => {
+    const next = !isPortrait;
+    setIsPortrait(next);
+    void ScreenOrientation.lockAsync(
+      next
+        ? ScreenOrientation.OrientationLock.PORTRAIT
+        : ScreenOrientation.OrientationLock.LANDSCAPE
+    ).catch(() => {
+      // 锁屏失败（个别 ROM）静默
+    });
+  }, [isPortrait]);
+
+  // —— 截图：原生抓帧 → 入系统相册 → 删临时文件；反馈同照片保存口径 ——
+  const handleSnapshot = useCallback(() => {
+    if (snapshotBusyRef.current) {
+      return;
+    }
+    snapshotBusyRef.current = true;
+    void (async () => {
+      let fileUri: string | null = null;
+      try {
+        const path = await PlayerSnapshot.capture();
+        fileUri = path.startsWith('file://') ? path : `file://${path}`;
+        await photoService.saveFileToGallery(fileUri, false);
+        showToast(tr('player.snapshotSaved'), 'info');
+      } catch (err) {
+        const code = (err as { code?: string }).code;
+        showToast(
+          errorMessageOf(
+            code === 'PHOTO_SAVE_PERMISSION_DENIED' ? 'PHOTO_SAVE_PERMISSION_DENIED' : 'PHOTO_SAVE_FAILED'
+          ),
+          'error'
+        );
+      } finally {
+        snapshotBusyRef.current = false;
+        if (fileUri !== null) {
+          void FileSystem.deleteAsync(fileUri, { idempotent: true }).catch(() => {
+            // 临时文件清理失败静默（cacheDir 系统可回收）
+          });
+        }
+      }
+    })();
+  }, [tr]);
 
   const showHud = useCallback((next: HudState) => {
     setHud(next);
@@ -770,111 +896,127 @@ export function PlayerScreen() {
         onProgress={handleProgress}
         onEnd={handleEnd}
         onError={handleError}
+        onPictureInPictureStatusChanged={handlePipStatus}
       />
-      {/* 手势层：锁屏或控制层可见时仅保留单击（拖动手势集中在 SeekBar，避免双重 seek） */}
-      <GestureLayer
-        isLocked={isLocked}
-        gesturesEnabled={!controlsVisible}
-        screenWidth={screenWidth}
-        screenHeight={screenHeight}
-        brightnessSV={brightnessSV}
-        volumeSV={volumeSV}
-        seekStartMsSV={seekStartMsSV}
-        seekTargetMsSV={seekTargetMsSV}
-        durationMs={durationMs}
-        seekFullWidthSeconds={SEEK_FULL_WIDTH_SECONDS}
-        onTap={handleTap}
-        onGestureValueChange={handleGestureValueChange}
-        onGestureEnd={hideHudLater}
-        onSeekBegin={handleSeekBegin}
-        onSeekPreview={handleSeekPreview}
-        onSeekCommit={handleSeekCommit}
-      />
-      {/* 锁屏态：单击呼出解锁按钮（02 §4.12「锁屏时单击仅显示解锁按钮」），数秒无操作自动隐藏 */}
-      {isLocked && unlockVisible && (
-        <View style={styles.lockBar} pointerEvents="box-none">
-          <Pressable
-            style={styles.unlockButton}
-            onPress={toggleLock}
-            accessibilityLabel={tr('player.unlock')}
-          >
-            <AppIcon name="unlock" size={16} color={COLORS.textPrimary} />
-            <Text style={styles.unlockText}>{tr('player.unlock')}</Text>
-          </Pressable>
-        </View>
-      )}
-      {/* 控制层（未锁屏且可见时；本地会话隐藏分辨率按钮，06 §4.4.2） */}
-      {!isLocked && controlsVisible && (
-        <ControlOverlay
-          title={session.name ?? ''}
-          isPlaying={isPlaying}
-          positionMs={positionMs}
-          bufferedMs={bufferedMs}
-          durationMs={durationMs}
-          onExit={exitPlayer}
-          onToggleLock={toggleLock}
-          onTogglePlay={togglePlay}
-          onSeek={seekTo}
-          onOpenSubtitleMenu={() => setVisibleMenu('subtitle')}
-          onOpenAudioTrackMenu={() => setVisibleMenu('audio')}
-          onOpenResolutionMenu={() => setVisibleMenu('resolution')}
-          showResolution={!isLocalSession && session.playMethod === 'Transcode'}
-        />
-      )}
-      {/* 三菜单（互斥；isRestartingSession 期间由下方浮层整体遮挡） */}
-      {visibleMenu === 'subtitle' && (
-        <SubtitleMenu
-          tracks={localSubtitleTracks}
-          activeStreamIndex={activeSubtitleStreamIndex}
-          onSelect={handleSubtitleSelect}
-          onClose={() => setVisibleMenu('none')}
-        />
-      )}
-      {visibleMenu === 'audio' && (
-        <AudioTrackMenu
-          tracks={localAudioTracks}
-          activeStreamIndex={activeAudioStreamIndex}
-          onSelect={handleAudioSelect}
-          onClose={() => setVisibleMenu('none')}
-        />
-      )}
-      {visibleMenu === 'resolution' && (
-        <ResolutionMenu
-          activeTier={activeResolutionTier}
-          sourceHeight={session.sourceHeight}
-          cellularForced={cellularForced}
-          onSelect={handleResolutionSelect}
-          onClose={() => setVisibleMenu('none')}
-        />
-      )}
-      <GestureHud hud={hud} />
-      {/* 会话重启浮层（03 §4.8.1：屏蔽重复点击，onLoad 后由 endRestart 收起） */}
-      <SessionRestartOverlay />
-      {/* 加载态（重启浮层自带转圈与文案，同时成立时避免叠出两个圈） */}
-      {status === 'loading' && !isRestartingSession && (
-        <View style={styles.centerLayer} pointerEvents="none">
-          <ActivityIndicator color={immersiveAccent.accent} size="large" />
-        </View>
-      )}
-      {/* 错误态 + 重试（02 §4.14：从出错位置继续而非从头；转码文案区分，03 §4.11） */}
-      {status === 'error' && (
-        <View style={styles.errorLayer}>
-          <Text style={styles.errorText}>
-            {session.playMethod === 'Transcode'
-              ? tr('player.errorTranscode')
-              : tr('player.errorPlayback')}
-          </Text>
-          <Pressable style={[styles.retryButton, { backgroundColor: immersiveAccent.accent }]} onPress={retry}>
-            <Text style={[styles.retryText, { color: immersiveAccent.accentOn }]}>
-              {tr('common.retry')}
-            </Text>
-          </Pressable>
-          <Pressable style={[styles.retryButton, { backgroundColor: immersiveAccent.accent }]} onPress={exitPlayer}>
-            <Text style={[styles.retryText, { color: immersiveAccent.accentOn }]}>
-              {tr('player.exitPlayback')}
-            </Text>
-          </Pressable>
-        </View>
+      {/* PiP 期间只留视频本体（系统小窗不叠自绘浮层） */}
+      {!isPip && (
+        <>
+          {/* 手势层：锁屏或控制层可见时仅保留单击（拖动手势集中在 SeekBar，避免双重 seek） */}
+          <GestureLayer
+            isLocked={isLocked}
+            gesturesEnabled={!controlsVisible}
+            screenWidth={screenWidth}
+            screenHeight={screenHeight}
+            brightnessSV={brightnessSV}
+            volumeSV={volumeSV}
+            seekStartMsSV={seekStartMsSV}
+            seekTargetMsSV={seekTargetMsSV}
+            durationMs={durationMs}
+            seekFullWidthSeconds={SEEK_FULL_WIDTH_SECONDS}
+            onTap={handleTap}
+            onGestureValueChange={handleGestureValueChange}
+            onGestureEnd={hideHudLater}
+            onSeekBegin={handleSeekBegin}
+            onSeekPreview={handleSeekPreview}
+            onSeekCommit={handleSeekCommit}
+          />
+          {/* 锁屏态：单击呼出解锁按钮（02 §4.12「锁屏时单击仅显示解锁按钮」），数秒无操作自动隐藏 */}
+          {isLocked && unlockVisible && (
+            <View style={styles.lockBar} pointerEvents="box-none">
+              <Pressable
+                style={styles.unlockButton}
+                onPress={toggleLock}
+                accessibilityLabel={tr('player.unlock')}
+              >
+                <AppIcon name="unlock" size={16} color={COLORS.textPrimary} />
+                <Text style={styles.unlockText}>{tr('player.unlock')}</Text>
+              </Pressable>
+            </View>
+          )}
+          {/* 控制层（未锁屏且可见时；字幕/音轨/分辨率入口收进更多菜单） */}
+          {!isLocked && controlsVisible && (
+            <ControlOverlay
+              title={session.name ?? ''}
+              isPlaying={isPlaying}
+              positionMs={positionMs}
+              bufferedMs={bufferedMs}
+              durationMs={durationMs}
+              abLoopState={abLoop === null ? 'none' : abLoop.bMs === null ? 'a' : 'active'}
+              onExit={exitPlayer}
+              onToggleLock={toggleLock}
+              onTogglePlay={togglePlay}
+              onSeek={seekTo}
+              onOpenMoreMenu={() => setVisibleMenu('more')}
+              onEnterPip={handleEnterPip}
+              onAbLoop={handleAbLoop}
+              onSnapshot={handleSnapshot}
+              onRotate={handleRotate}
+            />
+          )}
+          {/* 更多菜单（收纳字幕/音轨/转码分辨率三入口） */}
+          {visibleMenu === 'more' && (
+            <PlayerMoreMenu
+              showResolution={!isLocalSession && session.playMethod === 'Transcode'}
+              onSelect={(menu) => setVisibleMenu(menu)}
+              onClose={() => setVisibleMenu('none')}
+            />
+          )}
+          {/* 三菜单（互斥；isRestartingSession 期间由下方浮层整体遮挡） */}
+          {visibleMenu === 'subtitle' && (
+            <SubtitleMenu
+              tracks={localSubtitleTracks}
+              activeStreamIndex={activeSubtitleStreamIndex}
+              onSelect={handleSubtitleSelect}
+              onClose={() => setVisibleMenu('none')}
+            />
+          )}
+          {visibleMenu === 'audio' && (
+            <AudioTrackMenu
+              tracks={localAudioTracks}
+              activeStreamIndex={activeAudioStreamIndex}
+              onSelect={handleAudioSelect}
+              onClose={() => setVisibleMenu('none')}
+            />
+          )}
+          {visibleMenu === 'resolution' && (
+            <ResolutionMenu
+              activeTier={activeResolutionTier}
+              sourceHeight={session.sourceHeight}
+              cellularForced={cellularForced}
+              onSelect={handleResolutionSelect}
+              onClose={() => setVisibleMenu('none')}
+            />
+          )}
+          <GestureHud hud={hud} />
+          {/* 会话重启浮层（03 §4.8.1：屏蔽重复点击，onLoad 后由 endRestart 收起） */}
+          <SessionRestartOverlay />
+          {/* 加载态（重启浮层自带转圈与文案，同时成立时避免叠出两个圈） */}
+          {status === 'loading' && !isRestartingSession && (
+            <View style={styles.centerLayer} pointerEvents="none">
+              <ActivityIndicator color={immersiveAccent.accent} size="large" />
+            </View>
+          )}
+          {/* 错误态 + 重试（02 §4.14：从出错位置继续而非从头；转码文案区分，03 §4.11） */}
+          {status === 'error' && (
+            <View style={styles.errorLayer}>
+              <Text style={styles.errorText}>
+                {session.playMethod === 'Transcode'
+                  ? tr('player.errorTranscode')
+                  : tr('player.errorPlayback')}
+              </Text>
+              <Pressable style={[styles.retryButton, { backgroundColor: immersiveAccent.accent }]} onPress={retry}>
+                <Text style={[styles.retryText, { color: immersiveAccent.accentOn }]}>
+                  {tr('common.retry')}
+                </Text>
+              </Pressable>
+              <Pressable style={[styles.retryButton, { backgroundColor: immersiveAccent.accent }]} onPress={exitPlayer}>
+                <Text style={[styles.retryText, { color: immersiveAccent.accentOn }]}>
+                  {tr('player.exitPlayback')}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+        </>
       )}
     </View>
   );
@@ -884,8 +1026,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000000' },
   lockBar: {
     position: 'absolute',
-    top: SPACING.xl,
-    left: SPACING.xl,
+    top: '50%',
+    marginTop: -18,
+    left: SPACING.l,
   },
   unlockButton: {
     backgroundColor: 'rgba(0,0,0,0.6)',

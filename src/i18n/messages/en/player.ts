@@ -22,6 +22,15 @@ export const enPlayer: Record<PlayerMessageKey, Message> = {
   'player.currentBadge': 'Current',
   'player.collapse': 'Collapse',
   'player.cellularForced': 'Cellular · auto-downgraded to 480p',
+  'player.moreMenu': 'More',
+  'player.pip': 'Picture in picture',
+  'player.abLoop': 'A-B repeat',
+  'player.abLoopSetA': 'Point A set at {time}; tap again to set B',
+  'player.abLoopActive': 'A-B repeat {a} – {b}',
+  'player.abLoopCleared': 'A-B repeat cleared',
+  'player.snapshot': 'Snapshot',
+  'player.snapshotSaved': 'Snapshot saved to gallery',
+  'player.rotate': 'Rotate screen',
 
   // —— Player states, errors and hints ——
   'player.errorTranscode': 'Transcode playback failed. Please try again',

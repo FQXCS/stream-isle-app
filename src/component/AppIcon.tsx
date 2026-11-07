@@ -3,7 +3,8 @@
  * 业务组件不要直接 import 图标族；新增图标扩展 AppIconName 与 GLYPH_MAP。
  * 图标按模块按需引入（Phosphor 全量 1500+，避免 Metro 把整包打进 bundle）。
  */
-import type { Icon, IconWeight } from 'phosphor-react-native';
+import type { Icon, IconProps, IconWeight } from 'phosphor-react-native';
+import Svg, { Circle, Path, Text as SvgText } from 'react-native-svg';
 import { ArrowClockwise } from 'phosphor-react-native/src/icons/ArrowClockwise';
 import { ArrowDown } from 'phosphor-react-native/src/icons/ArrowDown';
 import { ArrowLeft } from 'phosphor-react-native/src/icons/ArrowLeft';
@@ -21,6 +22,7 @@ import { CaretUp } from 'phosphor-react-native/src/icons/CaretUp';
 import { Check } from 'phosphor-react-native/src/icons/Check';
 import { CircleIcon } from 'phosphor-react-native/src/icons/Circle';
 import { ClockCounterClockwise } from 'phosphor-react-native/src/icons/ClockCounterClockwise';
+import { DeviceRotate } from 'phosphor-react-native/src/icons/DeviceRotate';
 import { DotsSixVertical } from 'phosphor-react-native/src/icons/DotsSixVertical';
 import { DotsThree } from 'phosphor-react-native/src/icons/DotsThree';
 import { DownloadSimple } from 'phosphor-react-native/src/icons/DownloadSimple';
@@ -40,6 +42,7 @@ import { HardDrives } from 'phosphor-react-native/src/icons/HardDrives';
 import { Headphones } from 'phosphor-react-native/src/icons/Headphones';
 import { Heart } from 'phosphor-react-native/src/icons/Heart';
 import { House } from 'phosphor-react-native/src/icons/House';
+import { Image } from 'phosphor-react-native/src/icons/Image';
 import { Images } from 'phosphor-react-native/src/icons/Images';
 import { Info } from 'phosphor-react-native/src/icons/Info';
 import { ListPlus } from 'phosphor-react-native/src/icons/ListPlus';
@@ -51,6 +54,7 @@ import { MusicNotes } from 'phosphor-react-native/src/icons/MusicNotes';
 import { Package } from 'phosphor-react-native/src/icons/Package';
 import { Pause } from 'phosphor-react-native/src/icons/Pause';
 import { PencilSimple } from 'phosphor-react-native/src/icons/PencilSimple';
+import { PictureInPicture } from 'phosphor-react-native/src/icons/PictureInPicture';
 import { Play } from 'phosphor-react-native/src/icons/Play';
 import { Plus } from 'phosphor-react-native/src/icons/Plus';
 import { Queue } from 'phosphor-react-native/src/icons/Queue';
@@ -126,6 +130,11 @@ export type AppIconName =
   | 'volume'
   | 'lock'
   | 'unlock'
+  | 'pip'
+  | 'rotate'
+  | 'snapshot'
+  | 'moreGrid'
+  | 'abLoop'
   // 媒体 / 操作
   | 'heart'
   | 'heartOutline'
@@ -158,6 +167,33 @@ export type AppIconName =
 interface GlyphSpec {
   Glyph: Icon;
   weight?: IconWeight;
+}
+
+/** 图标库无匹配（Phosphor 无 2x2 四点），自绘注册 AppIcon：播放页右上「更多」 */
+function MoreGridGlyph({ size = 24, color = '#FFFFFF' }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx="7.5" cy="7.5" r="2.5" fill={color} />
+      <Circle cx="16.5" cy="7.5" r="2.5" fill={color} />
+      <Circle cx="7.5" cy="16.5" r="2.5" fill={color} />
+      <Circle cx="16.5" cy="16.5" r="2.5" fill={color} />
+    </Svg>
+  );
+}
+
+/** 图标库无匹配（Phosphor 无 AB 循环），自绘注册 AppIcon：AB 字母 + 上下循环箭头 */
+function AbLoopGlyph({ size = 24, color = '#FFFFFF' }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M4 9a8 8 0 0 1 14-3" stroke={color} strokeWidth={1.8} fill="none" strokeLinecap="round" />
+      <Path d="M18 2.5v4h-4" stroke={color} strokeWidth={1.8} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M20 15a8 8 0 0 1-14 3" stroke={color} strokeWidth={1.8} fill="none" strokeLinecap="round" />
+      <Path d="M6 21.5v-4h4" stroke={color} strokeWidth={1.8} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <SvgText x="12" y="14.5" textAnchor="middle" fontSize="8" fontWeight="700" fill={color}>
+        AB
+      </SvgText>
+    </Svg>
+  );
 }
 
 const GLYPH_MAP: Record<AppIconName, GlyphSpec> = {
@@ -208,6 +244,11 @@ const GLYPH_MAP: Record<AppIconName, GlyphSpec> = {
   volume: { Glyph: SpeakerHigh },
   lock: { Glyph: LockSimple },
   unlock: { Glyph: LockSimpleOpen },
+  pip: { Glyph: PictureInPicture },
+  rotate: { Glyph: DeviceRotate },
+  snapshot: { Glyph: Image },
+  moreGrid: { Glyph: MoreGridGlyph },
+  abLoop: { Glyph: AbLoopGlyph },
   heart: { Glyph: Heart, weight: 'fill' },
   heartOutline: { Glyph: Heart },
   flag: { Glyph: Flag, weight: 'fill' },
