@@ -16,7 +16,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Expo SDK 58 要求 Node >= 22.13，与 mobile-ci.yml 保持一致
+          node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
 

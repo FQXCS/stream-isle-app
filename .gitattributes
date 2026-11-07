@@ -1,0 +1,5 @@
+# expo prebuild 重放文件：固定换行符口径，避免 Windows（core.autocrlf）提交与
+# Linux CI prebuild 产物之间的换行符假漂移；gradlew 的可执行位由 git 索引记录为 755
+.gitattributes text eol=lf
+android/gradlew text eol=lf
+android/gradlew.bat text eol=crlf
