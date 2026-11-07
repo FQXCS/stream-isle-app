@@ -23,6 +23,7 @@ import {
   COLLECTION_TYPE_MAP,
   HOME_ROW_LIMIT,
   INCLUDE_ITEM_TYPES_BY_LIBRARY,
+  LATEST_WINDOW_DAYS,
   PAGE_SIZE,
 } from '@/constant/browse';
 import { PHOTO_PAGE_SIZE } from '@/constant/photo';
@@ -1180,15 +1181,19 @@ export abstract class BaseAdapter implements ServerAdapter {
   /**
    * 最新添加（首页「最近添加」行，电影/剧集）：GET /Users/{uid}/Items
    * ?SortBy=DateCreated&SortOrder=Descending&IncludeItemTypes=Movie,Series&Recursive=true
+   * 只收录最近 LATEST_WINDOW_DAYS 天入库的条目，排序仍按 DateCreated 降序。
    * （parentId 传入时限定库；limit 缺省首页行长度）。
-   * 媒体库融合页每库行按库类型取不同类型，见 getLatestByTypes。
+   * 媒体库融合页每库行按库类型取不同类型，见 getLatestByTypes（不设时间窗）。
    */
   async getLatest(
     userId: string,
     parentId?: string,
     limit: number = HOME_ROW_LIMIT
   ): Promise<MediaLibraryItem[]> {
-    return this.getLatestByTypes(userId, parentId, 'Movie,Series', limit);
+    const sinceIso = new Date(
+      Date.now() - LATEST_WINDOW_DAYS * 24 * 60 * 60 * 1000
+    ).toISOString();
+    return this.getLatestByTypes(userId, parentId, 'Movie,Series', limit, undefined, sinceIso);
   }
 
   /**
@@ -1196,13 +1201,16 @@ export abstract class BaseAdapter implements ServerAdapter {
    * ?ParentId=…&IncludeItemTypes=…&Filters=…&SortBy=DateCreated&SortOrder=Descending&Limit=…
    * 类型与筛选来自库的默认 Tab（resolveLibraryLatestQuery）；类型决定卡片图幅：
    * 单集/家庭视频为 16:9 剧照、电影/剧集为 2:3 海报、专辑为 1:1 封面。
+   * sinceIso 传入时只收录该时间之后入库的条目。时间窗用 MinDateLastSavedForUser：
+   * Emby/Jellyfin 均支持，且避开 Jellyfin 10.8/10.9 对 MinDateLastSaved 的参数绑定缺陷。
    */
   async getLatestByTypes(
     userId: string,
     parentId: string | undefined,
     includeItemTypes: string,
     limit: number,
-    filters?: readonly ItemFilterEnum[]
+    filters?: readonly ItemFilterEnum[],
+    sinceIso?: string
   ): Promise<MediaLibraryItem[]> {
     const data = await this.api.request<ItemsResponse>({
       method: 'GET',
@@ -1215,6 +1223,7 @@ export abstract class BaseAdapter implements ServerAdapter {
           SortBy: 'DateCreated',
           SortOrder: 'Descending',
           Limit: String(limit),
+          MinDateLastSavedForUser: sinceIso,
           Fields: 'PrimaryImageAspectRatio',
           ImageTypeLimit: '1',
         })}`

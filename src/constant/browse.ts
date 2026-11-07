@@ -10,6 +10,9 @@ export const PAGE_SIZE = 40;
 /** 首页三区横向卡片行长度（继续观看/下一集/最新添加共用，04 §3） */
 export const HOME_ROW_LIMIT = 12;
 
+/** 首页「最近添加」时间窗（天）：只收录最近 7 天入库的条目，排序仍按 DateCreated 降序 */
+export const LATEST_WINDOW_DAYS = 7;
+
 /** 媒体库融合页「我的媒体」下方每库横向行长度（每库最新添加前 20 条） */
 export const LIBRARY_ROW_LIMIT = 20;
 

@@ -31,16 +31,25 @@ describe('adapter 首页三区（04 §3 认领补齐）', () => {
     expect(req.url).toContain(`Limit=${HOME_ROW_LIMIT}`);
   });
 
-  it('getLatest：SortBy=DateCreated 降序 + Movie,Series（parentId 透传）', async () => {
-    const { adapter, api } = makeAdapter([{ Items: [], TotalRecordCount: 0 }]);
-    await adapter.getLatest('u1', 'lib1');
-    const req = api.request.mock.calls[0][0];
-    expect(req.url).toContain('/Users/u1/Items?');
-    expect(req.url).toContain('ParentId=lib1');
-    expect(req.url).toContain('IncludeItemTypes=Movie%2CSeries');
-    expect(req.url).toContain('SortBy=DateCreated');
-    expect(req.url).toContain('SortOrder=Descending');
-    expect(req.url).toContain(`Limit=${HOME_ROW_LIMIT}`);
+  it('getLatest：MinDateLastSavedForUser 限定最近 7 天 + DateCreated 降序 + Movie,Series（parentId 透传）', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-11-06T12:00:00Z'));
+    try {
+      const { adapter, api } = makeAdapter([{ Items: [], TotalRecordCount: 0 }]);
+      await adapter.getLatest('u1', 'lib1');
+      const req = api.request.mock.calls[0][0];
+      const url = new URL(req.url as string);
+      expect(url.pathname).toBe('/Users/u1/Items');
+      expect(url.searchParams.get('ParentId')).toBe('lib1');
+      expect(url.searchParams.get('IncludeItemTypes')).toBe('Movie,Series');
+      expect(url.searchParams.get('SortBy')).toBe('DateCreated');
+      expect(url.searchParams.get('SortOrder')).toBe('Descending');
+      expect(url.searchParams.get('Limit')).toBe(String(HOME_ROW_LIMIT));
+      // 时间窗 = 当前时间 - 7 天（排序字段保持 DateCreated，不受时间窗影响）
+      expect(url.searchParams.get('MinDateLastSavedForUser')).toBe('2026-10-30T12:00:00.000Z');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('getLatest：limit 透传（媒体库融合页每库行 20 条）', async () => {
@@ -50,7 +59,7 @@ describe('adapter 首页三区（04 §3 认领补齐）', () => {
     expect(req.url).toContain(`Limit=${LIBRARY_ROW_LIMIT}`);
   });
 
-  it('getLatestByTypes：按库类型取条目类型（剧集库取单集，16:9 剧照口径）', async () => {
+  it('getLatestByTypes：按库类型取条目类型（剧集库取单集，16:9 剧照口径；不设时间窗）', async () => {
     const { adapter, api } = makeAdapter([{ Items: [], TotalRecordCount: 0 }]);
     await adapter.getLatestByTypes('u1', 'lib2', 'Episode', LIBRARY_ROW_LIMIT);
     const req = api.request.mock.calls[0][0];
@@ -59,6 +68,7 @@ describe('adapter 首页三区（04 §3 认领补齐）', () => {
     expect(req.url).toContain('IncludeItemTypes=Episode');
     expect(req.url).toContain('SortBy=DateCreated');
     expect(req.url).toContain(`Limit=${LIBRARY_ROW_LIMIT}`);
+    expect(req.url).not.toContain('MinDateLastSavedForUser');
   });
 
   it('getLatestByTypes：Filters 透传（默认 Tab 带收藏/未看筛选时）', async () => {

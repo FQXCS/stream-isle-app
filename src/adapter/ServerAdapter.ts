@@ -71,19 +71,24 @@ export interface ServerAdapter {
   /** 首页继续观看：类型由设置页多选（默认 Movie,Episode,Video） */
   getResume(userId: string, includeItemTypes: readonly MediaItemTypeEnum[]): Promise<MediaLibraryItem[]>;
 
-  /** 最新添加（parentId 限定库；limit 缺省首页行长度，媒体库融合页每库行传 20） */
+  /**
+   * 最新添加（首页「最近添加」行只收录近 LATEST_WINDOW_DAYS 天入库条目；
+   * parentId 限定库；limit 缺省首页行长度，媒体库融合页每库行传 20）
+   */
   getLatest(userId: string, parentId?: string, limit?: number): Promise<MediaLibraryItem[]>;
 
   /**
    * 指定条目类型的最新添加（媒体库融合页每库行）：类型与筛选来自该库默认 Tab
    * （见 resolveLibraryLatestQuery）；类型组合由 Tab 配置决定。
+   * sinceIso 传入时只收录该时间之后入库的条目（首页最近添加时间窗使用）。
    */
   getLatestByTypes(
     userId: string,
     parentId: string | undefined,
     includeItemTypes: string,
     limit: number,
-    filters?: readonly ItemFilterEnum[]
+    filters?: readonly ItemFilterEnum[],
+    sinceIso?: string
   ): Promise<MediaLibraryItem[]>;
 
   getSimilar(userId: string, itemId: string): Promise<MediaLibraryItem[]>;
