@@ -2,7 +2,7 @@
 
 仅 Android 的 **Emby / Jellyfin 通用客户端**。大图沉浸式浏览、直连优先 / 自动转码播放；差异化补齐 **音乐、照片与图书（PDF）阅读**。一套代码兼容 Jellyfin Server 10.8+ 与 Emby Server 4.7+，服务器类型自动探测，用户无感知。
 
-当前版本 `0.1.0`，已完成 MVP 与 P1 功能（连接浏览、转码字幕、搜索收藏、照片音乐、离线下载、Quick Connect、发布工程）以及图书阅读、库页 Tab / 排序配置等后续迭代。
+当前版本 `1.0.0`，已完成 MVP 与 P1 功能（连接浏览、转码字幕、搜索收藏、照片音乐、离线下载、Quick Connect、发布工程）以及图书阅读、库页 Tab / 排序配置等后续迭代。
 
 ## 功能特性
 
@@ -108,7 +108,7 @@ Jellyfin / Emby Server
 ## 快速开始
 
 ```bash
-# 1. 安装依赖（postinstall 会自动执行 patch-package）
+# 1. 安装依赖
 npm install
 
 # 2. 生成原生工程（android/ 已入库，但配置变更后需重放；同时装配本地原生模块与 PDF 资产）
@@ -121,7 +121,7 @@ npx expo run:android
 注意事项：
 
 - **不支持 Expo Go**：项目包含本地原生模块与自定义播放器，必须使用本地构建的开发版。
-- `android/gradle.properties` 中固定了开发机的 JDK 路径 `org.gradle.java.home=E:/Java/jdk-21.0.10`，在别的机器上请改为本机 JDK 21 路径。
+- 本地构建 JDK 21：Gradle 9 launcher 只认环境变量，CLI 构建需带 `JAVA_HOME=<本机 JDK 21 路径>` 前缀（本机为 `D:/Java/jdk-21.0.10`）；Android Studio 构建走 IDE 自身 JDK；仓库不含 pin，CI 不受影响。
 - 修改 `app.config.ts` 或 `plugins/` 后需重新 prebuild；不要手改由插件生成的 `android/` 文件，否则 CI 的零漂移检查会失败。
 - **模拟器连接服务器**：Android 模拟器内的 `localhost` 指向模拟器自身，宿主机服务请填 `http://10.0.2.2:8096/`；真机使用局域网 IP。
 - 本项目本地联调环境为 Emby `RYM 4.10.2.0`（`http://localhost:8096/`，本地测试账号 `test / 123456`）。
