@@ -27,6 +27,14 @@ jobs:
           # jlink 处理（JDK 17 实测 JdkImageTransform 失败，见 docs/07-实施决策记录.md）
           java-version: 21
 
+      - name: 释放 Runner 磁盘空间
+        # 原生构建曾写满 runner 磁盘并报 LLVM: No space left on device；
+        # 清理与 Android 构建无关的预装组件（.NET / GHC / Boost / CodeQL / 模拟器系统镜像）
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost \
+            /opt/hostedtoolcache/CodeQL /usr/local/lib/android/sdk/system-images
+          df -h /
+
       - name: 安装依赖
         run: npm ci
 
@@ -48,4 +56,6 @@ jobs:
             echo "::error::expo prebuild 产物与入库 android/ 存在漂移——请本地跑 npx expo prebuild -p android 后提交更新（勿手改 android/ 内由 plugin 驱动的文件）"
             exit 1
           fi
-          cd android && ./gradlew assembleDebug
+          # CI 仅构建 arm64-v8a：4 ABI 原生构建会耗尽 runner 磁盘且耗时 40+ 分钟；
+          # debug 构建只作编译门禁，发布包仍由 mobile-release 构建全 ABI
+          cd android && ./gradlew assembleDebug -PreactNativeArchitectures=arm64-v8a
