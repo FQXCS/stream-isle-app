@@ -3,6 +3,8 @@
 buildscript {
   repositories {
     google()
+    // 国内网络镜像：阿里云优先（Central 实测仅 ~7KB/s 会超时），Maven Central 兜底
+    maven { url 'https://maven.aliyun.com/repository/public' }
     mavenCentral()
   }
   dependencies {
@@ -16,6 +18,8 @@ buildscript {
 allprojects {
   repositories {
     google()
+    // 国内网络镜像：阿里云优先（Central 实测仅 ~7KB/s 会超时），Maven Central 兜底
+    maven { url 'https://maven.aliyun.com/repository/public' }
     mavenCentral()
     maven { url 'https://www.jitpack.io' }
   }
