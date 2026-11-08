@@ -31,6 +31,13 @@ export const enPlayer: Record<PlayerMessageKey, Message> = {
   'player.snapshot': 'Snapshot',
   'player.snapshotSaved': 'Snapshot saved to gallery',
   'player.rotate': 'Rotate screen',
+  'player.speedMenu': 'Playback speed',
+  'player.tabVideo': 'Video',
+  'player.aspectTitle': 'Screen aspect ratio',
+  'player.aspectDefault': 'Default',
+  'player.aspectStretch': 'Stretch',
+  'player.aspectFill': 'Fill',
+  'player.primarySubtitle': 'Primary subtitles',
 
   // —— Player states, errors and hints ——
   'player.errorTranscode': 'Transcode playback failed. Please try again',

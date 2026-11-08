@@ -33,6 +33,13 @@ export const zhPlayer = {
   'player.snapshot': '截图',
   'player.snapshotSaved': '截图已保存到相册',
   'player.rotate': '旋转屏幕',
+  'player.speedMenu': '播放速度',
+  'player.tabVideo': '视频',
+  'player.aspectTitle': '屏幕宽高比',
+  'player.aspectDefault': '默认',
+  'player.aspectStretch': '拉伸',
+  'player.aspectFill': '填充',
+  'player.primarySubtitle': '主字幕',
 
   // —— 播放器状态、错误与提示 ——
   'player.errorTranscode': '转码播放失败，请重试',

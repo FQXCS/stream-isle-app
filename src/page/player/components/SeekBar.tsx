@@ -8,7 +8,7 @@
 import { useRef, useState } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS, useSharedValue } from 'react-native-reanimated';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 interface SeekBarProps {
   positionMs: number;
@@ -20,6 +20,8 @@ interface SeekBarProps {
   onSeek: (positionMs: number) => void;
   /** 轨道配色（默认沉浸白；无封面主题玻璃页传主题色，避免浅底白轨不可见） */
   palette?: SeekBarPalette;
+  /** AB 循环区间标记（圆环 + 字母，落在对应时间位置；不拦截手势） */
+  markers?: { label: string; positionMs: number }[];
 }
 
 /** 进度条四层配色（播放页默认白；NowPlaying 主题玻璃页传主题 token） */
@@ -44,6 +46,10 @@ const DEFAULT_PALETTE: SeekBarPalette = {
 const TRACK_HEIGHT = 4;
 const THUMB_SIZE = 14;
 const BAR_HEIGHT = 32;
+/** AB 标记圆环直径（大于拖动圆点，参考图口径） */
+const MARKER_SIZE = 22;
+/** AB 标记字母字号 */
+const MARKER_FONT_SIZE = 11;
 
 export function SeekBar({
   positionMs,
@@ -52,6 +58,7 @@ export function SeekBar({
   onPreview,
   onSeek,
   palette,
+  markers,
 }: SeekBarProps) {
   const trackPalette = palette ?? DEFAULT_PALETTE;
   // 拖动中的预览值（松手前不动真实进度）
@@ -135,6 +142,22 @@ export function SeekBar({
             { left: `${playedRatio * 100}%`, backgroundColor: trackPalette.thumb },
           ]}
         />
+        {/* AB 循环标记：圆环取已播色（主题色），字母同色；不拦截手势，拖动/点按不受影响 */}
+        {(markers ?? []).map((marker) => {
+          const ratio = durationMs > 0 ? Math.min(1, Math.max(0, marker.positionMs / durationMs)) : 0;
+          return (
+            <View
+              key={marker.label}
+              pointerEvents="none"
+              style={[
+                styles.marker,
+                { left: `${ratio * 100}%`, borderColor: trackPalette.played },
+              ]}
+            >
+              <Text style={[styles.markerText, { color: trackPalette.played }]}>{marker.label}</Text>
+            </View>
+          );
+        })}
       </View>
     </GestureDetector>
   );
@@ -175,4 +198,17 @@ const styles = StyleSheet.create({
     marginLeft: -THUMB_SIZE / 2,
     top: (BAR_HEIGHT - THUMB_SIZE) / 2,
   },
+  marker: {
+    position: 'absolute',
+    width: MARKER_SIZE,
+    height: MARKER_SIZE,
+    borderRadius: MARKER_SIZE / 2,
+    borderWidth: 2,
+    marginLeft: -MARKER_SIZE / 2,
+    top: (BAR_HEIGHT - MARKER_SIZE) / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  markerText: { fontSize: MARKER_FONT_SIZE, fontWeight: '700' },
 });

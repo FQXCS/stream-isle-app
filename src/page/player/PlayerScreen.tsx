@@ -52,14 +52,12 @@ import { useImmersiveAccent } from '@/component/useTheme';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
 import { useT } from '@/i18n';
 import { errorMessageOf } from '@/infra/error';
-import { AudioTrackMenu } from '@/page/player/components/AudioTrackMenu';
-import { ResolutionMenu } from '@/page/player/components/ResolutionMenu';
 import { ControlOverlay } from '@/page/player/components/ControlOverlay';
 import { GestureHud, type HudState } from '@/page/player/components/GestureHud';
 import { GestureLayer } from '@/page/player/components/GestureLayer';
-import { PlayerMoreMenu, type PlayerSubMenu } from '@/page/player/components/PlayerMoreMenu';
+import { PlayerSettingsDrawer } from '@/page/player/components/PlayerSettingsDrawer';
 import { SessionRestartOverlay } from '@/page/player/components/SessionRestartOverlay';
-import { SubtitleMenu } from '@/page/player/components/SubtitleMenu';
+import { SpeedMenu } from '@/page/player/components/SpeedMenu';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { photoService } from '@/service/PhotoService';
 import { ProgressService } from '@/service/ProgressService';
@@ -78,8 +76,8 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 /** HUD 延迟隐藏（手势结束后气泡停留时长） */
 const HUD_HIDE_DELAY_MS = 600;
 
-/** 控制层菜单显隐（更多菜单与三子菜单互斥，none=全关） */
-type VisibleMenu = 'none' | 'more' | PlayerSubMenu;
+/** 控制层菜单显隐（设置抽屉与倍速菜单互斥，none=全关） */
+type VisibleMenu = 'none' | 'more' | 'speed';
 
 /**
  * 起播默认字幕策略（03 §4.8.3 + 04 §4.5 匹配定稿，仅首次起播/连播新集执行）：
@@ -110,6 +108,8 @@ export function PlayerScreen() {
   const durationMs = usePlayerStore((state) => state.durationMs);
   const isLocked = usePlayerStore((state) => state.isLocked);
   const controlsVisible = usePlayerStore((state) => state.controlsVisible);
+  const playbackSpeed = usePlayerStore((state) => state.playbackSpeed);
+  const videoAspect = usePlayerStore((state) => state.videoAspect);
   const activeSubtitleStreamIndex = usePlayerStore((state) => state.activeSubtitleStreamIndex);
   const activeAudioStreamIndex = usePlayerStore((state) => state.activeAudioStreamIndex);
   // 会话重启中（SessionRestartOverlay 自行订阅渲染；本页用于重启结束后的网络补判）
@@ -616,7 +616,6 @@ export function PlayerScreen() {
   // 分辨率选择：先落盘（T4 依赖，唯一入口语义见 03 §4.8.1）再 switchResolution；直连仅提示
   const handleResolutionSelect = useCallback(
     (tier: ResolutionTierKey) => {
-      setVisibleMenu('none');
       // 手动选择优先于蜂窝自动降档（本次会话内保持）
       manualResolutionOverrideRef.current = true;
       useSettingsStore.getState().actions.setMaxResolutionTier(tier);
@@ -640,7 +639,6 @@ export function PlayerScreen() {
   // M6 本地会话（06 §4.4.2）：仅本地内嵌轨、不发任何服务器请求，纯客户端选中切换
   const handleSubtitleSelect = useCallback(
     (track: SubtitleTrack | null) => {
-      setVisibleMenu('none');
       const store = usePlayerStore.getState();
       if (store.session?.local === true) {
         store.setActiveSubtitle(track === null ? null : track.streamIndex);
@@ -661,7 +659,6 @@ export function PlayerScreen() {
   // M6 本地会话同直连（ExoPlayer 本地内嵌轨选择，纯客户端操作，06 §4.4.2）
   const handleAudioSelect = useCallback(
     (track: AudioTrack) => {
-      setVisibleMenu('none');
       const store = usePlayerStore.getState();
       if (store.session === null) {
         return;
@@ -775,6 +772,17 @@ export function PlayerScreen() {
   );
 
   const isPlaying = status === 'playing';
+  // 屏幕宽高比（设置抽屉视频页）：16:9/4:3 为居中定比盒内拉伸；其余全屏适配
+  const videoBox = useMemo(() => {
+    if (videoAspect !== '16:9' && videoAspect !== '4:3') {
+      return null;
+    }
+    const ratio = videoAspect === '16:9' ? 16 / 9 : 4 / 3;
+    const width = Math.min(screenWidth, screenHeight * ratio);
+    return { width, height: width / ratio };
+  }, [videoAspect, screenWidth, screenHeight]);
+  const videoResizeMode =
+    videoAspect === 'default' ? 'contain' : videoAspect === 'fill' ? 'cover' : 'stretch';
   // M6 本地会话（06 文档 §4.4.2 控制层降级）：字幕菜单仅本地内嵌轨、音轨菜单用引擎轨、分辨率按钮隐藏
   const isLocalSession = session.local === true;
   const localSubtitleTracks: SubtitleTrack[] = isLocalSession
@@ -882,22 +890,25 @@ export function PlayerScreen() {
 
   return (
     <View style={styles.container}>
-      <Video
-        ref={videoRef}
-        source={source}
-        style={StyleSheet.absoluteFill}
-        resizeMode="contain"
-        paused={status !== 'playing'}
-        progressUpdateInterval={500}
-        selectedTextTrack={selectedTextTrack}
-        selectedAudioTrack={selectedAudioTrack}
-        preventsDisplaySleepDuringVideoPlayback
-        onLoad={handleLoad}
-        onProgress={handleProgress}
-        onEnd={handleEnd}
-        onError={handleError}
-        onPictureInPictureStatusChanged={handlePipStatus}
-      />
+      <View style={styles.videoWrap} pointerEvents="none">
+        <Video
+          ref={videoRef}
+          source={source}
+          style={videoBox ?? StyleSheet.absoluteFill}
+          resizeMode={videoResizeMode}
+          paused={status !== 'playing'}
+          rate={playbackSpeed}
+          progressUpdateInterval={500}
+          selectedTextTrack={selectedTextTrack}
+          selectedAudioTrack={selectedAudioTrack}
+          preventsDisplaySleepDuringVideoPlayback
+          onLoad={handleLoad}
+          onProgress={handleProgress}
+          onEnd={handleEnd}
+          onError={handleError}
+          onPictureInPictureStatusChanged={handlePipStatus}
+        />
+      </View>
       {/* PiP 期间只留视频本体（系统小窗不叠自绘浮层） */}
       {!isPip && (
         <>
@@ -938,53 +949,52 @@ export function PlayerScreen() {
             <ControlOverlay
               title={session.name ?? ''}
               isPlaying={isPlaying}
+              isLocked={isLocked}
               positionMs={positionMs}
               bufferedMs={bufferedMs}
               durationMs={durationMs}
-              abLoopState={abLoop === null ? 'none' : abLoop.bMs === null ? 'a' : 'active'}
+              abLoop={abLoop}
+              playbackSpeed={playbackSpeed}
               onExit={exitPlayer}
               onToggleLock={toggleLock}
               onTogglePlay={togglePlay}
               onSeek={seekTo}
               onOpenMoreMenu={() => setVisibleMenu('more')}
+              onOpenSpeedMenu={() => setVisibleMenu('speed')}
               onEnterPip={handleEnterPip}
               onAbLoop={handleAbLoop}
               onSnapshot={handleSnapshot}
               onRotate={handleRotate}
             />
           )}
-          {/* 更多菜单（收纳字幕/音轨/转码分辨率三入口） */}
+          {/* 倍速菜单（底部 1.0X 按钮入口；选中即应用并关闭） */}
+          {visibleMenu === 'speed' && (
+            <SpeedMenu
+              current={playbackSpeed}
+              onSelect={(speed) => {
+                usePlayerStore.getState().setPlaybackSpeed(speed);
+                setVisibleMenu('none');
+              }}
+              onClose={() => setVisibleMenu('none')}
+            />
+          )}
+          {/* 设置抽屉（右上更多入口；视频/音频/字幕三页签，分辨率并入视频页） */}
           {visibleMenu === 'more' && (
-            <PlayerMoreMenu
+            <PlayerSettingsDrawer
+              onClose={() => setVisibleMenu('none')}
+              aspect={videoAspect}
+              onAspect={(aspect) => usePlayerStore.getState().setVideoAspect(aspect)}
               showResolution={!isLocalSession && session.playMethod === 'Transcode'}
-              onSelect={(menu) => setVisibleMenu(menu)}
-              onClose={() => setVisibleMenu('none')}
-            />
-          )}
-          {/* 三菜单（互斥；isRestartingSession 期间由下方浮层整体遮挡） */}
-          {visibleMenu === 'subtitle' && (
-            <SubtitleMenu
-              tracks={localSubtitleTracks}
-              activeStreamIndex={activeSubtitleStreamIndex}
-              onSelect={handleSubtitleSelect}
-              onClose={() => setVisibleMenu('none')}
-            />
-          )}
-          {visibleMenu === 'audio' && (
-            <AudioTrackMenu
-              tracks={localAudioTracks}
-              activeStreamIndex={activeAudioStreamIndex}
-              onSelect={handleAudioSelect}
-              onClose={() => setVisibleMenu('none')}
-            />
-          )}
-          {visibleMenu === 'resolution' && (
-            <ResolutionMenu
               activeTier={activeResolutionTier}
               sourceHeight={session.sourceHeight}
               cellularForced={cellularForced}
-              onSelect={handleResolutionSelect}
-              onClose={() => setVisibleMenu('none')}
+              onResolution={handleResolutionSelect}
+              audioTracks={localAudioTracks}
+              activeAudioIndex={activeAudioStreamIndex}
+              onAudioSelect={handleAudioSelect}
+              subtitleTracks={localSubtitleTracks}
+              activeSubtitleIndex={activeSubtitleStreamIndex}
+              onSubtitleSelect={handleSubtitleSelect}
             />
           )}
           <GestureHud hud={hud} />
@@ -1024,6 +1034,15 @@ export function PlayerScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000000' },
+  videoWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   lockBar: {
     position: 'absolute',
     top: '50%',

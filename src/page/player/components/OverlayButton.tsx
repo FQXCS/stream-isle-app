@@ -4,13 +4,15 @@
  */
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { AppIcon, type AppIconName } from '@/component/AppIcon';
 import { SPACING } from '@/constant/theme';
 
 interface OverlayButtonProps {
-  icon: AppIconName;
+  icon?: AppIconName;
+  /** 文本态按钮（如倍速 1.0X）：与 icon 二选一 */
+  text?: string;
   /** 无障碍朗读文案（纯图标按钮必须提供） */
   label: string;
   color: string;
@@ -19,7 +21,7 @@ interface OverlayButtonProps {
   iconSize?: number;
 }
 
-export function OverlayButton({ icon, label, color, onPress, style, iconSize = 22 }: OverlayButtonProps) {
+export function OverlayButton({ icon, text, label, color, onPress, style, iconSize = 22 }: OverlayButtonProps) {
   const tap = Gesture.Tap().onEnd((_event, success) => {
     'worklet';
     if (success) {
@@ -34,7 +36,11 @@ export function OverlayButton({ icon, label, color, onPress, style, iconSize = 2
         accessibilityLabel={label}
         accessibilityRole="button"
       >
-        <AppIcon name={icon} size={iconSize} color={color} />
+        {text !== undefined ? (
+          <Text style={[styles.text, { color }]}>{text}</Text>
+        ) : (
+          <AppIcon name={icon as AppIconName} size={iconSize} color={color} />
+        )}
       </View>
     </GestureDetector>
   );
@@ -46,4 +52,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  text: { fontSize: 16, fontWeight: '600' },
 });

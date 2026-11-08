@@ -11,6 +11,7 @@ import { create } from 'zustand';
 
 import type { AudioItem, PlaybackSession, RepeatModeEnum } from '@/adapter/model';
 import { DEFAULT_REPEAT_MODE } from '@/constant/audio';
+import type { VideoAspectKey } from '@/constant/playback';
 
 /** 播放器生命周期状态（02 §4.12 状态机） */
 export type PlayerStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'error';
@@ -57,6 +58,10 @@ interface PlayerStore {
   isLocked: boolean;
   /** 控制层显隐（无操作 CONTROLS_AUTO_HIDE_MS 自动隐藏） */
   controlsVisible: boolean;
+  /** 播放倍速（react-native-video rate；出页 reset 归 1） */
+  playbackSpeed: number;
+  /** 屏幕宽高比（设置抽屉视频页；出页 reset 归 default） */
+  videoAspect: VideoAspectKey;
   /**
    * 激活字幕轨 streamIndex；null=未开字幕。烧录轨激活时为其 streamIndex（切出判断依据）。
    * selectedTextTrack 由播放页据此派生（03 §4.8.2）
@@ -83,6 +88,10 @@ interface PlayerStore {
   toggleControls(): void;
   /** 控制层显隐直接设置（手势拖动中强制显示、自动隐藏定时器消费） */
   setControlsVisible(visible: boolean): void;
+  /** 设置播放倍速 */
+  setPlaybackSpeed(speed: number): void;
+  /** 设置屏幕宽高比 */
+  setVideoAspect(aspect: VideoAspectKey): void;
   /** 设置激活字幕轨（null=关闭） */
   setActiveSubtitle(streamIndex: number | null): void;
   /** 设置激活音轨 */
@@ -113,6 +122,8 @@ export const usePlayerStore = create<PlayerStore>()((set) => ({
   durationMs: 0,
   isLocked: false,
   controlsVisible: false,
+  playbackSpeed: 1,
+  videoAspect: 'default',
   activeSubtitleStreamIndex: null,
   activeAudioStreamIndex: null,
   isRestartingSession: false,
@@ -140,6 +151,8 @@ export const usePlayerStore = create<PlayerStore>()((set) => ({
   setLocked: (isLocked) => set({ isLocked }),
   toggleControls: () => set((state) => ({ controlsVisible: !state.controlsVisible })),
   setControlsVisible: (controlsVisible) => set({ controlsVisible }),
+  setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
+  setVideoAspect: (videoAspect) => set({ videoAspect }),
   setActiveSubtitle: (activeSubtitleStreamIndex) => set({ activeSubtitleStreamIndex }),
   setActiveAudio: (activeAudioStreamIndex) => set({ activeAudioStreamIndex }),
   beginRestart: (restartNotice) => set({ isRestartingSession: true, restartNotice }),
@@ -155,6 +168,8 @@ export const usePlayerStore = create<PlayerStore>()((set) => ({
       durationMs: 0,
       isLocked: false,
       controlsVisible: false,
+      playbackSpeed: 1,
+      videoAspect: 'default',
       activeSubtitleStreamIndex: null,
       activeAudioStreamIndex: null,
       isRestartingSession: false,

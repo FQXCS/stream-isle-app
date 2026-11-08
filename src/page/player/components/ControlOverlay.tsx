@@ -1,9 +1,8 @@
 /**
- * 控制层（参考图重构）：顶部（返回 + 标题 + 四点更多）；中部左竖排（锁屏 + 画中画）、
- * 右竖排（AB 循环 + 截图）；底部（圆形播放/暂停 + 全宽 SeekBar + 旋转屏幕，
- * 次行两端当前时长 / 总时长）。透明底不遮画面；无操作 CONTROLS_AUTO_HIDE_MS 自动隐藏。
- * 字幕/音轨/分辨率入口收进右上更多菜单（PlayerMoreMenu）。
- * 按钮统一 OverlayButton（RNGH Tap），与手势层同命中链路。
+ * 控制层（参考图竖屏口径重排）：顶栏左返回+标题、右横排（锁屏/截图/更多）；
+ * 底部半透明圆角面板：进度行（圆形播放键 + 当前时长 + SeekBar + 总时长）+
+ * 工具横排（旋转 / 倍速 / AB 循环 / 画中画）。字幕/音轨/分辨率收进更多菜单。
+ * 无操作 CONTROLS_AUTO_HIDE_MS 自动隐藏；按钮统一 OverlayButton（RNGH Tap）。
  */
 import { useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -14,28 +13,34 @@ import { CONTROLS_AUTO_HIDE_MS } from '@/constant/playback';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
 import { useImmersiveAccent } from '@/component/useTheme';
 import { useT } from '@/i18n';
-import { formatClock } from '@/util/format';
+import { formatClock, formatPlaybackSpeed } from '@/util/format';
+import type { AbLoop } from '@/util/abLoop';
 import { usePlayerStore } from '@/store/playerStore';
 
-/** 圆形播放键直径（时间行缩进与其对齐） */
-const PLAY_BUTTON_SIZE = 48;
-/** 旋转按钮占位宽（时间行右缩进与其对齐） */
-const ROTATE_BUTTON_SIZE = 48;
+/** 圆形播放键直径 */
+const PLAY_BUTTON_SIZE = 40;
+/** 面板圆角（参考图顶部圆角口径） */
+const PANEL_RADIUS = 20;
+/** 工具横排图标尺寸 */
+const TOOL_ICON_SIZE = 26;
 
 interface ControlOverlayProps {
   /** 「标题 · S1E2 集名」（详情页拼好随会话传入） */
   title: string;
   isPlaying: boolean;
+  isLocked: boolean;
   positionMs: number;
   bufferedMs: number;
   durationMs: number;
-  /** AB 循环态：none=未设 / a=仅 A 点 / active=区间循环中（图标高亮） */
-  abLoopState: 'none' | 'a' | 'active';
+  /** AB 循环区间（null=未设；bMs=null=仅 A 点）：驱动图标三态与进度条 A/B 标记 */
+  abLoop: AbLoop | null;
+  playbackSpeed: number;
   onExit: () => void;
   onToggleLock: () => void;
   onTogglePlay: () => void;
   onSeek: (positionMs: number) => void;
   onOpenMoreMenu: () => void;
+  onOpenSpeedMenu: () => void;
   onEnterPip: () => void;
   onAbLoop: () => void;
   onSnapshot: () => void;
@@ -45,15 +50,18 @@ interface ControlOverlayProps {
 export function ControlOverlay({
   title,
   isPlaying,
+  isLocked,
   positionMs,
   bufferedMs,
   durationMs,
-  abLoopState,
+  abLoop,
+  playbackSpeed,
   onExit,
   onToggleLock,
   onTogglePlay,
   onSeek,
   onOpenMoreMenu,
+  onOpenSpeedMenu,
   onEnterPip,
   onAbLoop,
   onSnapshot,
@@ -89,11 +97,22 @@ export function ControlOverlay({
     scheduleHide();
   };
 
-  const abActive = abLoopState !== 'none';
+  const abActive = abLoop !== null;
+  // 图标三态：未设=白 AB；仅 A=主题色单 A；循环中=主题色 AB（参考图口径）
+  const abIcon = abLoop !== null && abLoop.bMs === null ? 'abLoopA' : 'abLoop';
+  const abMarkers =
+    abLoop === null
+      ? []
+      : abLoop.bMs === null
+        ? [{ label: 'A', positionMs: abLoop.aMs }]
+        : [
+            { label: 'A', positionMs: abLoop.aMs },
+            { label: 'B', positionMs: abLoop.bMs },
+          ];
 
   return (
     <View style={styles.container} pointerEvents="box-none">
-      {/* 顶部：返回 + 标题 + 更多 */}
+      {/* 顶栏：左返回+标题；右横排 锁屏/截图/更多（参考图口径） */}
       <View style={styles.topBar} pointerEvents="box-none">
         <OverlayButton
           icon="arrowLeft"
@@ -104,46 +123,34 @@ export function ControlOverlay({
         <Text style={styles.title} numberOfLines={1}>
           {title}
         </Text>
-        <OverlayButton
-          icon="moreGrid"
-          label={tr('player.moreMenu')}
-          color={COLORS.textPrimary}
-          onPress={interact(onOpenMoreMenu)}
-        />
-      </View>
-      {/* 中部：左竖排（锁屏+画中画）/ 右竖排（AB+截图）；空白处点击穿透到手势层 */}
-      <View style={styles.middleRow} pointerEvents="box-none">
-        <View style={styles.railColumn}>
+        <View style={styles.topActions} pointerEvents="box-none">
           <OverlayButton
-            icon="lock"
-            label={tr('player.lockScreen')}
+            icon={isLocked ? 'lock' : 'unlock'}
+            label={isLocked ? tr('player.unlock') : tr('player.lockScreen')}
             color={COLORS.textPrimary}
             onPress={interact(onToggleLock)}
-          />
-          <OverlayButton
-            icon="pip"
-            label={tr('player.pip')}
-            color={COLORS.textPrimary}
-            onPress={interact(onEnterPip)}
-          />
-        </View>
-        <View style={styles.railColumn}>
-          <OverlayButton
-            icon="abLoop"
-            label={tr('player.abLoop')}
-            color={abActive ? accent : COLORS.textPrimary}
-            onPress={interact(onAbLoop)}
+            iconSize={TOOL_ICON_SIZE}
           />
           <OverlayButton
             icon="snapshot"
             label={tr('player.snapshot')}
             color={COLORS.textPrimary}
             onPress={interact(onSnapshot)}
+            iconSize={TOOL_ICON_SIZE}
+          />
+          <OverlayButton
+            icon="moreGrid"
+            label={tr('player.moreMenu')}
+            color={COLORS.textPrimary}
+            onPress={interact(onOpenMoreMenu)}
+            iconSize={TOOL_ICON_SIZE}
           />
         </View>
       </View>
-      {/* 底部：圆形播放键 + 进度条 + 旋转；次行两端时间 */}
-      <View style={styles.bottomBar} pointerEvents="box-none">
+      {/* 中部留白：点击穿透到手势层（单击切换控制层/拖动 seek/亮度音量） */}
+      <View style={styles.flexSpacer} pointerEvents="none" />
+      {/* 底部半透明圆角面板：进度行 + 工具横排 */}
+      <View style={styles.panel} pointerEvents="box-none">
         <View style={styles.playRow} pointerEvents="box-none">
           <OverlayButton
             icon={isPlaying ? 'pause' : 'play'}
@@ -152,6 +159,7 @@ export function ControlOverlay({
             onPress={interact(onTogglePlay)}
             style={styles.playButton}
           />
+          <Text style={styles.time}>{formatClock(positionMs)}</Text>
           <SeekBar
             positionMs={positionMs}
             bufferedMs={bufferedMs}
@@ -162,24 +170,43 @@ export function ControlOverlay({
               base: 'rgba(255,255,255,0.25)',
               thumb: '#FFFFFF',
             }}
+            markers={abMarkers}
             onPreview={scheduleHide}
             onSeek={(targetMs) => {
               onSeek(targetMs);
               scheduleHide();
             }}
           />
+          <Text style={styles.time}>{formatClock(durationMs)}</Text>
+        </View>
+        <View style={styles.toolRow} pointerEvents="box-none">
+          <OverlayButton
+            text={formatPlaybackSpeed(playbackSpeed)}
+            label={tr('player.speedMenu')}
+            color={COLORS.textPrimary}
+            onPress={interact(onOpenSpeedMenu)}
+          />
+          <OverlayButton
+            icon={abIcon}
+            label={tr('player.abLoop')}
+            color={abActive ? accent : COLORS.textPrimary}
+            onPress={interact(onAbLoop)}
+            iconSize={TOOL_ICON_SIZE}
+          />
+          <OverlayButton
+            icon="pip"
+            label={tr('player.pip')}
+            color={COLORS.textPrimary}
+            onPress={interact(onEnterPip)}
+            iconSize={TOOL_ICON_SIZE}
+          />
           <OverlayButton
             icon="rotate"
             label={tr('player.rotate')}
             color={COLORS.textPrimary}
             onPress={interact(onRotate)}
-            style={styles.rotateButton}
+            iconSize={TOOL_ICON_SIZE}
           />
-        </View>
-        <View style={styles.timeRow} pointerEvents="none">
-          <Text style={styles.time}>{formatClock(positionMs)}</Text>
-          <View style={styles.flexSpacer} />
-          <Text style={styles.time}>{formatClock(durationMs)}</Text>
         </View>
       </View>
     </View>
@@ -197,21 +224,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.l,
     paddingTop: SPACING.l,
   },
-  middleRow: {
-    flex: 1,
+  topActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.l,
+    gap: SPACING.s,
   },
-  railColumn: {
-    alignItems: 'center',
-    gap: SPACING.xl,
-  },
-  bottomBar: {
+  flexSpacer: { flex: 1 },
+  panel: {
+    backgroundColor: 'rgba(16,16,20,0.72)',
+    borderTopLeftRadius: PANEL_RADIUS,
+    borderTopRightRadius: PANEL_RADIUS,
     paddingHorizontal: SPACING.l,
+    paddingTop: SPACING.m,
     paddingBottom: SPACING.m,
-    gap: SPACING.xs,
+    gap: SPACING.s,
   },
   playRow: {
     flexDirection: 'row',
@@ -226,18 +252,12 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.textPrimary,
   },
-  rotateButton: {
-    width: ROTATE_BUTTON_SIZE,
-    height: ROTATE_BUTTON_SIZE,
-    padding: 0,
-  },
-  timeRow: {
+  toolRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: PLAY_BUTTON_SIZE + SPACING.m,
-    marginRight: ROTATE_BUTTON_SIZE + SPACING.m,
+    justifyContent: 'flex-end',
+    gap: SPACING.xl,
   },
-  flexSpacer: { flex: 1 },
   title: {
     color: COLORS.textPrimary,
     fontSize: FONT_SIZE.title,

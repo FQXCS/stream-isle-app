@@ -94,3 +94,11 @@ export function formatDate(ms: number): string {
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+
+/**
+ * 倍速标签（控制层按钮/倍速菜单共用）：整速保留一位小数（1 → 1.0X），
+ * 非整速保留原精度（0.75 → 0.75X），避免 toFixed  rounding 失真。
+ */
+export function formatPlaybackSpeed(speed: number): string {
+  return `${Number.isInteger(speed) ? speed.toFixed(1) : String(speed)}X`;
+}

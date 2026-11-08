@@ -135,6 +135,7 @@ export type AppIconName =
   | 'snapshot'
   | 'moreGrid'
   | 'abLoop'
+  | 'abLoopA'
   // 媒体 / 操作
   | 'heart'
   | 'heartOutline'
@@ -196,6 +197,21 @@ function AbLoopGlyph({ size = 24, color = '#FFFFFF' }: IconProps) {
   );
 }
 
+/** 图标库无匹配，自绘注册 AppIcon：仅设 A 点态（循环箭头 + 单 A 字母） */
+function AbLoopAGlyph({ size = 24, color = '#FFFFFF' }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M4 9a8 8 0 0 1 14-3" stroke={color} strokeWidth={1.8} fill="none" strokeLinecap="round" />
+      <Path d="M18 2.5v4h-4" stroke={color} strokeWidth={1.8} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M20 15a8 8 0 0 1-14 3" stroke={color} strokeWidth={1.8} fill="none" strokeLinecap="round" />
+      <Path d="M6 21.5v-4h4" stroke={color} strokeWidth={1.8} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <SvgText x="12" y="15" textAnchor="middle" fontSize="9" fontWeight="700" fill={color}>
+        A
+      </SvgText>
+    </Svg>
+  );
+}
+
 const GLYPH_MAP: Record<AppIconName, GlyphSpec> = {
   back: { Glyph: CaretLeft },
   more: { Glyph: DotsThree, weight: 'bold' },
@@ -249,6 +265,7 @@ const GLYPH_MAP: Record<AppIconName, GlyphSpec> = {
   snapshot: { Glyph: Image },
   moreGrid: { Glyph: MoreGridGlyph },
   abLoop: { Glyph: AbLoopGlyph },
+  abLoopA: { Glyph: AbLoopAGlyph },
   heart: { Glyph: Heart, weight: 'fill' },
   heartOutline: { Glyph: Heart },
   flag: { Glyph: Flag, weight: 'fill' },

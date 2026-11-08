@@ -16,6 +16,15 @@ export const WATCHED_COMPLETION_RATIO = 0.95;
 /** 控制层无操作自动隐藏间隔（毫秒） */
 export const CONTROLS_AUTO_HIDE_MS = 5000;
 
+/** 倍速档位（控制层倍速按钮菜单；1 为正常速） */
+export const PLAYBACK_SPEED_LIST = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
+
+/** 屏幕宽高比档位（设置抽屉视频页；default=contain 适配） */
+export type VideoAspectKey = 'default' | 'stretch' | 'fill' | '16:9' | '4:3';
+
+/** 宽高比选项固定顺序（参考图口径） */
+export const VIDEO_ASPECT_LIST: readonly VideoAspectKey[] = ['default', 'stretch', 'fill', '16:9', '4:3'];
+
 /** 水平 seek 灵敏度：全屏宽拖动对应的最大秒数 */
 export const SEEK_FULL_WIDTH_SECONDS = 90;
 
