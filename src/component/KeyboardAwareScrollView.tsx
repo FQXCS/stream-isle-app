@@ -3,6 +3,7 @@
  * Android edge-to-edge 下 windowSoftInputMode=adjustResize 不再收缩窗口，
  * 普通 ScrollView 底部内容会被输入法遮挡。键盘弹起时在内容末尾补等高占位，
  * 使全部表单项可滚动到键盘上方；聚焦输入框时自动把它滚到键盘上方。
+ * 键盘收起时补系统导航栏高度的占位（3 键导航的手机底部不会被操作栏盖住）。
  */
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
@@ -16,6 +17,7 @@ import {
   type ScrollViewInstance,
   type ScrollViewProps,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /** 聚焦输入框底部与键盘顶部保留的间距（dp） */
 const FOCUS_MARGIN = 24;
@@ -34,6 +36,7 @@ export const KeyboardAwareScrollView = forwardRef<KeyboardAwareScrollViewHandle,
     /** 键盘刚弹起：等内容末尾占位插入后再滚动一次，避免内容后续变化时反复滚动 */
     const pendingScroll = useRef(false);
     const [keyboardInset, setKeyboardInset] = useState(0);
+    const insets = useSafeAreaInsets();
 
     const scrollToFocusedInput = useCallback(() => {
       const top = keyboardTop.current;
@@ -89,7 +92,8 @@ export const KeyboardAwareScrollView = forwardRef<KeyboardAwareScrollViewHandle,
         }}
       >
         {children}
-        {keyboardInset > 0 && <View style={{ height: keyboardInset }} />}
+        {/* 键盘弹起时按键盘高度让位（键盘区域已含导航栏）；收起时按导航栏高度让位 */}
+        <View style={{ height: keyboardInset > 0 ? keyboardInset : insets.bottom }} />
       </ScrollView>
     );
   }
