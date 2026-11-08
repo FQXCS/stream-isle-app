@@ -2,14 +2,13 @@
  * 设置页（04 文档 §4.5 完整化；设计文档 §5.1/§8.2/§9/§10.2/§11；M6 文档 §4.4.5/§4.9.3）：
  * 播放（M3 PlaybackSettingsSection 收编回归 + M4 新增「默认字幕语言」单选弹层）/
  * 外观（M6 浅色主题三态，06 §4.6.1）/ 下载与历史入口（06 §4.4.5 设置页入口）/
- * 收录类型二级页入口 / 关于（应用名/版本号/版本 Code + GitHub Releases 外链）。
+ * 收录类型二级页入口 / 关于（应用名/版本号 + GitHub Releases 外链）。
  * 账号与服务器管理已迁至「媒体服务器」Tab（MediaServerScreen）。
  */
 import { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
-import * as Application from 'expo-application';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RadioOptionSheet } from '@/component/RadioOptionSheet';
@@ -84,9 +83,6 @@ export function SettingsScreen() {
       useSettingsStore.getState().actions.setPreferredSubtitleLang(option.code);
     }
   };
-
-  /** 版本 Code（gradle versionCode；expo-application nativeBuildVersion，06 §4.9.3） */
-  const versionCode = Application.nativeBuildVersion ?? '-';
 
   return (
     <ScrollView
@@ -184,7 +180,7 @@ export function SettingsScreen() {
       <View style={[styles.card, { backgroundColor: t.surface }]}>
         <Text style={[styles.groupTitle, { color: t.textTertiary }]}>{tr('settings.about')}</Text>
         <SettingRow label={tr('settings.appName')} value={CLIENT_NAME} />
-        <SettingRow label={tr('settings.version')} value={`${APP_VERSION} (${versionCode})`} />
+        <SettingRow label={tr('settings.version')} value={APP_VERSION} />
         <SettingRow
           label={tr('settings.githubReleases')}
           description={tr('settings.githubReleasesDesc')}
