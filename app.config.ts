@@ -8,6 +8,7 @@ import { withAndroidManifest } from '@expo/config-plugins';
 // CJS .js 插件（expo 配置加载器只转译 app.config.ts 入口本身，require 的模块须为 js）
 import withStreamIsleNetwork from './plugins/withStreamIsleNetwork.js';
 import withPdfAssets from './plugins/withPdfAssets.js';
+import withAliyunMaven from './plugins/withAliyunMaven.js';
 
 /**
  * 为 AndroidManifest 的 <application> 补 android:usesCleartextTraffic="true"。
@@ -89,6 +90,8 @@ export default {
       withStreamIsleNetwork,
       // M7 PDF 阅读器静态资产（pdf.js + reader.html）拷入 android assets（同款恢复机制）
       withPdfAssets,
+      // 国内 Maven 镜像（阿里云优先、Central 兜底）：prebuild 重建 android/ 后自动恢复
+      withAliyunMaven,
       // minSdk 显式落 26（设计文档文档属性表 Android 8+ / M1 §4.1）：SDK 58 版本目录默认 24，
       // 必须经 expo-build-properties 写 gradle.properties 的 android.minSdkVersion=26
       ["expo-build-properties", { android: { minSdkVersion: 26 } }],
