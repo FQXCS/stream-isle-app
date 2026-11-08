@@ -4,7 +4,7 @@
 import Constants from 'expo-constants';
 
 /** 客户端名：MediaBrowser 认证头 Client/Device 字段取值（§4.6.3 buildHeaders） */
-export const CLIENT_NAME = 'Stream Isle Mobile';
+export const CLIENT_NAME = 'Stream Isle';
 
 /** 认证头 Version 字段取值：运行时取 expo-constants，fallback 1.0.0 */
 export const APP_VERSION: string = Constants.expoConfig?.version ?? '1.0.0';

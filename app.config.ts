@@ -41,8 +41,8 @@ const withFullSensorOrientation: ConfigPlugin = (config) =>
 
 export default {
   expo: {
-    // 应用名未定稿（设计文档 §14.3），M1 占位
-    name: "Stream Isle Mobile",
+    // 应用名（启动器显示名）
+    name: "Stream Isle",
     slug: "stream-isle-mobile",
     // 认证头 Version 字段取值来源：expo-constants nativeApplicationVersion
     version: "1.0.0",
