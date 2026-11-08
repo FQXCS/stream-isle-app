@@ -58,6 +58,8 @@ export class HomeService {
   /**
    * 每库「最新添加」行（融合页「我的媒体」下方，每库前 LIBRARY_ROW_LIMIT 条）：
    * 查询条件由调用方按库的默认 Tab 解析（条目类型 + 筛选，见 resolveLibraryLatestQuery）；
+   * 在此基础上追加「未看完」（IsUnplayed）优先展示未看完的最新条目，该库无未看完条目
+   * （查询结果为 0）时去掉该条件重查一次回退到全部；默认 Tab 本身就是未看筛选时不追加。
    * 并发拉取，单库失败按空行处理（隐藏该行，不阻塞整页）。
    */
   async loadLibraryLatest(
@@ -69,17 +71,30 @@ export class HomeService {
       queryList.map(async ({ libraryId, includeItemTypes, filters }): Promise<
         [string, MediaLibraryItem[]]
       > => {
+        // 追加未看完筛选；默认 Tab 已含 IsUnplayed（用户配置的未看 Tab）时保持原样
+        const hasUnplayed = filters?.includes('IsUnplayed') ?? false;
+        const unplayedFilters: readonly ItemFilterEnum[] | undefined = hasUnplayed
+          ? filters
+          : [...(filters ?? []), 'IsUnplayed'];
         try {
-          return [
+          let itemList = await adapter.getLatestByTypes(
+            userId,
             libraryId,
-            await adapter.getLatestByTypes(
+            includeItemTypes,
+            LIBRARY_ROW_LIMIT,
+            unplayedFilters
+          );
+          if (itemList.length === 0 && !hasUnplayed) {
+            // 库内无未看完条目：去掉「未看完」条件，回退全部最新添加
+            itemList = await adapter.getLatestByTypes(
               userId,
               libraryId,
               includeItemTypes,
               LIBRARY_ROW_LIMIT,
               filters
-            ),
-          ];
+            );
+          }
+          return [libraryId, itemList];
         } catch {
           return [libraryId, []];
         }
