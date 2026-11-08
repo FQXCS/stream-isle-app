@@ -3,12 +3,11 @@
  * 名称 / 协议 / 服务器地址 / 路径 / 端口号 / 用户名 / 密码，
  * 添加 = 探测 + 登录 + 保存并激活（类型以入口选择为准）；编辑 = 探测确认同一台服务器后更新资料（不动 Token）。
  */
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -18,6 +17,10 @@ import {
 
 import type { ServerFlavor } from '@/adapter/model';
 import { AppIcon } from '@/component/AppIcon';
+import {
+  KeyboardAwareScrollView,
+  type KeyboardAwareScrollViewHandle,
+} from '@/component/KeyboardAwareScrollView';
 import { useTheme } from '@/component/useTheme';
 import { ROUTES } from '@/constant/navigation';
 import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
@@ -69,6 +72,7 @@ export function AddServerScreen({ route, navigation }: Props) {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorKey, setErrorKey] = useState<MessageKey | null>(null);
+  const formRef = useRef<KeyboardAwareScrollViewHandle>(null);
 
   const editingUserId = editing?.activeUserId ?? editing?.users[0]?.userId ?? null;
 
@@ -190,13 +194,18 @@ export function AddServerScreen({ route, navigation }: Props) {
   }, [canSubmit, flavor, handleSubmit, isEdit, navigation, submitting, t.textPrimary, t.textTertiary, tr]);
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={styles.content}>
+    <KeyboardAwareScrollView
+      ref={formRef}
+      style={[styles.container, { backgroundColor: t.bg }]}
+      contentContainerStyle={styles.content}
+    >
       <Text style={styles.sectionLabel}>{tr('server.formName')}</Text>
       <View style={styles.card}>
         <TextInput
           style={styles.input}
           value={name}
           onChangeText={setName}
+          onFocus={() => formRef.current?.scrollToFocusedInput()}
           placeholder={tr('server.placeholderName')}
           placeholderTextColor={t.textSecondary}
           editable={!submitting}
@@ -217,6 +226,7 @@ export function AddServerScreen({ route, navigation }: Props) {
           style={styles.input}
           value={host}
           onChangeText={setHost}
+          onFocus={() => formRef.current?.scrollToFocusedInput()}
           placeholder={tr('server.placeholderHost')}
           placeholderTextColor={t.textSecondary}
           autoCapitalize="none"
@@ -232,6 +242,7 @@ export function AddServerScreen({ route, navigation }: Props) {
           style={styles.input}
           value={path}
           onChangeText={setPath}
+          onFocus={() => formRef.current?.scrollToFocusedInput()}
           placeholder={tr('server.placeholderPath')}
           placeholderTextColor={t.textSecondary}
           autoCapitalize="none"
@@ -246,6 +257,7 @@ export function AddServerScreen({ route, navigation }: Props) {
           style={styles.input}
           value={port}
           onChangeText={setPort}
+          onFocus={() => formRef.current?.scrollToFocusedInput()}
           placeholder="8096"
           placeholderTextColor={t.textSecondary}
           keyboardType="number-pad"
@@ -261,6 +273,7 @@ export function AddServerScreen({ route, navigation }: Props) {
           style={styles.input}
           value={username}
           onChangeText={setUsername}
+          onFocus={() => formRef.current?.scrollToFocusedInput()}
           placeholder={tr('server.placeholderRequired')}
           placeholderTextColor={t.textSecondary}
           autoCapitalize="none"
@@ -276,6 +289,7 @@ export function AddServerScreen({ route, navigation }: Props) {
             style={[styles.input, styles.passwordInput]}
             value={password}
             onChangeText={setPassword}
+            onFocus={() => formRef.current?.scrollToFocusedInput()}
             placeholder={
               isEdit
                 ? storedPassword === null
@@ -321,7 +335,7 @@ export function AddServerScreen({ route, navigation }: Props) {
         </Pressable>
       )}
       <Text style={styles.hint}>{isEdit ? tr('server.editHint') : tr('server.addHint')}</Text>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

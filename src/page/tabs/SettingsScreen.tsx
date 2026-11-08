@@ -10,6 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Application from 'expo-application';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RadioOptionSheet } from '@/component/RadioOptionSheet';
 import { SettingRow } from '@/component/SettingRow';
@@ -56,6 +57,8 @@ export function SettingsScreen() {
   const tr = useT();
   // 迷你条浮在 Tab 栏上方：底部让位，设置项不被条子覆盖（停止播放后自动归零）
   const miniPadding = useMiniPlayerPadding();
+  // 自绘大标题需避让状态栏（edge-to-edge 下内容延伸进状态栏区域）
+  const insets = useSafeAreaInsets();
   const preferredSubtitleLang = useSettingsStore((state) => state.preferredSubtitleLang);
   const themeMode = useSettingsStore((state) => state.themeMode);
   const accentScheme = useSettingsStore((state) => state.accentScheme);
@@ -88,7 +91,7 @@ export function SettingsScreen() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: t.bg, marginBottom: miniPadding }]}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + SPACING.l }]}
     >
       <Text style={[styles.title, { color: t.textPrimary }]}>{tr('settings.title')}</Text>
       {/* 播放分区：M3 PlaybackSettingsSection 原样收编（行为零改动，04 §4.5）+ M4 字幕语言行 */}

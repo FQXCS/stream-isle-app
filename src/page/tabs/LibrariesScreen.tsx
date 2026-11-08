@@ -19,6 +19,7 @@ import {
   View,
 } from 'react-native';
 import type { ComponentRef, ReactNode } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { MediaLibrary, MediaLibraryItem } from '@/adapter/model';
 import { AppError } from '@/infra/error';
@@ -89,6 +90,8 @@ export function LibrariesScreen() {
   const styles = createStyles(t);
   // 迷你条浮在 Tab 栏上方：底部让位，内容不被条子覆盖（停止播放后自动归零）
   const miniPadding = useMiniPlayerPadding();
+  // 自绘大标题需避让状态栏（edge-to-edge 下内容延伸进状态栏区域）
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const active = useAccountStore((state) => state.active);
   const serverList = useAccountStore((state) => state.servers);
@@ -330,7 +333,7 @@ export function LibrariesScreen() {
     <>
       <ScrollView
         style={[styles.fill, { backgroundColor: t.bg, marginBottom: miniPadding }]}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + SPACING.l }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={t.accent} />
         }

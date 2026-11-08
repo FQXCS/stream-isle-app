@@ -2,10 +2,14 @@
  * 添加 / 编辑备用线路：名称 + 协议 + 服务器地址 + 端口号。
  * 保存后写入该服务器的线路列表（主线路同样可编辑）；地址非法时禁止保存。
  */
-import { useCallback, useLayoutEffect, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
+import {
+  KeyboardAwareScrollView,
+  type KeyboardAwareScrollViewHandle,
+} from '@/component/KeyboardAwareScrollView';
 import { useTheme } from '@/component/useTheme';
 import { ROUTES } from '@/constant/navigation';
 import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
@@ -40,6 +44,7 @@ export function ServerRouteEditScreen({ route, navigation }: Props) {
   const [https, setHttps] = useState(parts.https);
   const [host, setHost] = useState(parts.host);
   const [port, setPort] = useState(parts.port !== '' ? parts.port : '8096');
+  const formRef = useRef<KeyboardAwareScrollViewHandle>(null);
 
   const canSave =
     host.trim() !== '' && port.trim() !== '' && (name.trim() !== '' || isDefaultRoute);
@@ -87,13 +92,18 @@ export function ServerRouteEditScreen({ route, navigation }: Props) {
   }, [canSave, editingRoute, handleSave, navigation, t.textPrimary, t.textTertiary, tr]);
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={styles.content}>
+    <KeyboardAwareScrollView
+      ref={formRef}
+      style={[styles.container, { backgroundColor: t.bg }]}
+      contentContainerStyle={styles.content}
+    >
       <Text style={styles.sectionLabel}>{tr('server.formName')}</Text>
       <View style={styles.card}>
         <TextInput
           style={styles.input}
           value={name}
           onChangeText={setName}
+          onFocus={() => formRef.current?.scrollToFocusedInput()}
           placeholder={
             isDefaultRoute ? tr('server.defaultRoute') : tr('server.placeholderRequired')
           }
@@ -115,6 +125,7 @@ export function ServerRouteEditScreen({ route, navigation }: Props) {
           style={styles.input}
           value={host}
           onChangeText={setHost}
+          onFocus={() => formRef.current?.scrollToFocusedInput()}
           placeholder={tr('server.placeholderHost')}
           placeholderTextColor={t.textSecondary}
           autoCapitalize="none"
@@ -129,6 +140,7 @@ export function ServerRouteEditScreen({ route, navigation }: Props) {
           style={styles.input}
           value={port}
           onChangeText={setPort}
+          onFocus={() => formRef.current?.scrollToFocusedInput()}
           placeholder="8096"
           placeholderTextColor={t.textSecondary}
           keyboardType="number-pad"
@@ -136,7 +148,7 @@ export function ServerRouteEditScreen({ route, navigation }: Props) {
       </View>
 
       <Text style={styles.hint}>{tr('server.routeEditHint')}</Text>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

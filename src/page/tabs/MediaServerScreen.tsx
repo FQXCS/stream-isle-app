@@ -10,6 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Alert, FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import type { ComponentRef } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { ServerFlavor } from '@/adapter/model';
 import { AnchorMenu, type AnchorMenuItem, type AnchorRect } from '@/component/AnchorMenu';
@@ -48,6 +49,8 @@ export function MediaServerScreen() {
   const styles = createStyles(t);
   // 迷你条浮在 Tab 栏上方：底部让位，卡片不被条子覆盖（停止播放后自动归零）
   const miniPadding = useMiniPlayerPadding();
+  // 自绘头部需避让状态栏（edge-to-edge 下内容延伸进状态栏区域）
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const servers = useAccountStore((state) => state.servers);
   const active = useAccountStore((state) => state.active);
@@ -300,7 +303,7 @@ export function MediaServerScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: t.bg, paddingBottom: miniPadding }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + SPACING.l }]}>
         <Text style={styles.title}>{tr('nav.tabMediaServer')}</Text>
         <View style={styles.headerActions}>
           {selectMode ? (
