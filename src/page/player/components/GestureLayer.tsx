@@ -17,8 +17,6 @@ const AXIS_FAIL_OFFSET = 12;
 interface GestureLayerProps {
   /** 锁屏：屏蔽全部手势，仅保留单击（呼出解锁按钮） */
   isLocked: boolean;
-  /** 拖动手势可用（控制层可见时禁用——拖动操作集中在 SeekBar，避免双重 seek） */
-  gesturesEnabled: boolean;
   /** 屏幕尺寸（全屏 seek 灵敏度与左右分流换算用） */
   screenWidth: number;
   screenHeight: number;
@@ -48,7 +46,6 @@ interface GestureLayerProps {
 export function GestureLayer(props: GestureLayerProps) {
   const {
     isLocked,
-    gesturesEnabled,
     screenWidth,
     screenHeight,
     brightnessSV,
@@ -71,12 +68,16 @@ export function GestureLayer(props: GestureLayerProps) {
   const verticalStartValueSV = useSharedValue(0);
   const horizontalStartXSV = useSharedValue(0);
 
-  const tap = Gesture.Tap().onEnd((_event, success) => {
-    'worklet';
-    if (success) {
-      runOnJS(onTap)();
-    }
-  });
+  // Tap 默认不限制位移（Android maxDist=MAX_VALUE_IGNORE），快速滑动会被同时识别成
+  // 单击而误呼出控制层；显式限制在与拖动激活同一阈值内，保证「拖动即非单击」
+  const tap = Gesture.Tap()
+    .maxDistance(AXIS_FAIL_OFFSET)
+    .onEnd((_event, success) => {
+      'worklet';
+      if (success) {
+        runOnJS(onTap)();
+      }
+    });
 
   // 垂直拖：onBegin 按 x 分流左（亮度）/右（音量），onUpdate 按 dy/屏高线性映射 0..1
   const verticalPan = Gesture.Pan()
@@ -133,11 +134,10 @@ export function GestureLayer(props: GestureLayerProps) {
     });
 
   // 互斥激活：activeOffset/failOffset 保证垂直与水平手势不同时命中（02 §7 手势误触对策）；
-  // 锁屏或控制层可见时仅保留单击
-  const gesture =
-    isLocked || !gesturesEnabled
-      ? tap
-      : Gesture.Simultaneous(tap, Gesture.Exclusive(horizontalPan, verticalPan));
+  // Race 让单击与拖动互斥——拖动激活即取消单击，单击成立即取消拖动（避免一次触摸双动作）；
+  // 控制层可见时拖动依然可用（SeekBar/按钮等实际控件在自己范围内命中，不会落到本层）；
+  // 锁屏时仅保留单击
+  const gesture = isLocked ? tap : Gesture.Race(tap, Gesture.Exclusive(horizontalPan, verticalPan));
 
   return (
     <GestureDetector gesture={gesture}>

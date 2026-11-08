@@ -912,10 +912,9 @@ export function PlayerScreen() {
       {/* PiP 期间只留视频本体（系统小窗不叠自绘浮层） */}
       {!isPip && (
         <>
-          {/* 手势层：锁屏或控制层可见时仅保留单击（拖动手势集中在 SeekBar，避免双重 seek） */}
+          {/* 手势层：控制层可见时拖动仍可调进度/亮度/音量；锁屏时仅保留单击 */}
           <GestureLayer
             isLocked={isLocked}
-            gesturesEnabled={!controlsVisible}
             screenWidth={screenWidth}
             screenHeight={screenHeight}
             brightnessSV={brightnessSV}
