@@ -46,7 +46,7 @@ export default {
     name: "Stream Isle",
     slug: "stream-isle-mobile",
     // 认证头 Version 字段取值来源：expo-constants nativeApplicationVersion
-    version: "1.0.0",
+    version: "1.0.1",
     orientation: "portrait", // 播放页横屏由 Player 页运行时锁定（M2）
     icon: "./assets/icon.png",
     userInterfaceStyle: "automatic", // 亮色默认由 settingsStore.themeMode 决定；系统方案跟随时需 automatic
@@ -57,6 +57,8 @@ export default {
     // v4 官方标注不支持新架构且无修复计划，v5 为新架构重写版）。
     android: {
       package: "com.streamisle.mobile", // 包名随应用名一并在 M1 §8.2 评审确认
+      // 发版递增（覆盖安装依赖单调递增；与 app version 同步在发版前手动 bump）
+      versionCode: 2,
       // minSdkVersion: 26 的实际生效见 plugins 内 expo-build-properties（SDK 58 该配置字段
       // 不进 gradle 体系，裸配置经构建日志验证落的是版本目录默认 24）
       usesCleartextTraffic: true, // 字段保留作意图声明；SDK 58 实际生效靠上方 withCleartextTraffic 插件
