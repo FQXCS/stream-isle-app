@@ -11,6 +11,9 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # GITHUB_TOKEN 默认只读，创建 Release 需显式授予 contents 写权限（否则 403）
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
