@@ -4,7 +4,7 @@
  * 图标按模块按需引入（Phosphor 全量 1500+，避免 Metro 把整包打进 bundle）。
  */
 import type { Icon, IconProps, IconWeight } from 'phosphor-react-native';
-import Svg, { Circle, Path, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { ArrowClockwise } from 'phosphor-react-native/src/icons/ArrowClockwise';
 import { ArrowDown } from 'phosphor-react-native/src/icons/ArrowDown';
 import { ArrowLeft } from 'phosphor-react-native/src/icons/ArrowLeft';
@@ -22,7 +22,6 @@ import { CaretUp } from 'phosphor-react-native/src/icons/CaretUp';
 import { Check } from 'phosphor-react-native/src/icons/Check';
 import { CircleIcon } from 'phosphor-react-native/src/icons/Circle';
 import { ClockCounterClockwise } from 'phosphor-react-native/src/icons/ClockCounterClockwise';
-import { DeviceRotate } from 'phosphor-react-native/src/icons/DeviceRotate';
 import { DotsSixVertical } from 'phosphor-react-native/src/icons/DotsSixVertical';
 import { DotsThree } from 'phosphor-react-native/src/icons/DotsThree';
 import { DownloadSimple } from 'phosphor-react-native/src/icons/DownloadSimple';
@@ -131,7 +130,8 @@ export type AppIconName =
   | 'lock'
   | 'unlock'
   | 'pip'
-  | 'rotate'
+  | 'rotateToLandscape'
+  | 'rotateToPortrait'
   | 'snapshot'
   | 'moreGrid'
   | 'abLoop'
@@ -212,6 +212,58 @@ function AbLoopAGlyph({ size = 24, color = '#FFFFFF' }: IconProps) {
   );
 }
 
+/** 图标库无匹配（Phosphor 无「竖屏 + 横屏 + 弧形箭头」），自绘注册 AppIcon：竖屏→横屏（顺时针） */
+function RotateToLandscapeGlyph({ size = 24, color = '#FFFFFF' }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M6 17.65H4.7A1.5 1.5 0 0 1 3.2 16.15V5.35A1.5 1.5 0 0 1 4.7 3.85H9.7A1.5 1.5 0 0 1 11.2 5.35V10.85"
+        stroke={color}
+        strokeWidth={1.5}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Rect x={7.1} y={11.95} width={13.5} height={8.2} rx={1.5} stroke={color} strokeWidth={1.5} fill="none" />
+      <Path d="M12.6 5.4A5.6 5.6 0 0 1 18.2 11" stroke={color} strokeWidth={1.5} fill="none" strokeLinecap="round" />
+      <Path
+        d="M16.9 8.9 18.2 11 19.5 8.9"
+        stroke={color}
+        strokeWidth={1.5}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/** 同上，横屏→竖屏（逆时针，箭头与顺时针版镜像） */
+function RotateToPortraitGlyph({ size = 24, color = '#FFFFFF' }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M6 17.65H4.7A1.5 1.5 0 0 1 3.2 16.15V5.35A1.5 1.5 0 0 1 4.7 3.85H9.7A1.5 1.5 0 0 1 11.2 5.35V10.85"
+        stroke={color}
+        strokeWidth={1.5}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Rect x={7.1} y={11.95} width={13.5} height={8.2} rx={1.5} stroke={color} strokeWidth={1.5} fill="none" />
+      <Path d="M18.2 11A5.6 5.6 0 0 0 12.6 5.4" stroke={color} strokeWidth={1.5} fill="none" strokeLinecap="round" />
+      <Path
+        d="M14.4 3.9 12.6 5.4 14.4 6.9"
+        stroke={color}
+        strokeWidth={1.5}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 const GLYPH_MAP: Record<AppIconName, GlyphSpec> = {
   back: { Glyph: CaretLeft },
   more: { Glyph: DotsThree, weight: 'bold' },
@@ -261,7 +313,8 @@ const GLYPH_MAP: Record<AppIconName, GlyphSpec> = {
   lock: { Glyph: LockSimple },
   unlock: { Glyph: LockSimpleOpen },
   pip: { Glyph: PictureInPicture },
-  rotate: { Glyph: DeviceRotate },
+  rotateToLandscape: { Glyph: RotateToLandscapeGlyph },
+  rotateToPortrait: { Glyph: RotateToPortraitGlyph },
   snapshot: { Glyph: Image },
   moreGrid: { Glyph: MoreGridGlyph },
   abLoop: { Glyph: AbLoopGlyph },

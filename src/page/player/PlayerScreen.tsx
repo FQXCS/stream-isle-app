@@ -949,6 +949,7 @@ export function PlayerScreen() {
               title={session.name ?? ''}
               isPlaying={isPlaying}
               isLocked={isLocked}
+              isPortrait={isPortrait}
               positionMs={positionMs}
               bufferedMs={bufferedMs}
               durationMs={durationMs}

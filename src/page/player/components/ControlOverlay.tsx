@@ -35,6 +35,8 @@ interface ControlOverlayProps {
   /** AB 循环区间（null=未设；bMs=null=仅 A 点）：驱动图标三态与进度条 A/B 标记 */
   abLoop: AbLoop | null;
   playbackSpeed: number;
+  /** 当前是否竖屏：决定旋转图标方向（竖屏→横屏顺时针 / 横屏→竖屏逆时针） */
+  isPortrait: boolean;
   onExit: () => void;
   onToggleLock: () => void;
   onTogglePlay: () => void;
@@ -51,6 +53,7 @@ export function ControlOverlay({
   title,
   isPlaying,
   isLocked,
+  isPortrait,
   positionMs,
   bufferedMs,
   durationMs,
@@ -201,7 +204,7 @@ export function ControlOverlay({
             iconSize={TOOL_ICON_SIZE}
           />
           <OverlayButton
-            icon="rotate"
+            icon={isPortrait ? 'rotateToLandscape' : 'rotateToPortrait'}
             label={tr('player.rotate')}
             color={COLORS.textPrimary}
             onPress={interact(onRotate)}
