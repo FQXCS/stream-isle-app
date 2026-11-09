@@ -60,8 +60,7 @@ export const zhBase = {
   'settings.historyDesc': '服务端已看条目，按观看时间倒序',
   'settings.appName': '应用名',
   'settings.version': '版本号',
-  'settings.githubReleases': 'GitHub Releases',
-  'settings.githubReleasesDesc': '查看更新与历史版本',
+  'settings.versionDesc': '检查新版本与更新内容',
   'settings.maxResolution': '最大转码分辨率',
   'settings.maxResolutionDesc': '转码输出的分辨率上限（直连不受影响）',
   'settings.allowHevc': '允许 HEVC 直连',
@@ -70,6 +69,21 @@ export const zhBase = {
   'settings.cellularDowngradeDesc': '蜂窝网络默认降至 480p，可手动更改',
   'settings.resumePlayback': '断点续播',
   'settings.resumePlaybackDesc': '从上次停止位置继续；关闭后每次从头播放',
+
+  // —— 软件更新页 ——
+  'update.title': '软件更新',
+  'update.check': '检查更新',
+  'update.checking': '检查中…',
+  'update.statusChecking': '正在检查更新…',
+  'update.statusLatest': '已是最新版本',
+  'update.statusAvailable': '发现新版本 {version}',
+  'update.statusFailed': '检查更新失败',
+  'update.failedHint': '请检查网络连接后重试',
+  'update.releaseNotes': '更新内容',
+  'update.noNotes': '本版暂无更新说明',
+  'update.download': '前往下载',
+  'update.openReleases': '在浏览器中打开 Releases',
+  'update.sourceHint': '版本信息来自 GitHub Releases',
 
   // —— 转码分辨率档位 ——
   'resolution.unlimited': '原画',

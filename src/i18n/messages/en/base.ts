@@ -63,8 +63,7 @@ export const enBase: Record<keyof typeof zhBase, Message> = {
   'settings.historyDesc': 'Watched items from the server, newest first',
   'settings.appName': 'App name',
   'settings.version': 'Version',
-  'settings.githubReleases': 'GitHub Releases',
-  'settings.githubReleasesDesc': 'View updates and previous versions',
+  'settings.versionDesc': 'Check for new versions and release notes',
   'settings.maxResolution': 'Max transcode resolution',
   'settings.maxResolutionDesc': 'Upper limit for transcoded output (direct play is unaffected)',
   'settings.allowHevc': 'Allow HEVC direct play',
@@ -74,6 +73,21 @@ export const enBase: Record<keyof typeof zhBase, Message> = {
   'settings.resumePlayback': 'Resume playback',
   'settings.resumePlaybackDesc':
     'Continue from where you stopped; when off, always start from the beginning',
+
+  // —— Software update ——
+  'update.title': 'Software update',
+  'update.check': 'Check for updates',
+  'update.checking': 'Checking…',
+  'update.statusChecking': 'Checking for updates…',
+  'update.statusLatest': "You're up to date",
+  'update.statusAvailable': 'Version {version} is available',
+  'update.statusFailed': 'Update check failed',
+  'update.failedHint': 'Check your network connection and try again',
+  'update.releaseNotes': "What's new",
+  'update.noNotes': 'No release notes for this version',
+  'update.download': 'Download',
+  'update.openReleases': 'Open Releases in browser',
+  'update.sourceHint': 'Version information from GitHub Releases',
 
   // —— Transcode resolution tiers ——
   'resolution.unlimited': 'Original',

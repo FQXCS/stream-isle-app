@@ -73,6 +73,8 @@ export type RootStackParamList = {
   [ROUTES.DOWNLOADS]: undefined;
   /** 收录类型设置二级页：继续观看/观看历史分别多选 */
   [ROUTES.MEDIA_TYPE_SETTINGS]: undefined;
+  /** 软件更新页：检查 GitHub Releases 最新版本 */
+  [ROUTES.SOFTWARE_UPDATE]: undefined;
   /** 库页配置：指定服务器类型后显示 Tab 分类/排序项入口 */
   [ROUTES.LIBRARY_DISPLAY_SETTINGS]: { flavor: ServerFlavor };
   /** 库页 Tab 分类配置（指定 flavor 后进入库类型列表） */

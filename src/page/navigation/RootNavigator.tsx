@@ -63,6 +63,7 @@ import { LibrariesScreen } from '@/page/tabs/LibrariesScreen';
 import { MediaServerScreen } from '@/page/tabs/MediaServerScreen';
 import { SearchScreen } from '@/page/tabs/SearchScreen';
 import { SettingsScreen } from '@/page/tabs/SettingsScreen';
+import { UpdateScreen } from '@/page/update/UpdateScreen';
 import { useAccountStore } from '@/store/accountStore';
 import { reloginWithStoredCredential } from '@/service/AuthService';
 
@@ -301,6 +302,16 @@ export function RootNavigator() {
               name={ROUTES.MEDIA_TYPE_SETTINGS}
               component={MediaTypeSettingsScreen}
               options={{ title: tr('settings.includedTypes'), headerBackTitle: tr('nav.back') }}
+            />
+            {/* 软件更新：检查 GitHub Releases 最新版本（设置 → 关于 → 版本号进入） */}
+            <RootStack.Screen
+              name={ROUTES.SOFTWARE_UPDATE}
+              component={UpdateScreen}
+              options={{
+                title: tr('update.title'),
+                headerBackTitle: tr('nav.back'),
+                animation: 'slide_from_right',
+              }}
             />
             {/* 库页配置：根设置页已选服务器类型，这里配置 Tab 分类/排序项 */}
             <RootStack.Screen

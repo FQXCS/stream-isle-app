@@ -2,13 +2,13 @@
  * 设置页（04 文档 §4.5 完整化；设计文档 §5.1/§8.2/§9/§10.2/§11；M6 文档 §4.4.5/§4.9.3）：
  * 播放（M3 PlaybackSettingsSection 收编回归 + M4 新增「默认字幕语言」单选弹层）/
  * 外观（M6 浅色主题三态，06 §4.6.1）/ 下载与历史入口（06 §4.4.5 设置页入口）/
- * 收录类型二级页入口 / 关于（应用名/版本号 + GitHub Releases 外链）。
+ * 收录类型二级页入口 / 关于（应用名/版本号，版本号进入软件更新页）。
  * 账号与服务器管理已迁至「媒体服务器」Tab（MediaServerScreen）。
  */
 import { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RadioOptionSheet } from '@/component/RadioOptionSheet';
@@ -46,9 +46,6 @@ const LANGUAGE_OPTIONS: readonly { key: LanguagePreference; labelKey: MessageKey
   { key: 'zh', labelKey: 'settings.languageZh' },
   { key: 'en', labelKey: 'settings.languageEn' },
 ];
-
-/** GitHub Releases 外链（06 文档 §4.9.3「关于」行；设计文档 §14.4 分发渠道） */
-const GITHUB_RELEASES_URL = 'https://github.com/renym/stream-isle-app/releases';
 
 export function SettingsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -176,20 +173,16 @@ export function SettingsScreen() {
           onPress={() => navigation.navigate(ROUTES.HISTORY)}
         />
       </View>
-      {/* 关于分区（04 §4.5 容器；M6 增补版本 Code 与 GitHub Releases 外链，06 §4.9.3） */}
+      {/* 关于分区（04 §4.5 容器；版本号行进入软件更新页） */}
       <View style={[styles.card, { backgroundColor: t.surface }]}>
         <Text style={[styles.groupTitle, { color: t.textTertiary }]}>{tr('settings.about')}</Text>
         <SettingRow label={tr('settings.appName')} value={CLIENT_NAME} />
-        <SettingRow label={tr('settings.version')} value={APP_VERSION} />
         <SettingRow
-          label={tr('settings.githubReleases')}
-          description={tr('settings.githubReleasesDesc')}
+          label={tr('settings.version')}
+          description={tr('settings.versionDesc')}
+          value={APP_VERSION}
           showArrow
-          onPress={() => {
-            void Linking.openURL(GITHUB_RELEASES_URL).catch(() => {
-              // 外链失败静默（无浏览器场景）
-            });
-          }}
+          onPress={() => navigation.navigate(ROUTES.SOFTWARE_UPDATE)}
         />
       </View>
       <RadioOptionSheet

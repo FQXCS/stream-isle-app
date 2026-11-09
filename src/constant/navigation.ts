@@ -32,6 +32,8 @@ export const ROUTES = {
   HISTORY: 'History',
   DOWNLOADS: 'Downloads',
   MEDIA_TYPE_SETTINGS: 'MediaTypeSettings',
+  /** 软件更新（设置 → 关于 → 版本号进入） */
+  SOFTWARE_UPDATE: 'SoftwareUpdate',
   LIBRARY_DISPLAY_SETTINGS: 'LibraryDisplaySettings',
   LIBRARY_TAB_SETTINGS: 'LibraryTabSettings',
   LIBRARY_TAB_EDITOR: 'LibraryTabEditor',
