@@ -9,6 +9,7 @@ import { withAndroidManifest } from '@expo/config-plugins';
 import withStreamIsleNetwork from './plugins/withStreamIsleNetwork.js';
 import withPdfAssets from './plugins/withPdfAssets.js';
 import withAliyunMaven from './plugins/withAliyunMaven.js';
+import withReleaseSigning from './plugins/withReleaseSigning.js';
 
 /**
  * 为 AndroidManifest 的 <application> 补 android:usesCleartextTraffic="true"。
@@ -94,6 +95,9 @@ export default {
       withPdfAssets,
       // 国内 Maven 镜像（阿里云优先、Central 兜底）：prebuild 重建 android/ 后自动恢复
       withAliyunMaven,
+      // Release 正式签名：注入 release signingConfig 读 CI keystore 环境变量，
+      // 构建期回退 debug（本地无 keystore 不影响调试），避免发出 debug 证书签名的分发包
+      withReleaseSigning,
       // minSdk 显式落 26（设计文档文档属性表 Android 8+ / M1 §4.1）：SDK 58 版本目录默认 24，
       // 必须经 expo-build-properties 写 gradle.properties 的 android.minSdkVersion=26
       ["expo-build-properties", { android: { minSdkVersion: 26 } }],
