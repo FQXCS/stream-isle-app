@@ -1,5 +1,5 @@
-# android/ 为 expo prebuild 托管产物：按模板原始字节入库，禁用 CRLF/LF 归一化。
-# 模板中部分文件（gradlew.bat、pdf 资产、StreamIsle*.kt 等）本身是 CRLF，
-# 若被 core.autocrlf 归一化为 LF 入库，CI（Linux，autocrlf 关闭）上
-# prebuild 重放后 `git diff -- android/` 会整文件报漂移（mobile-ci 的无 diff 断言失败）。
-android/** -text
+# expo prebuild 重放文件：固定换行符口径，避免 Windows（core.autocrlf）提交与
+# Linux CI prebuild 产物之间的换行符假漂移；gradlew 的可执行位由 git 索引记录为 755
+.gitattributes text eol=lf
+android/gradlew text eol=lf
+android/gradlew.bat text eol=crlf
