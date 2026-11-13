@@ -311,7 +311,7 @@ function PosterFolderBrowser({
                 openFolder({ libraryId, libraryType, sort, tabId, item, kind: 'folder' })
               }
             >
-              <FolderCard item={item} />
+              <FolderCard item={item} sort={sort} />
             </Pressable>
           ) : (
             <WallGridCell

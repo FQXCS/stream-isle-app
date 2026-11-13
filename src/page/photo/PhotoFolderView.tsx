@@ -153,7 +153,11 @@ export function PhotoFolderView({ parentId, sort, onOpenFolder, onOpenAlbum }: P
                 navigation.navigate(ROUTES.ITEM, { itemId: item.id });
               }}
             >
-              {item.type === 'Folder' ? <FolderCard item={item} /> : <PosterCard item={item} />}
+              {item.type === 'Folder' ? (
+                <FolderCard item={item} sort={sort} />
+              ) : (
+                <PosterCard item={item} />
+              )}
             </Pressable>
           )
         }

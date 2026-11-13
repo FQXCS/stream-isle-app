@@ -1,14 +1,15 @@
 /**
  * 文件夹卡（文件夹视图的目录格，M7 增量）：与 PosterCard 同版式（2:3 底 + 名称）。
- * 封面来源：服务器给 Folder 图片时直接用；否则懒加载取目录内首个带海报的条目封面
- * （FolderCoverService，带缓存与并发上限），都没有则回退 📁 图标。
+ * 封面来源：文件夹自身 Primary 优先；否则懒加载取目录内按当前排序首个带海报的条目封面
+ * （FolderCoverService，带缓存与并发上限）；服务器给文件夹的「借用图」与排序无关，仅作占位/兜底；
+ * 都没有则回退 📁 图标。
  * 底内右下角显示子项数量（Fields=ChildCount）。
  */
 import { useEffect, useState } from 'react';
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
 
-import type { MediaLibraryItem } from '@/adapter/model';
+import type { MediaLibraryItem, SortByEnum } from '@/adapter/model';
 import { FONT_SIZE, POSTER_RADIUS, SPACING, type ThemeTokens } from '@/constant/theme';
 import { useTheme } from '@/component/useTheme';
 import { useT } from '@/i18n';
@@ -16,29 +17,45 @@ import { loadFolderCover } from '@/service/FolderCoverService';
 
 interface FolderCardProps {
   item: MediaLibraryItem;
+  /** 排序（封面取样跟随排序；缺省名称升序） */
+  sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' };
 }
 
-export function FolderCard({ item }: FolderCardProps) {
+export function FolderCard({ item, sort }: FolderCardProps) {
   const t = useTheme();
   const tr = useT();
   const styles = createStyles(t);
-  // 服务器自带封面优先；没有则懒加载目录内首个条目的海报
-  const [coverUrl, setCoverUrl] = useState<string | undefined>(item.posterImageUrl);
+  const sortBy = sort?.sortBy;
+  const sortOrder = sort?.sortOrder;
+  // 服务器给文件夹的「借用图」（URL 指向子条目）与排序无关，降级兜底；
+  // 仅文件夹自身 Primary（URL 指向自己）优先，其余走排序取样
+  const ownCoverUrl =
+    item.posterImageUrl !== undefined && item.posterImageUrl.includes(`/Items/${item.id}/Images/`)
+      ? item.posterImageUrl
+      : undefined;
+  // 封面状态带「目录+排序」键：列表复用/排序变化时键不匹配即视为未加载，避免串上一目录的旧封面
+  const coverKey = `${item.id}|${sortBy ?? ''}|${sortOrder ?? ''}`;
+  const [cover, setCover] = useState<{ key: string; url: string | null } | undefined>(undefined);
 
   useEffect(() => {
-    if (coverUrl !== undefined) {
+    // 文件夹自身封面优先（与排序无关），无需取样
+    if (ownCoverUrl !== undefined) {
       return;
     }
     let cancelled = false;
-    void loadFolderCover(item.id).then((url) => {
-      if (!cancelled && url !== null) {
-        setCoverUrl(url);
+    void loadFolderCover(item.id, sortBy, sortOrder).then((url) => {
+      if (!cancelled) {
+        setCover({ key: coverKey, url });
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [item.id, coverUrl]);
+  }, [item.id, ownCoverUrl, coverKey, sortBy, sortOrder]);
+
+  // 自身图 > 排序取样结果（未返回前暂用服务器借用图占位）> 借用图兜底
+  const lazyCoverUrl = cover?.key === coverKey ? (cover.url ?? undefined) : undefined;
+  const coverUrl = ownCoverUrl ?? lazyCoverUrl ?? item.posterImageUrl;
 
   return (
     <View style={styles.card}>
@@ -68,6 +85,7 @@ export function FolderCard({ item }: FolderCardProps) {
     </View>
   );
 }
+
 
 const createStyles = (t: ThemeTokens) =>
   StyleSheet.create({

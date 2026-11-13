@@ -135,17 +135,19 @@ export function fetchFolderPage(
  * 文件夹封面取样：服务器不给 Folder 图片（/Images/Primary 为 404），
  * 递归取目录内前 searchLimit 个「自带海报」类型（照片/视频/影片/剧集/图书/专辑）的条目，
  * 由调用方挑第一个带海报的作封面——照片库的下一层是相册（相册无图），必须递归才能拿到照片。
+ * 排序跟随调用方（封面随排序变化），缺省名称升序。
  */
 export function fetchFolderPreview(
   parentId: string,
+  sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' },
   searchLimit = 5
 ): Promise<Paged<MediaLibraryItem>> {
   return fetchWallPage({
     userId: requireUserId(),
     parentId,
     kinds: ['Movie', 'Series', 'Video', 'Photo', 'Book', 'MusicAlbum'],
-    sortBy: 'SORT_NAME',
-    sortOrder: 'ASC',
+    sortBy: sort?.sortBy ?? 'SORT_NAME',
+    sortOrder: sort?.sortOrder ?? 'ASC',
     recursive: true,
     startIndex: 0,
     limit: searchLimit,

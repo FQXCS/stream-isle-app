@@ -140,7 +140,11 @@ export function MusicFolderView({ folderId, onOpenFolder, sortBy, sortOrder }: M
         keyExtractor={(item) => item.id}
         renderItem={({ item }: { item: MediaLibraryItem }) => (
           <Pressable style={styles.gridCell} onPress={() => handlePressEntry(item)}>
-            {item.type === 'Folder' ? <FolderCard item={item} /> : <PosterCard item={item} />}
+            {item.type === 'Folder' ? (
+              <FolderCard item={item} sort={{ sortBy, sortOrder }} />
+            ) : (
+              <PosterCard item={item} />
+            )}
           </Pressable>
         )}
         onEndReached={state.loadMore}

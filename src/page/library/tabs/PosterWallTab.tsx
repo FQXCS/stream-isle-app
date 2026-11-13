@@ -199,7 +199,7 @@ export function PosterWallTab({ tab, libraryId, sort, onClearFilter }: PosterWal
         renderItem={({ item }: { item: MediaLibraryItem }) =>
           item.type === 'Folder' ? (
             <View style={styles.gridCell}>
-              <FolderCard item={item} />
+              <FolderCard item={item} sort={sort} />
             </View>
           ) : (
             <WallGridCell
