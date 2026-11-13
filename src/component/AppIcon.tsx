@@ -42,6 +42,7 @@ import { Headphones } from 'phosphor-react-native/src/icons/Headphones';
 import { Heart } from 'phosphor-react-native/src/icons/Heart';
 import { House } from 'phosphor-react-native/src/icons/House';
 import { Image } from 'phosphor-react-native/src/icons/Image';
+import { ImageSquare } from 'phosphor-react-native/src/icons/ImageSquare';
 import { Images } from 'phosphor-react-native/src/icons/Images';
 import { Info } from 'phosphor-react-native/src/icons/Info';
 import { ListPlus } from 'phosphor-react-native/src/icons/ListPlus';
@@ -142,6 +143,7 @@ export type AppIconName =
   | 'flag'
   | 'flagOutline'
   | 'download'
+  | 'image'
   | 'trash'
   | 'broom'
   | 'equalizer'
@@ -324,6 +326,7 @@ const GLYPH_MAP: Record<AppIconName, GlyphSpec> = {
   flag: { Glyph: Flag, weight: 'fill' },
   flagOutline: { Glyph: Flag },
   download: { Glyph: DownloadSimple },
+  image: { Glyph: ImageSquare },
   trash: { Glyph: Trash },
   broom: { Glyph: Broom },
   equalizer: { Glyph: Equalizer },

@@ -1709,7 +1709,8 @@ export abstract class BaseAdapter implements ServerAdapter {
           Recursive: 'true',
           SortBy: sortParamOf(this.flavor, sort?.sortBy ?? 'SORT_NAME'),
           SortOrder: SORT_ORDER_PARAM_MAP[sort?.sortOrder ?? 'ASC'],
-          Fields: 'PrimaryImageAspectRatio,Path',
+          // Width/Height/DateCreated/PremiereDate：查看器副标题「日期 · 分辨率」与信息面板消费
+          Fields: 'PrimaryImageAspectRatio,Path,Width,Height,DateCreated,PremiereDate',
           // 照片分页步长 = 照片页大小 60（与 Limit 一致，避免页间重叠）
           StartIndex: String(page * PHOTO_PAGE_SIZE),
           Limit: String(PHOTO_PAGE_SIZE),

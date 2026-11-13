@@ -214,7 +214,9 @@ describe('照片查询', () => {
     const url = api.request.mock.calls[0][0].url as string;
     expect(url).toContain('ParentId=alb-1');
     expect(url).toContain('IncludeItemTypes=Photo');
-    expect(url).toContain('Fields=PrimaryImageAspectRatio%2CPath');
+    expect(url).toContain(
+      'Fields=PrimaryImageAspectRatio%2CPath%2CWidth%2CHeight%2CDateCreated%2CPremiereDate'
+    );
     expect(url).toContain(`Limit=${PHOTO_PAGE_SIZE}`);
     const photo = page.items[0];
     expect(photo.gridImageUrl).toContain('maxWidth=390');
