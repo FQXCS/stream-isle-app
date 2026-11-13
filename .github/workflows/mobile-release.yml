@@ -1,7 +1,7 @@
 # Stream Isle Mobile Release（M6 文档 §4.9.2；设计文档 §12/§14）
 # 触发：推送 v* tag → 复跑 lint/test 门禁 → 解码 keystore（仓库 Secrets 四件套）
 # → assembleRelease 签名 APK → 重命名 StreamIsle-{versionName}({versionCode}).apk
-# → 上传 artifact + softprops/action-gh-release 附加 APK（release notes 以 tag message 为底稿）。
+# → 上传 artifact + softprops/action-gh-release 附加 APK（release notes = tag message 引言 + 上一 tag 以来全部提交）。
 name: mobile-release
 
 on:
@@ -16,6 +16,9 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          # 全量历史 + tags：release notes 需定位上一版本 tag 并生成提交清单
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -73,16 +76,30 @@ jobs:
           path: ${{ env.APK_TARGET }}
           retention-days: 30
 
-      - name: 产出 Release notes（tag message 为底稿，中文；返工勘误：不得传空 body_path）
+      - name: 产出 Release notes（tag message 引言 + 上一版本以来全部提交，中文；返工勘误：不得传空 body_path）
         run: |
-          git tag -l --format='%(contents)' "${GITHUB_REF_NAME}" > release-notes.md
-          # 轻量 tag（message 为空/仅有注释对象缺失）兜底：避免空 body 文件
-          if ! [ -s release-notes.md ]; then
-            echo "本版更新说明见提交记录。" > release-notes.md
+          # tag message 作引言；轻量 tag 无自身 message，跳过引言只留提交清单
+          if [ "$(git cat-file -t "${GITHUB_REF_NAME}")" = "tag" ]; then
+            git tag -l --format='%(contents)' "${GITHUB_REF_NAME}" > release-notes.md
+          else
+            : > release-notes.md
           fi
+          # 按提交时间定位上一版本 tag；首个版本无上一 tag 时取全部历史
+          PREV_TAG=$(git for-each-ref --sort=-creatordate --format='%(refname:short)' refs/tags \
+            | grep -v -x -F "${GITHUB_REF_NAME}" | head -n 1 || true)
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..${GITHUB_REF_NAME}"
+            echo "## 更新内容（${PREV_TAG} → ${GITHUB_REF_NAME}）" >> release-notes.md
+          else
+            RANGE="${GITHUB_REF_NAME}"
+            echo "## 更新内容" >> release-notes.md
+          fi
+          echo "" >> release-notes.md
+          # 排除 merge 提交，避免「Merge remote-tracking branch」等噪音进入简介
+          git log "$RANGE" --no-merges --format='- %s' >> release-notes.md
           echo "NOTES_PATH=release-notes.md" >> "$GITHUB_ENV"
 
-      - name: 附加 APK 到 GitHub Release（notes 以 tag message 为底稿，中文）
+      - name: 附加 APK 到 GitHub Release（notes = tag message 引言 + 提交清单，中文）
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ env.APK_TARGET }}
