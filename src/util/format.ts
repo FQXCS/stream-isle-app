@@ -81,7 +81,7 @@ export function formatRelativeTime(ms: number | undefined): string {
 }
 
 /**
- * 毫秒时间戳 → "YYYY-MM-DD"（M5 文档 §4.1 增量：照片查看器信息条「拍摄日期」）。
+ * 毫秒时间戳 → "YYYY-MM-DD"（M5 文档 §4.1 增量：照片查看器信息条「添加日期」）。
  * 无效值（NaN/负数等无法构造日期）回退空串，调用方按缺省不展示处理。
  */
 export function formatDate(ms: number): string {

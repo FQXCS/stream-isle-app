@@ -178,7 +178,7 @@ interface ServerItemResponse {
   Path?: string;
   Width?: number;
   Height?: number;
-  /** 照片拍摄日期：DateCreated 优先、PremiereDate 兜底（→ ms） */
+  /** 照片添加日期：DateCreated（入库时间）优先、PremiereDate 兜底（→ ms） */
   DateCreated?: string;
   PremiereDate?: string;
   /** M8：LiveTV / 插件频道条目字段 */
@@ -1764,6 +1764,7 @@ export abstract class BaseAdapter implements ServerAdapter {
           height: item.Height,
           fileName: fileName ?? translated.name,
           takenAtMs,
+          premiereDateMs: isoToMs(item.PremiereDate),
           gridImageUrl,
           viewerImageUrl,
           originalImageUrl,

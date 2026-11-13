@@ -6,7 +6,7 @@
  * 圆形图标按钮（关闭/信息/保存）+ 原图状态胶囊 + 页码胶囊；安全区适配。
  * 单击照片切换顶/底栏显隐（库补丁 onTap，与双击放大/长按/滑动消歧）；
  * 长按弹应用内底部动作面板（PhotoActionSheet），顶栏 ⓘ 进图片信息面板（PhotoInfoSheet）。
- * 顶部信息条（文件名/拍摄日期·分辨率/原图徽章）随 index 切换；底部页码（分母 = totalCount，
+ * 顶部信息条（文件名/添加日期·分辨率/原图徽章）随 index 切换；底部页码（分母 = totalCount，
  * 缺失降级「{index+1} / 已加载 N」）。
  * 续载：距已载片段末尾 PHOTO_VIEWER_PRELOAD_REMAINING 张时自动拉下一页追加（A17 跨片段连续翻页）。
  * 查看原图：当前页切换 originalImageUrl（可切回），原图仅显式动作加载（§4.6 防 OOM 第一道防线）。
@@ -227,7 +227,7 @@ function HeaderComponent({
   const tr = useT();
   const takenAt = photo?.takenAtMs !== undefined ? formatDate(photo.takenAtMs) : '';
   const hasResolution = photo?.width !== undefined && photo?.height !== undefined;
-  // 副标题：拍摄日期 · 分辨率（任一缺失则只显示有的部分）
+  // 副标题：添加日期 · 分辨率（任一缺失则只显示有的部分）
   const subParts = [takenAt, hasResolution ? `${photo.width}×${photo.height}` : ''].filter(
     (part) => part !== ''
   );

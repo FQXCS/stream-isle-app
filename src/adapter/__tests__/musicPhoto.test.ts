@@ -195,7 +195,7 @@ describe('照片查询', () => {
     expect(url).toContain('Fields=PrimaryImageAspectRatio%2CChildCount');
   });
 
-  it('getPhotos：IncludeItemTypes=Photo + Fields=Path + 页大小 60；三个宽度 URL 预拼 + fileName=Path basename + 拍摄日期', async () => {
+  it('getPhotos：IncludeItemTypes=Photo + Fields=Path + 页大小 60；三个宽度 URL 预拼 + fileName=Path basename + 添加日期/发行时间', async () => {
     const { adapter, api } = makeAdapter('EMBY', {
       Items: [
         item({
@@ -205,6 +205,7 @@ describe('照片查询', () => {
           Width: 8000,
           Height: 6000,
           DateCreated: '2026-01-02T03:04:05Z',
+          PremiereDate: '2025-12-31T00:00:00Z',
         }),
       ],
       TotalRecordCount: 1,
@@ -227,6 +228,7 @@ describe('照片查询', () => {
     expect(photo.height).toBe(6000);
     expect(photo.fileName).toBe('IMG_0001.jpg');
     expect(photo.takenAtMs).toBe(Date.parse('2026-01-02T03:04:05Z'));
+    expect(photo.premiereDateMs).toBe(Date.parse('2025-12-31T00:00:00Z'));
   });
 
   it('getPhotos：Path 缺失时 fileName 回退 name；不透传完整服务器路径', async () => {

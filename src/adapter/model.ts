@@ -269,8 +269,10 @@ export interface PhotoItem extends MediaLibraryItem {
   height?: number;
   /** 文件名：adapter 取服务器 Path 的 basename（含扩展名），Path 缺失回退 name；不透传完整服务器路径 */
   fileName?: string;
-  /** DateCreated ?? PremiereDate → ms（信息条「拍摄日期」） */
+  /** DateCreated ?? PremiereDate → ms（信息条「添加日期」；DateCreated 为入库时间，非 EXIF 拍摄时间） */
   takenAtMs?: number;
+  /** PremiereDate → ms（信息面板「发行时间」；服务端缺失时整行不展示） */
+  premiereDateMs?: number;
   /** 网格缩略（maxWidth=格子尺寸，见 05 §4.6） */
   gridImageUrl: string;
   /** 查看器缩放图（maxWidth=屏幕宽×dpr，见设计文档 §7.6） */

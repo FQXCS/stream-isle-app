@@ -1,6 +1,6 @@
 /**
  * formatClock 单测（M2 文档 §6.1：时长格式化；播放器时长/剩余/气泡共用）。
- * M5 增量：formatDate（照片查看器信息条「拍摄日期」，§6.1）。
+ * M5 增量：formatDate（照片查看器信息条「添加日期」，§6.1）。
  */
 import { useSettingsStore } from '@/store/settingsStore';
 import {
