@@ -187,6 +187,15 @@ export interface MediaLibrary {
   primaryImageUrl?: string;
 }
 
+/** 用户配置（媒体管理）：仅声明本功能读写的两字段，其余字段经索引签名全量透传回写不丢失 */
+export interface UserConfiguration {
+  /** 首页媒体库顺序（服务器支持时 /Views 按其排序） */
+  OrderedViews?: string[];
+  /** 首页隐藏的媒体库 id（Jellyfin 应用；Emby 部分版本仅持久化不应用，由本地兜底） */
+  MyMediaExcludes?: string[];
+  [key: string]: unknown;
+}
+
 /** 列表查询（海报墙/搜索统一入口） */
 export interface ItemQuery {
   userId: string;

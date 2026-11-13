@@ -39,6 +39,7 @@ import { ItemListScreen } from '@/page/library/ItemListScreen';
 import { LibraryFolderScreen } from '@/page/library/LibraryFolderScreen';
 import { LibraryListScreen } from '@/page/library/LibraryListScreen';
 import { LibraryScreen } from '@/page/library/LibraryScreen';
+import { MediaManageScreen } from '@/page/library/MediaManageScreen';
 import { LibraryDisplaySettingsScreen } from '@/page/settings/LibraryDisplaySettingsScreen';
 import { LibrarySortEditorScreen } from '@/page/settings/LibrarySortEditorScreen';
 import { LibrarySortSettingsScreen } from '@/page/settings/LibrarySortSettingsScreen';
@@ -220,6 +221,12 @@ export function RootNavigator() {
               name={ROUTES.LIBRARY_LIST}
               component={LibraryListScreen}
               options={{ title: tr('nav.tabLibrary'), headerBackTitle: tr('nav.back') }}
+            />
+            {/* 媒体管理：服务器菜单进入，库显隐/顺序；右上保存由页内 setOptions 注入 */}
+            <RootStack.Screen
+              name={ROUTES.MEDIA_MANAGE}
+              component={MediaManageScreen}
+              options={{ title: tr('server.mediaManage'), headerBackTitle: tr('nav.back') }}
             />
             {/* 库页：库名居中标题（参考稿），右上角排序按钮由 LibraryScreen setOptions 注入 */}
             <RootStack.Screen

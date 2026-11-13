@@ -50,7 +50,8 @@ export const enServer: Record<ServerMessageKey, Message> = {
   'server.sectionMyMedia': 'My Media',
   'server.refreshHome': 'Refresh home',
   'server.mediaManage': 'Manage media',
-  'server.mediaManageSoon': 'Media management is coming soon',
+  'server.mediaManageHint': 'If the server does not support this, changes apply on this device only',
+  'server.mediaManageLocalOnly': 'Server unsupported or sync failed; applied on this device',
   'server.noAccountForServer': 'This server has no account yet. Sign in on the Servers tab first',
   'server.guestTitle': 'Your library is empty',
   'server.guestHint':

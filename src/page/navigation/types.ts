@@ -45,6 +45,8 @@ export type RootStackParamList = {
   [ROUTES.SERVER_ROUTE_EDIT]: { serverId: string; routeId?: string };
   /** 全部媒体库列表：融合页「我的媒体 · 查看全部」入口 */
   [ROUTES.LIBRARY_LIST]: undefined;
+  /** 媒体管理：服务器菜单进入，库显隐/顺序（服务器同步 + 本地兜底） */
+  [ROUTES.MEDIA_MANAGE]: undefined;
   /** 海报墙页：库对象必传（M1 文档 §4.10） */
   [ROUTES.LIBRARY]: { library: MediaLibrary };
   /** 详情页：电影/剧集；Season/Episode 不进本页（季切换在页内、点集直接播，02 §4.5） */

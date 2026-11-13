@@ -20,6 +20,7 @@ import { CaretLeft } from 'phosphor-react-native/src/icons/CaretLeft';
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
 import { CaretUp } from 'phosphor-react-native/src/icons/CaretUp';
 import { Check } from 'phosphor-react-native/src/icons/Check';
+import { CheckSquare } from 'phosphor-react-native/src/icons/CheckSquare';
 import { CircleIcon } from 'phosphor-react-native/src/icons/Circle';
 import { ClockCounterClockwise } from 'phosphor-react-native/src/icons/ClockCounterClockwise';
 import { DotsSixVertical } from 'phosphor-react-native/src/icons/DotsSixVertical';
@@ -66,6 +67,7 @@ import { Shuffle } from 'phosphor-react-native/src/icons/Shuffle';
 import { SkipBack } from 'phosphor-react-native/src/icons/SkipBack';
 import { SkipForward } from 'phosphor-react-native/src/icons/SkipForward';
 import { SpeakerHigh } from 'phosphor-react-native/src/icons/SpeakerHigh';
+import { Square } from 'phosphor-react-native/src/icons/Square';
 import { Star } from 'phosphor-react-native/src/icons/Star';
 import { Stop } from 'phosphor-react-native/src/icons/Stop';
 import { Subtitles } from 'phosphor-react-native/src/icons/Subtitles';
@@ -90,6 +92,8 @@ export type AppIconName =
   | 'routes'
   | 'close'
   | 'check'
+  | 'checkboxChecked'
+  | 'checkboxUnchecked'
   | 'radioChecked'
   | 'radioUnchecked'
   | 'chevronRight'
@@ -271,6 +275,8 @@ const GLYPH_MAP: Record<AppIconName, GlyphSpec> = {
   more: { Glyph: DotsThree, weight: 'bold' },
   close: { Glyph: X },
   check: { Glyph: Check, weight: 'bold' },
+  checkboxChecked: { Glyph: CheckSquare, weight: 'fill' },
+  checkboxUnchecked: { Glyph: Square },
   plus: { Glyph: Plus },
   edit: { Glyph: PencilSimple },
   eye: { Glyph: Eye },

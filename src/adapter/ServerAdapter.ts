@@ -32,6 +32,7 @@ import type {
   ServerFlavor,
   ServerInfo,
   SortByEnum,
+  UserConfiguration,
 } from '@/adapter/model';
 
 export interface ServerAdapter {
@@ -44,8 +45,14 @@ export interface ServerAdapter {
   /** POST /Users/AuthenticateByName（两端同路径同 Pw 字段名） */
   login(username: string, password: string): Promise<AuthResult>;
 
-  /** GET /Users/{uid}/Views */
-  getUserViews(userId: string): Promise<MediaLibrary[]>;
+  /** GET /Users/{uid}/Views；includeHidden=true 取回含隐藏库的全量列表（媒体管理页用） */
+  getUserViews(userId: string, includeHidden?: boolean): Promise<MediaLibrary[]>;
+
+  /** GET /Users/{uid} → Configuration（媒体管理读取 OrderedViews/MyMediaExcludes） */
+  getUserConfiguration(userId: string): Promise<UserConfiguration>;
+
+  /** POST /Users/{uid}/Configuration（全量回写，调用方先 GET 再改两字段） */
+  updateUserConfiguration(userId: string, config: UserConfiguration): Promise<void>;
 
   /** M1：Limit=0 取 TotalRecordCount（数量口径与海报墙一致；collectionType 供口径判定，可选项） */
   getLibraryItemCount(userId: string, libraryId: string, collectionType?: string): Promise<number>;

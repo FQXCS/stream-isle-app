@@ -19,6 +19,8 @@ import { useT } from '@/i18n';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { useAccountStore } from '@/store/accountStore';
 import { librariesKeyOf, useBrowseStore } from '@/store/browseStore';
+import { useLibraryManageStore } from '@/store/libraryManageStore';
+import { applyManageOverride } from '@/util/libraryManage';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -30,6 +32,10 @@ export function LibraryListScreen() {
   const key = active ? librariesKeyOf(active.serverId, active.userId) : null;
   const libraries = useBrowseStore((state) =>
     key !== null ? state.librariesByKey[key] : undefined
+  );
+  // 媒体管理本地覆盖（显隐/顺序），与融合页同口径
+  const manageOverride = useLibraryManageStore((state) =>
+    key !== null ? state.overrideByKey[key] : undefined
   );
   const [refreshing, setRefreshing] = useState(false);
 
@@ -69,7 +75,7 @@ export function LibraryListScreen() {
   return (
     <View style={[styles.container, { backgroundColor: t.bg }]}>
       <FlatList
-        data={libraries}
+        data={applyManageOverride(libraries, manageOverride)}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <LibraryCard library={item} onPress={handlePress} />}
         contentContainerStyle={styles.listContent}

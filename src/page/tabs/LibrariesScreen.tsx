@@ -44,7 +44,9 @@ import { homeService, type HomeSections } from '@/service/HomeService';
 import { librariesKeyOf, useBrowseStore } from '@/store/browseStore';
 import { useAccountStore, useActiveServerFlavor } from '@/store/accountStore';
 import { useLibraryDisplayStore } from '@/store/libraryDisplayStore';
+import { useLibraryManageStore } from '@/store/libraryManageStore';
 import { resolveLibraryLatestQuery } from '@/util/libraryConfig';
+import { applyManageOverride } from '@/util/libraryManage';
 import { cardAspectRatioOf } from '@/util/mediaCard';
 import type { PageLoadStatus } from '@/util/pageState';
 
@@ -98,6 +100,10 @@ export function LibrariesScreen() {
   const activeServer = serverList.find((server) => server.serverId === active?.serverId);
   const key = active ? librariesKeyOf(active.serverId, active.userId) : null;
   const libraries = useBrowseStore((state) => (key !== null ? state.librariesByKey[key] : undefined));
+  // 媒体管理本地覆盖（显隐/顺序）：服务器不应用 MyMediaExcludes 时本机兜底
+  const manageOverride = useLibraryManageStore((state) =>
+    key !== null ? state.overrideByKey[key] : undefined
+  );
   // 每库行查询条件跟随设置页「同类型服务器配置」里的默认 Tab（flavor + 用户覆盖）
   const flavor = useActiveServerFlavor();
   const tabListByScope = useLibraryDisplayStore((state) => state.tabListByScope);
@@ -163,7 +169,10 @@ export function LibrariesScreen() {
     if (key === null) {
       return;
     }
-    const libraryList = useBrowseStore.getState().librariesByKey[key] ?? [];
+    const libraryList = applyManageOverride(
+      useBrowseStore.getState().librariesByKey[key] ?? [],
+      useLibraryManageStore.getState().overrideByKey[key]
+    );
     if (libraryList.length > 0) {
       await loadLibraryRows(libraryList);
     }
@@ -231,7 +240,7 @@ export function LibrariesScreen() {
       key: 'manage',
       label: tr('server.mediaManage'),
       icon: 'library',
-      onPress: () => showToast(tr('server.mediaManageSoon')),
+      onPress: () => navigation.navigate(ROUTES.MEDIA_MANAGE),
     },
     ...serverList
       .filter((server) => server.private !== true)
@@ -320,7 +329,7 @@ export function LibrariesScreen() {
     return null;
   }
 
-  const libraryList = libraries ?? [];
+  const libraryList = applyManageOverride(libraries ?? [], manageOverride);
   // 库列表未返回前不判定页面空，避免闪一下「暂无内容」
   const pageEmpty =
     libraries !== undefined &&

@@ -74,6 +74,7 @@ import type {
   SortByEnum,
   SubtitleStreamInfo,
   SubtitleTrack,
+  UserConfiguration,
   UserItemData,
   VideoStreamInfo,
 } from '@/adapter/model';
@@ -278,6 +279,11 @@ interface ItemsResponse {
   Items?: ServerItemResponse[];
   TotalRecordCount?: number;
   StartIndex?: number;
+}
+
+/** GET /Users/{uid} 响应（仅取 Configuration，媒体管理用） */
+interface UserResponse {
+  Configuration?: UserConfiguration;
 }
 
 /** 非播放实体（Genres/Tags/Studios/Channels）原始形态 */
@@ -734,11 +740,12 @@ export abstract class BaseAdapter implements ServerAdapter {
   /**
    * 库列表：GET /Users/{userId}/Views。
    * Items[] → MediaLibrary[]：CollectionType 原值存档，经 COLLECTION_TYPE_MAP 翻译 type（缺省 MIXED）。
+   * includeHidden=true 时服务器返回含隐藏库的全量列表（媒体管理页用；不支持的服务器忽略该参数）。
    */
-  async getUserViews(userId: string): Promise<MediaLibrary[]> {
+  async getUserViews(userId: string, includeHidden?: boolean): Promise<MediaLibrary[]> {
     const data = await this.api.request<ItemsResponse>({
       method: 'GET',
-      url: this.urlOf(`/Users/${userId}/Views`),
+      url: this.urlOf(`/Users/${userId}/Views${includeHidden === true ? '?includeHidden=true' : ''}`),
       headers: this.buildHeaders(this.token),
     });
     return (data.Items ?? []).map((item) => {
@@ -756,6 +763,26 @@ export abstract class BaseAdapter implements ServerAdapter {
           ? this.buildImageUrl(id, 'Primary', POSTER_MAX_WIDTH, item.ImageTags.Primary)
           : undefined,
       };
+    });
+  }
+
+  /** 用户配置：GET /Users/{uid} → Configuration（普通用户 token 可读；缺省空对象） */
+  async getUserConfiguration(userId: string): Promise<UserConfiguration> {
+    const data = await this.api.request<UserResponse>({
+      method: 'GET',
+      url: this.urlOf(`/Users/${userId}`),
+      headers: this.buildHeaders(this.token),
+    });
+    return data.Configuration ?? {};
+  }
+
+  /** 用户配置：POST /Users/{uid}/Configuration 全量回写（调用方先 GET 再改字段，避免丢其他配置） */
+  async updateUserConfiguration(userId: string, config: UserConfiguration): Promise<void> {
+    await this.api.request<unknown>({
+      method: 'POST',
+      url: this.urlOf(`/Users/${userId}/Configuration`),
+      headers: this.buildHeaders(this.token),
+      body: config,
     });
   }
 

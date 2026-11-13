@@ -23,6 +23,8 @@ export const ROUTES = {
   LIBRARY: 'Library',
   /** 全部媒体库列表（融合页「我的媒体 · 查看全部」） */
   LIBRARY_LIST: 'LibraryList',
+  /** 媒体管理（服务器菜单进入：库显隐/顺序） */
+  MEDIA_MANAGE: 'MediaManage',
   ITEM: 'Item',
   PERSON: 'Person',
   PLAYER: 'Player',
