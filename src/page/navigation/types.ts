@@ -61,13 +61,15 @@ export type RootStackParamList = {
   [ROUTES.NOW_PLAYING]: undefined;
   /**
    * M5：照片查看器。totalCount 供页码分母、albumId 供查看器续载下一页（05 §4.13）；
-   * 仅元数据随栈传参（photoList 为已加载片段引用）
+   * 仅元数据随栈传参（photoList 为已加载片段引用）；
+   * sort 供非名称升序入口（首页每库行）续载保持同序，缺省名称升序（网格入口不变）
    */
   [ROUTES.PHOTO_VIEWER]: {
     albumId: string;
     totalCount: number;
     photoList: PhotoItem[];
     initialIndex: number;
+    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' };
   };
   /** M6：观看历史（设计文档 §10.2 已预留，06 §4.10 注册） */
   [ROUTES.HISTORY]: undefined;

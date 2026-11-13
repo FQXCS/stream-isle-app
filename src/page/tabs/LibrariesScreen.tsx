@@ -17,12 +17,13 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import type { ComponentRef, ReactNode } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { MediaLibrary, MediaLibraryItem } from '@/adapter/model';
-import { AppError } from '@/infra/error';
+import { AppError, errorMessageOf } from '@/infra/error';
 import { AnchorMenu, type AnchorMenuItem, type AnchorRect } from '@/component/AnchorMenu';
 import { AppIcon } from '@/component/AppIcon';
 import { ServerFlavorLogo } from '@/component/ServerFlavorLogo';
@@ -41,13 +42,16 @@ import type { RootStackParamList } from '@/page/navigation/types';
 import { LibraryTile } from '@/page/tabs/components/LibraryTile';
 import { ResumeRow } from '@/page/tabs/components/ResumeRow';
 import { homeService, type HomeSections } from '@/service/HomeService';
+import { photoService } from '@/service/PhotoService';
 import { librariesKeyOf, useBrowseStore } from '@/store/browseStore';
 import { useAccountStore, useActiveServerFlavor } from '@/store/accountStore';
 import { useLibraryDisplayStore } from '@/store/libraryDisplayStore';
 import { useLibraryManageStore } from '@/store/libraryManageStore';
+import { useTransitionStore } from '@/store/transitionStore';
 import { resolveLibraryLatestQuery } from '@/util/libraryConfig';
 import { applyManageOverride } from '@/util/libraryManage';
 import { cardAspectRatioOf } from '@/util/mediaCard';
+import { getPhotoViewerMaxWidth } from '@/util/photo';
 import type { PageLoadStatus } from '@/util/pageState';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -95,6 +99,7 @@ export function LibrariesScreen() {
   // 自绘大标题需避让状态栏（edge-to-edge 下内容延伸进状态栏区域）
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
+  const { width: windowWidth, scale: pixelRatio } = useWindowDimensions();
   const active = useAccountStore((state) => state.active);
   const serverList = useAccountStore((state) => state.servers);
   const activeServer = serverList.find((server) => server.serverId === active?.serverId);
@@ -121,6 +126,8 @@ export function LibrariesScreen() {
   /** 游客态「添加服务器」的类型选择菜单锚点 */
   const [guestAddAnchor, setGuestAddAnchor] = useState<AnchorRect | null>(null);
   const guestAddRef = useRef<ComponentRef<typeof View> | null>(null);
+  /** 照片直达查看器防连点标记（请求结束复位） */
+  const openingPhotoRef = useRef(false);
 
   const loadHome = useCallback(async () => {
     try {
@@ -203,8 +210,52 @@ export function LibrariesScreen() {
   );
 
   /**
+   * 照片直达查看器：拉对应库与首页行同序（DateCreated 倒序）的完整第 0 页，
+   * 定位点击项后直接开查看器（整页片段保证续载页对齐、sort 保证续载同序）；
+   * 未命中（首页行带未看完筛选等极端序差）回退库页；请求失败 toast 留在首页。
+   */
+  const openPhotoViewer = useCallback(
+    async (item: MediaLibraryItem, library: MediaLibrary) => {
+      if (openingPhotoRef.current) {
+        return;
+      }
+      openingPhotoRef.current = true;
+      try {
+        // 与查看器续载同口径：grid/viewer 均按屏幕宽×dpr 请求
+        const viewerMaxWidth = getPhotoViewerMaxWidth(windowWidth, pixelRatio);
+        const sort = { sortBy: 'DATE_CREATED', sortOrder: 'DESC' } as const;
+        const result = await photoService.loadPhotos(
+          library.id,
+          0,
+          { gridMaxWidth: viewerMaxWidth, viewerMaxWidth },
+          sort
+        );
+        const index = result.items.findIndex((photo) => photo.id === item.id);
+        if (index < 0) {
+          navigation.navigate(ROUTES.LIBRARY, { library });
+          return;
+        }
+        // 查看器无共享转场目标：清掉 PosterCard 按下上报的转场起点，避免下次进详情页误起飞
+        useTransitionStore.getState().end();
+        navigation.navigate(ROUTES.PHOTO_VIEWER, {
+          albumId: library.id,
+          totalCount: result.total,
+          photoList: result.items,
+          initialIndex: index,
+          sort,
+        });
+      } catch (err) {
+        showToast(errorMessageOf(err instanceof AppError ? err.code : 'UNKNOWN'), 'error');
+      } finally {
+        openingPhotoRef.current = false;
+      }
+    },
+    [navigation, windowWidth, pixelRatio]
+  );
+
+  /**
    * 每库行条目点击：按条目类型进对应页——专辑/艺人与歌单走各自的详情页，
-   * 歌曲/相册/照片/游戏等没有独立页面的类型回退到库页（在库内继续浏览）。
+   * 照片直达查看器，歌曲/相册/游戏等没有独立页面的类型回退到库页（在库内继续浏览）。
    */
   const handlePressLibraryItem = useCallback(
     (item: MediaLibraryItem, library: MediaLibrary) => {
@@ -218,9 +269,11 @@ export function LibrariesScreen() {
         case 'Playlist':
           navigation.navigate(ROUTES.PLAYLIST_DETAIL, { playlistId: item.id });
           return;
+        case 'Photo':
+          void openPhotoViewer(item, library);
+          return;
         case 'Audio':
         case 'PhotoAlbum':
-        case 'Photo':
         case 'Game':
         case 'Channel':
         case 'TvChannel':
@@ -230,7 +283,7 @@ export function LibrariesScreen() {
           navigation.navigate(ROUTES.ITEM, { itemId: item.id });
       }
     },
-    [navigation]
+    [navigation, openPhotoViewer]
   );
 
   /** 服务器切换菜单：刷新首页 / 媒体管理（预留）/ 各服务器（勾选当前） */

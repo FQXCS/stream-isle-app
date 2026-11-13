@@ -18,7 +18,7 @@ import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
-import type { PhotoItem } from '@/adapter/model';
+import type { PhotoItem, SortByEnum } from '@/adapter/model';
 import { AppIcon } from '@/component/AppIcon';
 import { showToast } from '@/component/Toast';
 import { PHOTO_PAGE_SIZE, PHOTO_VIEWER_PRELOAD_REMAINING } from '@/constant/photo';
@@ -38,6 +38,8 @@ interface PhotoViewerParams {
   /** 当前已加载片段（路由初始值 + 续载追加） */
   photoList: PhotoItem[];
   initialIndex: number;
+  /** 续载排序（非名称升序入口传入，与初始片段同序；缺省名称升序） */
+  sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' };
 }
 
 /** 保存到本地相册（§4.14 流程；GIF 保存后仍为动图）+ 反馈 toast */
@@ -59,7 +61,13 @@ async function savePhotoWithFeedback(photo: PhotoItem): Promise<void> {
 export function PhotoViewerScreen() {
   const route = useRoute<{ key: string; name: string; params: PhotoViewerParams }>();
   const navigation = useNavigation();
-  const { albumId, totalCount: initialTotal, photoList: initialList, initialIndex } = route.params;
+  const {
+    albumId,
+    totalCount: initialTotal,
+    photoList: initialList,
+    initialIndex,
+    sort,
+  } = route.params;
   const { width: windowWidth, scale: pixelRatio } = useWindowDimensions();
 
   const [photoList, setPhotoList] = useState<PhotoItem[]>(initialList);
@@ -81,10 +89,15 @@ export function PhotoViewerScreen() {
     }
     setLoadingMore(true);
     try {
-      const result = await photoService.loadPhotos(albumId, nextPageRef.current, {
-        gridMaxWidth: getPhotoViewerMaxWidth(windowWidth, pixelRatio),
-        viewerMaxWidth: getPhotoViewerMaxWidth(windowWidth, pixelRatio),
-      });
+      const result = await photoService.loadPhotos(
+        albumId,
+        nextPageRef.current,
+        {
+          gridMaxWidth: getPhotoViewerMaxWidth(windowWidth, pixelRatio),
+          viewerMaxWidth: getPhotoViewerMaxWidth(windowWidth, pixelRatio),
+        },
+        sort
+      );
       nextPageRef.current += 1;
       setPhotoList((prev) => [...prev, ...result.items]);
       setTotalCount(result.total);
@@ -93,7 +106,7 @@ export function PhotoViewerScreen() {
     } finally {
       setLoadingMore(false);
     }
-  }, [albumId, loadingMore, photoList.length, totalCount, windowWidth, pixelRatio]);
+  }, [albumId, loadingMore, photoList.length, totalCount, windowWidth, pixelRatio, sort]);
 
   /** 翻页同步：复位原图态 + 触发续载（距末尾 PRELOAD_REMAINING 张内） */
   const handleIndexChange = useCallback(
