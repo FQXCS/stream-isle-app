@@ -148,7 +148,7 @@ describe('ProgressService（假时钟节流）', () => {
     expect(mockAdapter.reportProgress).toHaveBeenCalledTimes(1);
   });
 
-  // —— M5 增量（05 文档 §6.1）：intervalMs 注入 + getLastPositionMs ——
+  // —— M5 增量（M5 文档 §6.1）：intervalMs 注入 + getLastPositionMs ——
 
   it('音频档 30s 注入：29_999ms 不发、30_000ms 发（视频档 10s 回归不破坏）', async () => {
     const audioService = new ProgressService(() => now, 30_000);

@@ -1,5 +1,5 @@
 /**
- * AuthService Quick Connect 编排单测（06 文档 §6.1 AuthService.quickConnect 行）：
+ * AuthService Quick Connect 编排单测（M6 文档 §6.1 AuthService.quickConnect 行）：
  * 假节拍器：轮询间隔与总超时；authenticated 后恰好换一次 Token 并走保存链路；
  * cancelQuickConnect 后立即 reject 且不再轮询；授权码失效（404 翻译）立即终止。
  */
@@ -67,7 +67,7 @@ function makeFakeAdapter(
   };
 }
 
-describe('AuthService Quick Connect 编排（06 §6.1）', () => {
+describe('AuthService Quick Connect 编排（M6 §6.1）', () => {
   it('假节拍器：authenticated 后恰好换一次 Token 并走一次保存链路', async () => {
     const scheduler = makeFakeScheduler();
     const loginCount = { value: 0 };
@@ -143,7 +143,7 @@ describe('AuthService Quick Connect 编排（06 §6.1）', () => {
     expect(callsBeforeCancel).toBeGreaterThanOrEqual(1);
     flow.cancel();
     await expect(pending).rejects.toMatchObject({ code: 'QUICK_CONNECT_CANCELLED' });
-    // 取消后推进节拍器不再轮询（06 §6.1「立即 reject 且不再轮询」）
+    // 取消后推进节拍器不再轮询（M6 §6.1「立即 reject 且不再轮询」）
     await scheduler.advance();
     expect(pollCalls.value).toBe(callsBeforeCancel);
   });

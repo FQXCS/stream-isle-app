@@ -1,8 +1,8 @@
 /**
- * 账号 store：多服务器多用户 + 全局唯一活跃账号（M1 文档 §4.8；设计文档 §5.2/§9；04 §4.7 终态）。
+ * 账号 store：多服务器多用户 + 全局唯一活跃账号（M1 文档 §4.8；设计文档 §5.2/§9；M4 §4.7 终态）。
  * persist：mmkvStorage，key "account-store"。
  * ServerUser 无 token 字段：Token 不进 MMKV（仅 expo-secure-store + 内存，§4.5.3）。
- * 04 收口：switchActiveUser（复位 401 失效标志）/ expireActiveUser（幂等登出 + sessionExpired
+ * M4 收口：switchActiveUser（复位 401 失效标志）/ expireActiveUser（幂等登出 + sessionExpired
  * 失效标志）/ removeServer 级联清理（token + 白名单 + 浏览缓存）。
  */
 import { create } from 'zustand';
@@ -124,14 +124,14 @@ interface AccountActions {
   /** 单账号模型：用新账号替换该服务器下唯一账号（编辑服务器改账号密码时用） */
   replaceServerUser(serverId: string, auth: AuthResult): void;
   /**
-   * 切换活跃 {serverId, userId}（04 §4.7 终态签名，M1 setActive 升级更名）：
+   * 切换活跃 {serverId, userId}（M4 §4.7 终态签名，M1 setActive 升级更名）：
    * 预热目标用户 Token 进内存 → 切换即整体刷新 + 复位 401 失效标志（§5.2）。
    */
   switchActiveUser(serverId: string, userId: string): Promise<void>;
   /** 清活跃标记（用户主动登出路径）：仅清活跃标记，ServerAccount 与用户记录保留 */
   clearActive(): void;
   /**
-   * 401 幂等登出（04 §4.7 终态签名）：仅清活跃标记 + 置 sessionExpired 失效标志 + 写入
+   * 401 幂等登出（M4 §4.7 终态签名）：仅清活跃标记 + 置 sessionExpired 失效标志 + 写入
    * 重登服务器上下文；并发/连续 401 幂等去重（同一次登录会话仅首次生效）。
    * 标志在重新登录成功（switchActiveUser）时复位。
    */
@@ -139,7 +139,7 @@ interface AccountActions {
   /** 登出单用户（logout 用） */
   removeUser(serverId: string, userId: string): void;
   /**
-   * 删除整台服务器（04 §4.7 级联清单）：① tokenVault 删除其下所有 user 的 token；
+   * 删除整台服务器（M4 §4.7 级联清单）：① tokenVault 删除其下所有 user 的 token；
    * ② settingsStore.removeServerScopedData(server.baseUrl)（白名单清理 + 全量回同步原生）；
    * ③ browseStore 清该 serverId（含其下所有 userId）的浏览缓存（内存态，无磁盘残留）；
    * ④ 若删除的是活跃服务器：有剩余服务器则 switchActiveUser 到第一个剩余服务器的用户，
@@ -178,7 +178,7 @@ interface AccountState {
   hydrated: boolean;
   /** 401 待重登的服务器 id（瞬态，不持久化；导航 gate 用它决定回 Login 并携带 serverId） */
   reloginServerId: string | null;
-  /** 401 登出失效标志（瞬态，不持久化；并发 401 幂等去重，重登成功/切换账号时复位，04 §4.7） */
+  /** 401 登出失效标志（瞬态，不持久化；并发 401 幂等去重，重登成功/切换账号时复位，M4 §4.7） */
   sessionExpired: boolean;
   actions: AccountActions;
   /** 内部：标记 rehydrate 完成（onRehydrateStorage 回调使用） */
@@ -279,11 +279,11 @@ export const useAccountStore = create<AccountState>()(
         },
 
         switchActiveUser: async (serverId: string, userId: string) => {
-          // 目标用户 Token 预热进内存（getActiveAdapter 同步组装认证头的前提，04 §4.7）
+          // 目标用户 Token 预热进内存（getActiveAdapter 同步组装认证头的前提，M4 §4.7）
           await warmupToken(serverId, userId);
           set((state) => ({
             active: { serverId, userId },
-            // 复位 401 失效标志（重新登录成功/切换账号均为新会话，04 §4.7）
+            // 复位 401 失效标志（重新登录成功/切换账号均为新会话，M4 §4.7）
             sessionExpired: false,
             // 活跃用户同步写回所属服务器记录
             servers: state.servers.map((server) =>
@@ -316,7 +316,7 @@ export const useAccountStore = create<AccountState>()(
 
         expireActiveUser: () => {
           const state = get();
-          // 幂等去重（04 §4.7）：同一次登录会话仅首次生效——并发 401（同一页面多请求
+          // 幂等去重（M4 §4.7）：同一次登录会话仅首次生效——并发 401（同一页面多请求
           // 同时失败）只触发一次登出；标志复位后（重登/切换）方可再次生效
           if (state.active === null && state.sessionExpired) {
             return;
@@ -358,14 +358,14 @@ export const useAccountStore = create<AccountState>()(
                 await deletePassword(server.serverId, user.userId);
               })
             );
-            // ② 白名单级联清理 + 全量回同步原生（04 §4.7 第 2 步）
+            // ② 白名单级联清理 + 全量回同步原生（M4 §4.7 第 2 步）
             useSettingsStore.getState().actions.removeServerScopedData(server.baseUrl);
             // ③ 浏览缓存级联清理（含其下所有 userId；内存态直接清除，无磁盘残留）
             useBrowseStore.getState().actions.resetAllForServer(serverId);
           }
           const wasActive = get().active?.serverId === serverId;
           // ④ 删除的是活跃服务器：有剩余则切换到第一个剩余服务器的用户并整体刷新；
-          //    无剩余保持 active=null，导航 gate 自动回 OnboardingConnect（04 §4.7 第 4 步）。
+          //    无剩余保持 active=null，导航 gate 自动回 OnboardingConnect（M4 §4.7 第 4 步）。
           //    先预热目标 Token 再一次性原子替换（过滤服务器 + 切换活跃 + 复位失效标志），
           //    避免先置 active=null 使导航 gate 短暂切到 guest 栈造成登录页闪屏
           if (wasActive) {

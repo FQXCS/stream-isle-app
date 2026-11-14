@@ -1,6 +1,6 @@
 /**
  * DeviceProfileBuilder 单测：分辨率档位 × 能力 × 开关矩阵、SubtitleProfiles/TranscodingProfiles
- * 恒定值、全能力机型产出（03 §4.4.2 逐字断言）。
+ * 恒定值、全能力机型产出（M3 §4.4.2 逐字断言）。
  */
 import {
   buildDeviceProfile,

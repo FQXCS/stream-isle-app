@@ -1,5 +1,5 @@
 /**
- * 字幕语言归一化（04 文档 §4.5 匹配定稿）：服务器 MediaStream.Language 形态不一
+ * 字幕语言归一化（M4 文档 §4.5 匹配定稿）：服务器 MediaStream.Language 形态不一
  * （zh/zho/chinese/chi…），统一归一到 ISO 639-2 三字码后与偏好等值比较。
  * 对 M3 §4.8.3「language 前缀匹配」的细化（前缀法匹配不到 zh/Chinese 形态的中文轨）。
  */

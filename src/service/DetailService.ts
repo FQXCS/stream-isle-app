@@ -61,7 +61,7 @@ export class DetailService {
     return { person, filmographyList };
   }
 
-  // —— M5：专辑/歌单/艺术家详情（05 文档 §4.12）——
+  // —— M5：专辑/歌单/艺术家详情（M5 文档 §4.12）——
 
   /** 专辑详情：getItemDetail + getAlbumTracks（封面/艺人/年份/曲目列表） */
   async loadAlbum(albumId: string): Promise<AlbumDetailModel> {

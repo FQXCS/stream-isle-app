@@ -52,7 +52,7 @@ export function normalizeAddress(raw: string): string | null {
 }
 
 /**
- * baseUrl → host:port（04 §4.6：TLS 白名单原生键）。
+ * baseUrl → host:port（M4 §4.6：TLS 白名单原生键）。
  * 显式端口保留；缺省端口按协议补齐（https→443 / http→80）；含子路径的 baseUrl 只取 host。
  * 纯函数：不依赖 infra、不抛错；非法输入返回 null。
  *

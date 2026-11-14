@@ -1,7 +1,7 @@
 /**
  * 浏览服务（M1 文档 §4.7）：库列表 / 海报墙分页，面向当前活跃账号。
  * M5 增量：音乐四区查询封装（专辑/艺术家/歌单/全部歌曲）。
- * M6 增量：观看历史分页（06 文档 §2.1「观看历史」行）。
+ * M6 增量：观看历史分页（M6 文档 §2.1「观看历史」行）。
  */
 import type {
   AudioItem,
@@ -184,11 +184,11 @@ function requireUserId(): string {
   return active.userId;
 }
 
-// —— M6：观看历史（06 文档 §4.3.1 getWatchHistory 行）——
+// —— M6：观看历史（M6 文档 §4.3.1 getWatchHistory 行）——
 
 /**
  * 观看历史分页（服务端已看条目按 DatePlayed 倒序）：页码从 0 起，
- * 步长复用海报墙 PAGE_SIZE=40（06 文档 §4.3.1「分页沿用海报墙 StartIndex/Limit」）。
+ * 步长复用海报墙 PAGE_SIZE=40（M6 文档 §4.3.1「分页沿用海报墙 StartIndex/Limit」）。
  * 收录类型由设置页二级页单独配置（默认 Movie,Episode,Video）。
  */
 export function loadHistory(page: number): Promise<Paged<HistoryEntry>> {

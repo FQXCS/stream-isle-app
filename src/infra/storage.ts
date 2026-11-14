@@ -2,7 +2,7 @@
  * MMKV 实例与 zustand persist 适配（M1 文档 §4.5.3；设计文档 §9）。
  * Token 不进 MMKV（仅 expo-secure-store）；MMKV 只持久化账号引用数据与设置。
  * 注：react-native-mmkv v4（Nitro）以 createMMKV() 创建实例（文档 §4.1 按 v3 写 new MMKV()，
- * 实装版本语义等价替换，登记于 docs/07）。
+ * 实装版本语义等价替换，登记于 docs/decision/实施决策记录.md）。
  */
 import { createMMKV } from 'react-native-mmkv';
 import { createJSONStorage } from 'zustand/middleware';

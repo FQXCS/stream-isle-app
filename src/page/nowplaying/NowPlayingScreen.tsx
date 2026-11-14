@@ -1,11 +1,11 @@
 /**
- * Now Playing 全屏页（05 文档 §4.10；设计文档 §10.2）：
+ * Now Playing 全屏页（M5 文档 §4.10；设计文档 §10.2）：
  * 有封面 = 封面模糊铺满的沉浸深色玻璃（白字）；无封面 = 回退当前主题的默认玻璃（配色随主题）；
  * 大封面 + 曲名/艺人 + 常驻歌词区（水平拖动 = 视频播放页同款 seek 预览 HUD，松手才 seekTo）
  * + 复用 M2 SeekBar（拖动 = seekTo + 即时 Progress）+ 控制行（模式/上一曲/播放暂停/下一曲/队列）
  * + 播放模式切换提示（2s 自动消失）+ 队列面板（默认收起）。
  * 页面数据全部来自 playerStore.audio + useProgress（每秒订阅，不进 store），无独立请求。
- * 封面态沿用媒体沉浸页固定深色（06 §4.6.1），无封面态跟随主题 token。
+ * 封面态沿用媒体沉浸页固定深色（M6 §4.6.1），无封面态跟随主题 token。
  */
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
 import { Image } from 'expo-image';
@@ -79,14 +79,14 @@ export function NowPlayingScreen() {
   const [modeHint, setModeHint] = useState<string | null>(null);
   const modeHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 迷你条与 Now Playing 各自订阅进度（@rntp/player v5 的间隔单位为「秒」，1 = 每秒），
-  // 避免 store 每秒写入（05 文档 §4.7）
+  // 避免 store 每秒写入（M5 文档 §4.7）
   const progress = useProgress(1);
 
   /** 有封面走沉浸深色；无封面回退当前主题玻璃（文字/控件随之切换） */
   const hasCover = currentTrack?.coverImageUrl !== undefined;
 
   // 封面态深色玻璃 → 浅色状态栏图标；无封面主题玻璃 → 浅色主题用深色图标；
-  // 离开时按当前方案还原（06 §4.6.1）
+  // 离开时按当前方案还原（M6 §4.6.1）
   useFocusEffect(
     useCallback(() => {
       setStatusBarStyle(hasCover || scheme === 'dark' ? 'light' : 'dark');

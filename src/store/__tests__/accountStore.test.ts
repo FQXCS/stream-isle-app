@@ -158,7 +158,7 @@ describe('browseStore.resetAllForAccount（账号切换清理）', () => {
   });
 });
 
-describe('accountStore.expireActiveUser（04 §4.7 幂等登出）', () => {
+describe('accountStore.expireActiveUser（M4 §4.7 幂等登出）', () => {
   beforeEach(() => {
     useAccountStore.setState({ servers: [], active: null, reloginServerId: null, sessionExpired: false });
     mmkv.clearAll();
@@ -189,7 +189,7 @@ describe('accountStore.expireActiveUser（04 §4.7 幂等登出）', () => {
     let state = useAccountStore.getState();
     expect(state.sessionExpired).toBe(true);
     expect(state.reloginServerId).toBe('srv1');
-    // 标志在 switchActiveUser（重登/切换）时复位（04 §4.7）
+    // 标志在 switchActiveUser（重登/切换）时复位（M4 §4.7）
     await useAccountStore.getState().actions.switchActiveUser('srv2', 'u2');
     state = useAccountStore.getState();
     expect(state.sessionExpired).toBe(false);
@@ -200,7 +200,7 @@ describe('accountStore.expireActiveUser（04 §4.7 幂等登出）', () => {
   });
 });
 
-describe('accountStore.removeServer（04 §4.7 级联清理）', () => {
+describe('accountStore.removeServer（M4 §4.7 级联清理）', () => {
   const mockSyncTlsBypassHosts = jest.mocked(
     jest.requireMock<{ syncTlsBypassHosts: jest.Mock }>('@/infra/tlsBypass').syncTlsBypassHosts
   );

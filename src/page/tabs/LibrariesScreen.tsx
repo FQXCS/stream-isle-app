@@ -3,8 +3,8 @@
  * 继续观看（16:9 大卡）→ 下一集 → 最近添加（海报行）→ 我的媒体（库卡片横滑，
  * 右上「查看全部」进入全部库列表）→ 每个库一行「默认 Tab 条件的最新添加前 20」+「查看全部」。
  * 行内卡片固定高度、宽度按图幅自适应（海报 2:3 / 剧照 16:9 / 方形 1:1），混排时行高一致。
- * 页面状态沿用 PageLoadStatus 约定（04 §4.2）：页面级失败 ErrorView + 重试、
- * 页面级空 EmptyView、分区级空隐藏分区；头部右侧为搜索（原底部 Tab）与观看历史入口（06 §4.4.5）。
+ * 页面状态沿用 PageLoadStatus 约定（M4 §4.2）：页面级失败 ErrorView + 重试、
+ * 页面级空 EmptyView、分区级空隐藏分区；头部右侧为搜索（原底部 Tab）与观看历史入口（M6 §4.4.5）。
  */
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';

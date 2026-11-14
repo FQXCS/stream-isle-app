@@ -1,5 +1,5 @@
 /**
- * util/lyrics 单测（06 文档 §6.1 util/lyrics 行）：activeLyricIndex 真值表
+ * util/lyrics 单测（M6 文档 §6.1 util/lyrics 行）：activeLyricIndex 真值表
  * （空表、未同步、命中首/中/末行、position 超尾、混入纯文本行）。
  */
 import type { LyricLine } from '@/adapter/model';
@@ -17,7 +17,7 @@ const SYNCED: LyricLine[] = [
   line('第四句', 40_000),
 ];
 
-describe('activeLyricIndex 真值表（06 §6.1）', () => {
+describe('activeLyricIndex 真值表（M6 §6.1）', () => {
   it('空表 → -1', () => {
     expect(activeLyricIndex([], 10_000)).toBe(-1);
   });

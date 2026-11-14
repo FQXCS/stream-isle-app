@@ -1,6 +1,6 @@
 /**
- * adapter 首页三区具名封装单测（04 文档 §3/§6.1）：getResume/getNextUp/getLatest 的
- * 端点与参数构造；getNextUp 翻译为 EpisodeItem（含 seriesId，供自动连播匹配，04 §4.4）。
+ * adapter 首页三区具名封装单测（M4 文档 §3/§6.1）：getResume/getNextUp/getLatest 的
+ * 端点与参数构造；getNextUp 翻译为 EpisodeItem（含 seriesId，供自动连播匹配，M4 §4.4）。
  */
 import { JellyfinAdapter } from '@/adapter/JellyfinAdapter';
 import { HOME_ROW_LIMIT, LIBRARY_ROW_LIMIT } from '@/constant/browse';
@@ -18,7 +18,7 @@ function makeAdapter(responses: unknown[]): { adapter: JellyfinAdapter; api: { r
   return { adapter, api };
 }
 
-describe('adapter 首页三区（04 §3 认领补齐）', () => {
+describe('adapter 首页三区（M4 §3 认领补齐）', () => {
   it('getResume：Filters=IsResumable + 设置页类型 + DatePlayed 降序 + Limit', async () => {
     const { adapter, api } = makeAdapter([{ Items: [], TotalRecordCount: 0 }]);
     await adapter.getResume('u1', ['Movie', 'Episode', 'Video']);
@@ -79,7 +79,7 @@ describe('adapter 首页三区（04 §3 认领补齐）', () => {
     expect(req.url).toContain(`Limit=${LIBRARY_ROW_LIMIT}`);
   });
 
-  it('getNextUp：GET /Shows/NextUp，翻译含 seriesId（自动连播匹配依赖，04 §4.4）', async () => {
+  it('getNextUp：GET /Shows/NextUp，翻译含 seriesId（自动连播匹配依赖，M4 §4.4）', async () => {
     const { adapter, api } = makeAdapter([
       {
         Items: [

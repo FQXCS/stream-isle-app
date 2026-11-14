@@ -1,5 +1,5 @@
 /**
- * 加载态组件（04 §4.2 终态接口；M6 主题 token 化）：可选文案（缺省纯指示器）。
+ * 加载态组件（M4 §4.2 终态接口；M6 主题 token 化）：可选文案（缺省纯指示器）。
  */
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 

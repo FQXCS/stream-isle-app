@@ -3,7 +3,7 @@
  * 挂在 NavigationContainer 同层；读到 transitionStore.active + 目标就绪后，用 reanimated
  * sharedValue 250ms 从 fromRect 飞至目标矩形，期间 Hero 真图延后淡入（HeroHeader 消费），
  * 完成 end()。测量失败/快速连点/目标未就绪——不挂浮层，退化为普通转场（功能不损）。
- * 仅做正向（海报墙 → 详情）单向转场；返回为普通转场（06 §4.6.2 边界决策）。
+ * 仅做正向（海报墙 → 详情）单向转场；返回为普通转场（M6 §4.6.2 边界决策）。
  * 快速连点：begin 覆盖 active（同 key 重挂载重启飞行），不叠加动画。
  */
 import { useEffect } from 'react';
@@ -19,14 +19,14 @@ import { StyleSheet } from 'react-native';
 import { POSTER_RADIUS } from '@/constant/theme';
 import { useTransitionStore, type PosterTransition } from '@/store/transitionStore';
 
-/** 飞行时长（250ms 单向短动画，06 文档 §4.6.2） */
+/** 飞行时长（250ms 单向短动画，M6 文档 §4.6.2） */
 const TRANSITION_DURATION_MS = 250;
 
 export function SharedPosterOverlay() {
   const active = useTransitionStore((state) => state.active);
   const end = useTransitionStore((state) => state.end);
 
-  // 兜底（06 §4.6.2）：目标未就绪（Hero 未完成测量）不挂浮层，退化为普通转场
+  // 兜底（M6 §4.6.2）：目标未就绪（Hero 未完成测量）不挂浮层，退化为普通转场
   if (active === null || active.targetRect === null) {
     return null;
   }

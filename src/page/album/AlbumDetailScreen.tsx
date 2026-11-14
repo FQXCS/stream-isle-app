@@ -3,7 +3,7 @@
  * - album：封面 + 「艺人 · 年份 · N 首 · 总时长」+ 三按钮 + 曲目列表；
  * - playlist：同布局、按服务端顺序（无艺人行）；
  * - artist：与专辑同款头部（封面 + 名称 + 统计）+ 三按钮（热门歌曲）+ 简介 + 专辑网格 + 热门歌曲。
- * 三按钮语义（设计文档 §7.5 / 05 §4.12 入队语义表）：
+ * 三按钮语义（设计文档 §7.5 / M5 §4.12 入队语义表）：
  * 播放全部 = 整单入队从第 1 首起播；随机播放 = 整单打乱入队从随机第 1 首起播；加入队列 = 追加队尾。
  */
 import { useCallback, useMemo, useState } from 'react';
@@ -69,7 +69,7 @@ function ActionRow({
   }, [trackList]);
 
   const handlePlayShuffled = useCallback(() => {
-    // 整单打乱入队，从随机第 1 首起播（repeatMode 不变，05 §4.12）
+    // 整单打乱入队，从随机第 1 首起播（repeatMode 不变，M5 §4.12）
     const shuffled = [...trackList];
     for (let i = shuffled.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -107,7 +107,7 @@ function AlbumPlaylistBody({ kind, itemId }: { kind: 'album' | 'playlist'; itemI
   const [detail, setDetail] = useState<AlbumDetailModel | null>(null);
   const [errorCode, setErrorCode] = useState<AppErrorCode | null>(null);
   const currentTrackId = usePlayerStore((state) => state.audio.currentTrack?.id ?? null);
-  // 迷你条让位（05 §4.10）：音频活跃时曲目列表底部 padding 叠加迷你条高度
+  // 迷你条让位（M5 §4.10）：音频活跃时曲目列表底部 padding 叠加迷你条高度
   const miniPlayerPadding = useMiniPlayerPadding();
 
   // 聚焦加载（与 M2 详情页同口径；加载函数内 setState 位于异步续体）

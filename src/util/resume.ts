@@ -9,7 +9,7 @@ import { RESUME_MIN_POSITION_MS, WATCHED_COMPLETION_RATIO } from '@/constant/pla
 export type PlaybackEndReason = 'user_exit' | 'natural_end' | 'error';
 
 /**
- * 断点/时长最小输入（getResumePositionMs 的结构依赖，06 文档 §4.7）：
+ * 断点/时长最小输入（getResumePositionMs 的结构依赖，M6 文档 §4.7）：
  * played / playbackPositionMs / runtimeMs 三字段结构子集。
  */
 export interface ResumeSource {
@@ -31,7 +31,7 @@ export function toResumeSource(
 
 /**
  * 详情页/集卡片点播放/离线续播时算续播起点：返回 null 表示从头播且不弹窗。
- * 规则（02 §4.9，06 §4.7 真值表不变）：
+ * 规则（M2 §4.9，M6 §4.7 真值表不变）：
  * - 已看完（played === true）→ null；
  * - 断点 > RESUME_MIN_POSITION_MS（10s）且 < runtimeMs × WATCHED_COMPLETION_RATIO（95%）→ 断点；
  * - 其余（≤10s、无时长、≥95%）→ null。
@@ -55,7 +55,7 @@ export function getResumePositionMs(source: ResumeSource): number | null {
 
 /**
  * Stopped 兜底标记已看判定（PlaybackService.finish 内调用）。
- * 规则（02 §4.9）：natural_end 必标记（服务器判定 + 客户端兜底双保险，不依赖 runtimeMs 是否存在）；
+ * 规则（M2 §4.9）：natural_end 必标记（服务器判定 + 客户端兜底双保险，不依赖 runtimeMs 是否存在）；
  * 其余 reason：runtimeMs 有效且 > 0 且 positionMs/runtimeMs ≥ 95% → 标记；否则 false。
  */
 export function shouldForceMarkPlayed(

@@ -1,5 +1,5 @@
 /**
- * 防抖值 hook（04 文档 §4.3/§4.8）：输入连续变更时仅在停顿 delayMs 后产出末次值。
+ * 防抖值 hook（M4 文档 §4.3/§4.8）：输入连续变更时仅在停顿 delayMs 后产出末次值。
  * 搜索页 400ms 防抖消费；纯自建实现，无第三方依赖。
  * 计时核心抽为 createDebouncer 纯逻辑（React 19 无 test-renderer 且本里程碑不新增
  * 测试依赖，防抖行为以纯函数单测覆盖，hook 仅薄接线）。
@@ -40,7 +40,7 @@ export function createDebouncer<T>(
 }
 
 /**
- * 防抖值：value 连续变更仅末次在停顿 delayMs 后生效（400ms 内连续变更仅末次生效，04 §6.1）。
+ * 防抖值：value 连续变更仅末次在停顿 delayMs 后生效（400ms 内连续变更仅末次生效，M4 §6.1）。
  *
  * @param value 原始输入值
  * @param delayMs 防抖间隔（毫秒）

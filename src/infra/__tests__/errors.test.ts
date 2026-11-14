@@ -60,7 +60,7 @@ describe('normalizeHttpError 归一化矩阵', () => {
     expect(err.serverMessage).toBe('bad');
   });
 
-  it('无响应且 message 命中 TLS_ERROR_PATTERNS → TLS_ERROR（04 收口补全分支）', () => {
+  it('无响应且 message 命中 TLS_ERROR_PATTERNS → TLS_ERROR（M4 收口补全分支）', () => {
     // Android RN 证书错误 message 形态（小写化匹配）
     expect(
       normalizeHttpError(new Error('java.security.cert.CertPathValidatorException: Trust anchor for certification path not found.'), 'http://x')
@@ -103,11 +103,11 @@ describe('ERROR_MESSAGE_KEYS（§4.3 唯一出处）', () => {
     'RATE_LIMITED',
     'SERVER_ERROR',
     'PLAYBACK_UNSUPPORTED',
-    // M5 增量三码（05 文档 §4.8）
+    // M5 增量三码（M5 文档 §4.8）
     'AUDIO_ENGINE_INIT_FAILED',
     'PHOTO_SAVE_FAILED',
     'PHOTO_SAVE_PERMISSION_DENIED',
-    // M6 增量七码（06 文档 §4.8：QC 四码 + 下载三码）
+    // M6 增量七码（M6 文档 §4.8：QC 四码 + 下载三码）
     'QUICK_CONNECT_DISABLED',
     'QUICK_CONNECT_TIMEOUT',
     'QUICK_CONNECT_CANCELLED',

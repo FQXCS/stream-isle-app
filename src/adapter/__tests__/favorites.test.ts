@@ -1,5 +1,5 @@
 /**
- * adapter 收藏成对端点单测（04 文档 §6.1 adapter 收藏行）：
+ * adapter 收藏成对端点单测（M4 文档 §6.1 adapter 收藏行）：
  * markFavorite/unmarkFavorite 的 URL、HTTP 方法（POST/DELETE）、认证头注入正确
  * （双 flavor 各实例化验证一次）；markPlayed/unmarkPlayed 既有用例不回退。
  */
@@ -22,7 +22,7 @@ function makeAdapter(
   return { adapter, api };
 }
 
-describe('adapter 收藏（POST/DELETE /Users/{uid}/FavoriteItems/{itemId}，04 §4.4）', () => {
+describe('adapter 收藏（POST/DELETE /Users/{uid}/FavoriteItems/{itemId}，M4 §4.4）', () => {
   it('Jellyfin 实例：markFavorite POST / unmarkFavorite DELETE，Authorization 头带 token', async () => {
     const { adapter, api } = makeAdapter('JELLYFIN');
     await adapter.markFavorite('u1', 'item1');

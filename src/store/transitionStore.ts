@@ -3,7 +3,7 @@
  * 不持久化（无 persist 包装）：转场为瞬时内存态。
  * 流程：PosterCard 按下时 begin（海报 URI + 屏幕坐标 fromRect）→ 详情页 Hero 渲染后
  * markTarget（目标矩形）→ 根级 SharedPosterOverlay 读 active + target 播放 250ms 飞行 →
- * end() 清空。测量失败/快速连点/目标未就绪 → 不挂浮层退化为普通转场（兜底，06 §4.6.2）。
+ * end() 清空。测量失败/快速连点/目标未就绪 → 不挂浮层退化为普通转场（兜底，M6 §4.6.2）。
  */
 import { create } from 'zustand';
 

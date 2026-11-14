@@ -87,7 +87,7 @@ export function DownloadBadge({ itemId, onStart, onPlayLocal, compact = false }:
     switch (task.status) {
       case 'queued':
       case 'downloading':
-        // 下载中 tap → 跳下载页（06 §4.4.5）
+        // 下载中 tap → 跳下载页（M6 §4.4.5）
         navigation.navigate(ROUTES.DOWNLOADS);
         break;
       case 'paused':

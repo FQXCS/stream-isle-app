@@ -80,7 +80,7 @@ export interface AdjacentTrackPreview {
   artist?: string;
 }
 
-/** RepeatModeEnum → @rntp/player RepeatMode 映射（05 文档 §4.5；v5：track→One、queue→All） */
+/** RepeatModeEnum → @rntp/player RepeatMode 映射（M5 文档 §4.5；v5：track→One、queue→All） */
 function toNativeRepeatMode(mode: RepeatModeEnum): RepeatMode {
   if (mode === 'off') {
     return RepeatMode.Off;
@@ -172,7 +172,7 @@ export class AudioService {
   }
 
   /**
-   * 引擎初始化（幂等，首次起播前调用）：setupPlayer + setCommands（05 §4.9）。
+   * 引擎初始化（幂等，首次起播前调用）：setupPlayer + setCommands（M5 §4.9）。
    * v5 两步均为同步调用；handleAudioBecomingNoisy 覆盖拔耳机暂停（A11，见文件头），
    * 音频焦点打断（通话/他 App 抢焦点）由 v5 原生 focus 处理。
    */
@@ -187,7 +187,7 @@ export class AudioService {
         handleAudioBecomingNoisy: true,
         // 原生进度事件间隔（熄屏/后台仍发，承担节流上报的「时钟」角色，对应 v4 progressUpdateEventInterval）
         progressSync: { intervalSeconds: AUDIO_PROGRESS_UPDATE_EVENT_INTERVAL_S },
-        // 杀进程/从最近任务划掉 = 停止播放并拆除服务（与「音频队列不跨进程恢复」自洽，05 §4.9；
+        // 杀进程/从最近任务划掉 = 停止播放并拆除服务（与「音频队列不跨进程恢复」自洽，M5 §4.9；
         // 对应 v4 AppKilledPlaybackBehavior.StopPlaybackAndRemoveNotification）
         android: { taskRemovedBehavior: 'stop' },
       });
@@ -293,7 +293,7 @@ export class AudioService {
   }
 
   /**
-   * 清空队列但保留当前曲（05 §4.11 改版）：移除当前曲以外的全部条目，播放不中断、
+   * 清空队列但保留当前曲（M5 §4.11 改版）：移除当前曲以外的全部条目，播放不中断、
    * 迷你条不消失；队列只剩当前曲，长度镜像为 1，随机基线同步收敛。
    */
   async clearQueueKeepCurrent(): Promise<void> {
@@ -324,7 +324,7 @@ export class AudioService {
     usePlayerStore.getState().setAudioState({ queueLength: 1, shuffle: false });
   }
 
-  /** 队列快照（05 §4.5：队列全量仅在队列页打开时拉取；UI 不直呼 TrackPlayer，唯一入口约束） */
+  /** 队列快照（M5 §4.5：队列全量仅在队列页打开时拉取；UI 不直呼 TrackPlayer，唯一入口约束） */
   async getQueueSnapshot(): Promise<AudioQueueEntry[]> {
     const queue = TrackPlayer.getQueue();
     return queue.map((item) => ({
@@ -403,7 +403,7 @@ export class AudioService {
     await TrackPlayer.skipToIndex(index);
   }
 
-  /** 位置 > 阈值时先 seek 回当前曲开头（主流音乐 App 习惯，05 §4.5） */
+  /** 位置 > 阈值时先 seek 回当前曲开头（主流音乐 App 习惯，M5 §4.5） */
   async previous(): Promise<void> {
     const progress = TrackPlayer.getProgress();
     if (progress.position * 1000 > PREVIOUS_RESTART_THRESHOLD_MS) {
@@ -505,7 +505,7 @@ export class AudioService {
   }
 
   /**
-   * 队列移除（05 §4.11）：移除当前播放曲 → 先 skip 到相邻曲（优先下一曲）再移除旧索引，
+   * 队列移除（M5 §4.11）：移除当前播放曲 → 先 skip 到相邻曲（优先下一曲）再移除旧索引，
    * 播放不中断；移除其他曲直接移除（当前曲之前的项由播放器内部自动左移）。
    */
   async removeFromQueue(index: number): Promise<void> {
@@ -616,7 +616,7 @@ export class AudioService {
 
   // —— 内部工具 ——
 
-  /** 批量决策：每曲 universal URL（N 条 URL 字符串，零请求；URL 入队定型，05 §4.4） */
+  /** 批量决策：每曲 universal URL（N 条 URL 字符串，零请求；URL 入队定型，M5 §4.4） */
   private async resolveTrackList(
     trackList: AudioItem[],
     playSessionId: string
@@ -658,5 +658,5 @@ export class AudioService {
   }
 }
 
-/** 全局单例（事件订阅与上报与应用生命周期等长，05 §4.1） */
+/** 全局单例（事件订阅与上报与应用生命周期等长，M5 §4.1） */
 export const audioService = new AudioService({ getAdapter: getActiveAdapter });

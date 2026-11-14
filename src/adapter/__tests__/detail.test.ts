@@ -1,7 +1,7 @@
 /**
  * BaseAdapter 详情主数据单测（M2 文档 §6.1 BaseAdapter.detail 行）：
  * getItemDetail 路径 + Fields 参数断言（含 Overview/Genres/People/MediaSources/Taglines/
- * OriginalTitle/OfficialRating/CommunityRating/Path，02 §4.3 表）+ 响应翻译。
+ * OriginalTitle/OfficialRating/CommunityRating/Path，M2 §4.3 表）+ 响应翻译。
  */
 import { EmbyAdapter } from '@/adapter/EmbyAdapter';
 import { JellyfinAdapter } from '@/adapter/JellyfinAdapter';
@@ -56,7 +56,7 @@ const DETAIL_RESPONSE = {
 };
 
 describe('getItemDetail（详情主数据）', () => {
-  it('双实例：GET 路径 + Fields 参数全量断言（02 §4.3 表）', async () => {
+  it('双实例：GET 路径 + Fields 参数全量断言（M2 §4.3 表）', async () => {
     for (const flavor of ['JELLYFIN', 'EMBY'] as const) {
       const { adapter, api } = makeAdapter(flavor, DETAIL_RESPONSE);
       await adapter.getItemDetail('u1', 'item1');
@@ -108,7 +108,7 @@ describe('getItemDetail（详情主数据）', () => {
     expect(detail.logoImageUrl).toContain('/Items/item1/Images/Logo');
   });
 
-  it('无 Backdrop 时 Hero 回退 Primary（02 §4.2）', async () => {
+  it('无 Backdrop 时 Hero 回退 Primary（M2 §4.2）', async () => {
     const { adapter } = makeAdapter('EMBY', {
       ...DETAIL_RESPONSE,
       BackdropImageTags: [],
@@ -219,7 +219,7 @@ describe('getItemDetail（详情主数据）', () => {
     await expect(adapter.getItemDetail('u1', 'x')).rejects.toMatchObject({ code: 'UNKNOWN' });
   });
 
-  it('Person 条目：posterImageUrl 按 PERSON_HEAD_MAX_WIDTH=200 产出（02 §4.3 头像宽度）', async () => {
+  it('Person 条目：posterImageUrl 按 PERSON_HEAD_MAX_WIDTH=200 产出（M2 §4.3 头像宽度）', async () => {
     const { adapter } = makeAdapter('EMBY', {
       ...DETAIL_RESPONSE,
       Type: 'Person',

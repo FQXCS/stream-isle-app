@@ -23,7 +23,7 @@ function makeAdapter(
   return { adapter, api };
 }
 
-describe('stopTranscodingSession（DELETE /Videos/ActiveEncodings，03 §4.5.3）', () => {
+describe('stopTranscodingSession（DELETE /Videos/ActiveEncodings，M3 §4.5.3）', () => {
   it('Jellyfin 实例：query 参数名 playSessionId', async () => {
     const { adapter, api } = makeAdapter('JELLYFIN');
     await adapter.stopTranscodingSession('ps-1');

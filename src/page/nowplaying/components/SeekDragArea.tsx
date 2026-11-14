@@ -1,5 +1,5 @@
 /**
- * 歌词区「视频式」拖动 seek（05 文档 §4.10，对齐 02 §4.12 播放页 GestureLayer）：
+ * 歌词区「视频式」拖动 seek（M5 文档 §4.10，对齐 M2 §4.12 播放页 GestureLayer）：
  * 水平拖：拖动中只更新 HUD 预览气泡（起点位置 + dx/区域宽 × SEEK_FULL_WIDTH_SECONDS），
  * 松手才提交 seek；垂直拖 failOffset 交还给歌词列表滚动（轴互斥阈值与播放页同为 12dp）。
  * HUD 复用播放页 GestureHud（时间 + 增减量同款文案），在歌词区居中显示。

@@ -4,12 +4,12 @@
  * pending_progress（离线进度队列表）。全库单连接（openDatabaseAsync），写操作以
  * withTransactionAsync 包裹。
  * DAO 以结构化接口 DbClient 暴露（工厂 createDownloadDao 可注入），单测以内存假实现
- * 验证建表幂等 / upsert 主键冲突覆盖 / pending_progress 有序读取与按 id 删除（06 §6.1），
+ * 验证建表幂等 / upsert 主键冲突覆盖 / pending_progress 有序读取与按 id 删除（M6 §6.1），
  * 生产环境传入真实 SQLiteDatabase（方法签名同构）。
  */
 import * as SQLite from 'expo-sqlite';
 
-/** 数据库名（06 文档 §4.4.1） */
+/** 数据库名（M6 文档 §4.4.1） */
 export const DATABASE_NAME = 'stream-isle.db';
 
 /** DAO 运行所需的最小数据库能力（SQLiteDatabase 同构子集，测试可注入假实现） */
@@ -19,7 +19,7 @@ export interface DbClient {
   withTransactionAsync(task: () => Promise<void>): Promise<void>;
 }
 
-/** 下载状态（06 文档 §4.4.1 downloads.status 词表） */
+/** 下载状态（M6 文档 §4.4.1 downloads.status 词表） */
 export type DownloadStatusEnum = 'queued' | 'downloading' | 'paused' | 'completed' | 'failed';
 
 /** 下载快照行（与 DDL 列一一对应；camelCase ↔ snake_case 映射收敛本文件） */
@@ -58,7 +58,7 @@ export interface DownloadRow {
   errorMessage?: string;
 }
 
-/** 离线进度队列表行（06 文档 §4.4.1 pending_progress） */
+/** 离线进度队列表行（M6 文档 §4.4.1 pending_progress） */
 export interface PendingProgressRow {
   id: number;
   serverId: string;
@@ -73,7 +73,7 @@ export interface PendingProgressRow {
   createdAtMs: number;
 }
 
-/** 建表 DDL（IF NOT EXISTS 幂等；每次打开连接执行一次，06 文档 §4.4.1 原文） */
+/** 建表 DDL（IF NOT EXISTS 幂等；每次打开连接执行一次，M6 文档 §4.4.1 原文） */
 export const DDL_SQL = `
 CREATE TABLE IF NOT EXISTS downloads (
   server_id          TEXT    NOT NULL,
@@ -223,7 +223,7 @@ export interface DownloadDao {
   getDownloadsByServer(serverId: string): Promise<DownloadRow[]>;
   /** 单行定位（查重/本地会话构造/快照同步） */
   getDownload(serverId: string, itemId: string): Promise<DownloadRow | null>;
-  /** upsert：主键冲突即全列覆盖（06 §6.1「upsert 主键冲突覆盖」） */
+  /** upsert：主键冲突即全列覆盖（M6 §6.1「upsert 主键冲突覆盖」） */
   upsertDownload(row: DownloadRow): Promise<void>;
   /** 状态迁移（唯一高频写之外的状态写入点；errorMessage/完成时间随状态携带） */
   updateDownloadStatus(
@@ -238,7 +238,7 @@ export interface DownloadDao {
   updateProgressBytes(serverId: string, itemId: string, progressBytes: number): Promise<void>;
   /** 海报本地化路径落库 */
   updatePosterUri(serverId: string, itemId: string, posterFileUri: string): Promise<void>;
-  /** 本地播放断点/已看标记（离线播放节流窗口与 finish 写入，06 §4.5） */
+  /** 本地播放断点/已看标记（离线播放节流窗口与 finish 写入，M6 §4.5） */
   updateLocalPlayback(
     serverId: string,
     itemId: string,
@@ -252,11 +252,11 @@ export interface DownloadDao {
   listPendingProgress(serverId: string, userId: string): Promise<PendingProgressRow[]>;
   /** 全部待补报事件（flush 跨账号分组消费） */
   listAllPendingProgress(): Promise<PendingProgressRow[]>;
-  /** 按主键删除已补报事件（06 §6.1「按 id 删除」） */
+  /** 按主键删除已补报事件（M6 §6.1「按 id 删除」） */
   deletePendingProgress(ids: number[]): Promise<void>;
 }
 
-/** DAO 工厂（06 文档 §4.4.1 导出形态的类型化实现） */
+/** DAO 工厂（M6 文档 §4.4.1 导出形态的类型化实现） */
 export function createDownloadDao(db: DbClient): DownloadDao {
   async function getDownload(serverId: string, itemId: string): Promise<DownloadRow | null> {
     const rawList = await db.getAllAsync<DownloadRowRaw>(

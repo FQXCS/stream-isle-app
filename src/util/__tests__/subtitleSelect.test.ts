@@ -1,6 +1,6 @@
 /**
- * 起播默认字幕选轨单测（03 §4.8.3 + 04 §4.5 匹配定稿）：
- * 语言经 normalizeSubtitleLang 归一化后等值比较（zh 轨 + chi 偏好命中——04 定稿要修的
+ * 起播默认字幕选轨单测（M3 §4.8.3 + M4 §4.5 匹配定稿）：
+ * 语言经 normalizeSubtitleLang 归一化后等值比较（zh 轨 + chi 偏好命中——M4 定稿要修的
  * 前缀法漏判场景）、回退 isDefault/isForced、烧录轨与无 vttUrl 轨不参与、无命中不开字幕。
  */
 import type { SubtitleTrack } from '@/adapter/model';
@@ -17,7 +17,7 @@ function track(overrides: Partial<SubtitleTrack>): SubtitleTrack {
   };
 }
 
-describe('selectAutoSubtitleStreamIndex（04 §4.5 匹配定稿）', () => {
+describe('selectAutoSubtitleStreamIndex（M4 §4.5 匹配定稿）', () => {
   it('zh 轨 + chi 偏好命中（归一化等值比较，前缀法漏判场景）', () => {
     const list = [track({ streamIndex: 2, language: 'zh' })];
     expect(selectAutoSubtitleStreamIndex(list, 'chi')).toBe(2);

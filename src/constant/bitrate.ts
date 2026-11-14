@@ -1,5 +1,5 @@
 /**
- * 音频码率常量：音频无分辨率维度，universal 端点固定上报 20Mbps 上限（05 文档 §4.4）。
+ * 音频码率常量：音频无分辨率维度，universal 端点固定上报 20Mbps 上限（M5 文档 §4.4）。
  * 视频转码分辨率档位见 constant/resolution.ts。
  */
 

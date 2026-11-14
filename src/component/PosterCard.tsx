@@ -1,8 +1,8 @@
 /**
- * 海报卡（M1 文档 §4.10 海报墙 + 04 §4.4 收藏联动 + M6 §4.6.2 转场起点）：
+ * 海报卡（M1 文档 §4.10 海报墙 + M4 §4.4 收藏联动 + M6 §4.6.2 转场起点）：
  * expo-image 渐显占位 + name + subtext + 已看角标 + playbackPositionMs>0 时底部细进度条。
  * M4 增量：dimmed 淡化态（收藏筛选下取消收藏置灰不移除）、可选收藏角标按钮。
- * M6 增量（06 文档 §4.6.2）：按下时 measureInWindow 测量海报屏幕矩形 → transitionStore.begin，
+ * M6 增量（M6 文档 §4.6.2）：按下时 measureInWindow 测量海报屏幕矩形 → transitionStore.begin，
  * 供根级 SharedPosterOverlay 飞行；快速连点时 begin 覆盖（同 uri 重挂载重启飞行）；无海报不触发。
  */
 import { useRef, type ComponentRef } from 'react';
@@ -19,9 +19,9 @@ import { mediaIconOf } from '@/util/mediaCard';
 
 interface PosterCardProps {
   item: MediaLibraryItem;
-  /** 淡化置灰（收藏筛选下已取消收藏的卡片，04 §4.4） */
+  /** 淡化置灰（收藏筛选下已取消收藏的卡片，M4 §4.4） */
   dimmed?: boolean;
-  /** 收藏 toggle 回调（传入时渲染收藏角标按钮；仅收藏筛选下传，04 §4.4） */
+  /** 收藏 toggle 回调（传入时渲染收藏角标按钮；仅收藏筛选下传，M4 §4.4） */
   onToggleFavorite?: (item: MediaLibraryItem) => void;
   /** 副标题覆盖（图书卡片惰性采集到文件大小后替换年份副标题） */
   subtextOverride?: string;
@@ -49,7 +49,7 @@ export function PosterCard({
     <View
       style={[styles.card, dimmed && styles.dimmed]}
       onTouchEnd={() => {
-        // M6 转场起点（06 §4.6.2）：按下即测量上报；测量失败静默（无浮层 = 普通转场）
+        // M6 转场起点（M6 §4.6.2）：按下即测量上报；测量失败静默（无浮层 = 普通转场）
         if (item.posterImageUrl === undefined) {
           return;
         }
@@ -82,7 +82,7 @@ export function PosterCard({
             <AppIcon name="check" size={12} color="#FFFFFF" />
           </View>
         )}
-        {/* 收藏角标按钮（04 §4.4：仅收藏筛选下渲染，点击就地取消收藏/恢复） */}
+        {/* 收藏角标按钮（M4 §4.4：仅收藏筛选下渲染，点击就地取消收藏/恢复） */}
         {onToggleFavorite !== undefined && (
           <Pressable
             style={styles.favoriteBadge}
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
-  /** 收藏角标按钮（04 §4.4，左上角，不与已看角标重叠） */
+  /** 收藏角标按钮（M4 §4.4，左上角，不与已看角标重叠） */
   favoriteBadge: {
     position: 'absolute',
     top: SPACING.xs,
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.92)',
   },
-  /** 取消收藏淡化置灰（不移除卡片，避免服务端分页索引跳动，04 §4.4） */
+  /** 取消收藏淡化置灰（不移除卡片，避免服务端分页索引跳动，M4 §4.4） */
   dimmed: { opacity: 0.4 },
   progressTrack: {
     position: 'absolute',

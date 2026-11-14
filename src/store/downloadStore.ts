@@ -6,7 +6,7 @@
  */
 import { create } from 'zustand';
 
-/** 下载任务 UI 形态（06 文档 §4.4.4 DownloadTaskUi） */
+/** 下载任务 UI 形态（M6 文档 §4.4.4 DownloadTaskUi） */
 export interface DownloadTaskUi {
   itemId: string;
   title: string;

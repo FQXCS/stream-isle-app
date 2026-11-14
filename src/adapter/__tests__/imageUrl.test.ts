@@ -34,7 +34,7 @@ describe('imageUrl（§4.6.3 拼 URL 契约）', () => {
     expect(url).not.toContain('api_key=');
   });
 
-  // M5（05 文档 §4.3/§6.1）：maxWidth 缺省 → 原图（不带尺寸/质量参数）
+  // M5（M5 文档 §4.3/§6.1）：maxWidth 缺省 → 原图（不带尺寸/质量参数）
   it('maxWidth 缺省时不带尺寸/质量参数（原图 URL，「查看原图」与保存用）', () => {
     const url = make('EMBY', 'tk').imageUrl('itm1', 'Primary');
     expect(url).toBe('http://srv/Items/itm1/Images/Primary?api_key=tk');

@@ -1,5 +1,5 @@
 /**
- * 搜索页（04 文档 §4.3，M1 占位页填充；设计文档 §7.4）：
+ * 搜索页（M4 文档 §4.3，M1 占位页填充；设计文档 §7.4）：
  * 单输入框 400ms 防抖（useDebouncedValue），电影/剧集/人物分组结果（PosterRow/PersonRow），
  * 点击直达 Item/Person 页；seq 序号竞态守卫 + 旧结果保留策略。
  * 状态机：首次搜索 LoadingView；已有旧结果时保留旧结果、仅输入框尾部转圈；
@@ -40,7 +40,7 @@ export function SearchScreen() {
   const tr = useT();
   const styles = createStyles(t);
   const [input, setInput] = useState('');
-  // 400ms 防抖：输入连续变更仅末次生效（04 §4.3）
+  // 400ms 防抖：输入连续变更仅末次生效（M4 §4.3）
   const debouncedInput = useDebouncedValue(input, SEARCH_DEBOUNCE_MS);
 
   const [groups, setGroups] = useState<SearchResultGroup[] | null>(null);
@@ -48,7 +48,7 @@ export function SearchScreen() {
   const [error, setError] = useState<AppError | null>(null);
   /** 已出结果的关键词（空态文案用） */
   const [keyword, setKeyword] = useState('');
-  /** 请求序号竞态守卫：仅最新序号的响应可落状态（04 §4.3） */
+  /** 请求序号竞态守卫：仅最新序号的响应可落状态（M4 §4.3） */
   const seqRef = useRef(0);
   /** 上一次已发起搜索的词（同词不重复搜索） */
   const lastSearchedRef = useRef<string | null>(null);
@@ -61,7 +61,7 @@ export function SearchScreen() {
     try {
       const result = await searchService.search(term);
       if (seqRef.current !== seq) {
-        // 过期响应直接丢弃（已有旧结果保留，04 §4.3 竞态守卫）
+        // 过期响应直接丢弃（已有旧结果保留，M4 §4.3 竞态守卫）
         return;
       }
       setGroups(result);
@@ -98,7 +98,7 @@ export function SearchScreen() {
 
   return (
     <View style={styles.container}>
-      {/* 顶部圆角输入框：尾部清除按钮 / 请求中指示（04 §4.3） */}
+      {/* 顶部圆角输入框：尾部清除按钮 / 请求中指示（M4 §4.3） */}
       <View style={styles.inputWrap}>
         <AppIcon name="search" size={18} color={t.textTertiary} />
         <TextInput
@@ -133,7 +133,7 @@ export function SearchScreen() {
         ) : null}
       </View>
 
-      {/* 状态机（04 §4.3）：空词引导态优先（清输入即出，不依赖 effect 清态） */}
+      {/* 状态机（M4 §4.3）：空词引导态优先（清输入即出，不依赖 effect 清态） */}
       {!hasQuery ? (
         <EmptyView title={tr('server.searchEmptyTitle')} />
       ) : error !== null ? (
@@ -146,7 +146,7 @@ export function SearchScreen() {
         <ScrollView contentContainerStyle={styles.resultContent}>
           {groups.map((group) => (
             <View key={group.kind} style={styles.section}>
-              {/* 组标题来自 SEARCH_GROUP_TITLE_MAP（SearchResultGroup 不携带，04 §4.3） */}
+              {/* 组标题来自 SEARCH_GROUP_TITLE_MAP（SearchResultGroup 不携带，M4 §4.3） */}
               <Text style={styles.sectionTitle}>{tr(SEARCH_GROUP_TITLE_MAP[group.kind])}</Text>
               {group.kind === 'PERSON' ? (
                 <PersonRow itemList={group.itemList} />

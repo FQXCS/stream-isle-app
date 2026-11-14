@@ -160,7 +160,7 @@ describe('PlaybackService', () => {
     });
   });
 
-  describe('playNextEpisode（04 §4.4 自动连播）', () => {
+  describe('playNextEpisode（M4 §4.4 自动连播）', () => {
     // mock adapter 直返，故为 adapter 翻译后的 EpisodeItem 形态（含小驼峰字段）
     const upNext = {
       id: 'ep9',
@@ -211,7 +211,7 @@ describe('PlaybackService', () => {
     });
   });
 
-  describe('finish（M3 会话治理，03 §4.6.3）', () => {
+  describe('finish（M3 会话治理，M3 §4.6.3）', () => {
     it('转码会话：Stopped 之后追加 stopTranscodingSession', async () => {
       const service = new PlaybackService();
       await service.finish(session({ playMethod: 'Transcode', playSessionId: 'ps-t' }), 50_000, 'user_exit');

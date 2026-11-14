@@ -32,7 +32,7 @@ class PlaybackGesturesModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("ExpoPlaybackGestures")
 
-    // 设置窗口亮度（0..1；负值恢复跟随系统——02 §4.8 退出播放页恢复 -1 的契约）。
+    // 设置窗口亮度（0..1；负值恢复跟随系统——M2 §4.8 退出播放页恢复 -1 的契约）。
     // AsyncFunction 在模块队列线程执行，而 Window 属性受 ViewRootImpl 线程校验，
     // 必须在主线程写入（否则抛 "Only the original thread ... can touch its views"）
     AsyncFunction("setWindowBrightness") { value: Double, promise: Promise ->

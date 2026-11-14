@@ -138,7 +138,7 @@ export class AudioReporting {
   // 监听器返回 promise 便于单测 await 事件处理完成）——
 
   subscribe(): void {
-    // 新曲生效（含队首首曲）：上一曲 Stopped + 新曲 Playing（05 §4.5 事件表）
+    // 新曲生效（含队首首曲）：上一曲 Stopped + 新曲 Playing（M5 §4.5 事件表）
     TrackPlayer.addEventListener(Event.MediaItemTransition, (event) =>
       this.handleMediaItemTransition(event)
     );

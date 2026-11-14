@@ -1,5 +1,5 @@
 /**
- * 横向人物头像卡行（04 文档 §4.3 新建）：搜索结果人物组消费，圆形头像 + 姓名，
+ * 横向人物头像卡行（M4 文档 §4.3 新建）：搜索结果人物组消费，圆形头像 + 姓名，
  * 点击进人物页（复用 M2 PersonCard 的视觉规格，数据源为搜索结果的 MediaLibraryItem）。
  */
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';

@@ -1,5 +1,5 @@
 /**
- * settingsStore 单测（M1 文档 §6.1 + M3 §6.1 + 04 文档 §6.1 收口）：
+ * settingsStore 单测（M1 文档 §6.1 + M3 §6.1 + M4 文档 §6.1 收口）：
  * setInsecureTlsAllowed 按规范化 baseUrl 增删白名单并全量回同步原生（mock syncTlsBypassHosts
  * 断言重放剩余列表）；removeServerScopedData 清理后回同步；M3 播放四字段默认值与写入 +
  * persist 快照含新字段。
@@ -17,7 +17,7 @@ jest.mock('@/infra/tlsBypass', () => ({
   probeTls: jest.fn(),
 }));
 
-describe('settingsStore（证书白名单，04 §4.6/§4.7 终态）', () => {
+describe('settingsStore（证书白名单，M4 §4.6/§4.7 终态）', () => {
   beforeEach(() => {
     // 重置 store 与 MMKV（persist 快照同步内存 mock）
     useSettingsStore.setState({ allowInsecureTls: [] });
@@ -55,7 +55,7 @@ describe('settingsStore（证书白名单，04 §4.6/§4.7 终态）', () => {
     expect(mockSyncTlsBypassHosts).toHaveBeenLastCalledWith(['https://myhost.lan/jellyfin']);
   });
 
-  it('removeServerScopedData：删除服务器级联清理后回同步（04 §4.7）', () => {
+  it('removeServerScopedData：删除服务器级联清理后回同步（M4 §4.7）', () => {
     useSettingsStore.getState().actions.setInsecureTlsAllowed('https://192.168.1.5:8920', true);
     useSettingsStore.getState().actions.setInsecureTlsAllowed('https://myhost.lan/jellyfin', true);
     mockSyncTlsBypassHosts.mockClear();
@@ -147,7 +147,7 @@ describe('settingsStore（继续观看/观看历史收录类型）', () => {
   });
 });
 
-describe('settingsStore（M3 播放设置四字段，03 §4.7.2）', () => {
+describe('settingsStore（M3 播放设置四字段，M3 §4.7.2）', () => {
   beforeEach(() => {
     mmkv.clearAll();
     useSettingsStore.setState({

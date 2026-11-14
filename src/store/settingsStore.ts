@@ -1,10 +1,10 @@
 /**
- * 设置 store（M1 文档 §4.8；设计文档 §9；M3 文档 §4.7.2；04 §4.7 终态）。
- * allowInsecureTls 白名单键 = 规范化 baseUrl（04 收口升级，M1 基座为 host 键）；
+ * 设置 store（M1 文档 §4.8；设计文档 §9；M3 文档 §4.7.2；M4 §4.7 终态）。
+ * allowInsecureTls 白名单键 = 规范化 baseUrl（M4 收口升级，M1 基座为 host 键）；
  * 原生侧经 syncTlsBypassHosts 逐条解析为 host:port 全量回同步（变化时重放剩余白名单）。
  * M3 四个播放设置字段：maxResolutionTier（转码分辨率档位，替代原码率档位）/ allowHevcDirectPlay /
  * autoDowngradeOnCellular / preferredSubtitleLang；断点续播开关 resumePlaybackEnabled。persist，key "settings-store" 不变。
- * 注意：自动降档（蜂窝）不写 maxResolutionTier——唯一落盘入口是 ResolutionMenu/设置页手动切换（03 §4.9）。
+ * 注意：自动降档（蜂窝）不写 maxResolutionTier——唯一落盘入口是 ResolutionMenu/设置页手动切换（M3 §4.9）。
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
@@ -22,13 +22,13 @@ import { createMmkvJSONStorage } from '@/infra/storage';
 
 interface SettingsActions {
   /**
-   * 增删 TLS 白名单（04 §4.7 终态签名）：allowed=true 增加规范化 baseUrl 键（已存在幂等）、
+   * 增删 TLS 白名单（M4 §4.7 终态签名）：allowed=true 增加规范化 baseUrl 键（已存在幂等）、
    * false 移除；变化后全量回同步原生（重放剩余白名单）。
    */
   setInsecureTlsAllowed(baseUrl: string, allowed: boolean): void;
-  /** 删除服务器级联清理（04 §4.7）：移除该 baseUrl 白名单键并全量回同步原生 */
+  /** 删除服务器级联清理（M4 §4.7）：移除该 baseUrl 白名单键并全量回同步原生 */
   removeServerScopedData(baseUrl: string): void;
-  /** 转码分辨率档位落盘（ResolutionMenu 与设置页共用同一 action，杜绝两处语义分叉，03 §4.13） */
+  /** 转码分辨率档位落盘（ResolutionMenu 与设置页共用同一 action，杜绝两处语义分叉，M3 §4.13） */
   setMaxResolutionTier(tier: ResolutionTierKey): void;
   /** 「允许 HEVC 直连」开关（默认 true；关闭后 HEVC 片全量转码兜底） */
   setAllowHevcDirectPlay(value: boolean): void;
@@ -38,9 +38,9 @@ interface SettingsActions {
   setResumePlaybackEnabled(value: boolean): void;
   /** 字幕语言偏好（M3 无 UI，M4 设置页接入；null = 取 DEFAULT_SUBTITLE_LANGUAGE 自动选轨） */
   setPreferredSubtitleLang(lang: string | null): void;
-  /** M5：电池引导已展示标记（无论用户选择与否，写 true 后不再弹，05 文档 §4.14） */
+  /** M5：电池引导已展示标记（无论用户选择与否，写 true 后不再弹，M5 文档 §4.14） */
   setBatteryGuideShown(): void;
-  /** 主题三态（system/light/dark，默认亮色；06 文档 §4.6.1） */
+  /** 主题三态（system/light/dark，默认亮色；M6 文档 §4.6.1） */
   setThemeMode(mode: ThemeModeEnum): void;
   /** 强调色配色方案（设置页可切换，默认翡翠；浅色/深色各有适配） */
   setAccentScheme(scheme: AccentSchemeEnum): void;
@@ -53,21 +53,21 @@ interface SettingsActions {
 }
 
 interface SettingsState {
-  /** 证书白名单（键 = 规范化 baseUrl，04 §4.6） */
+  /** 证书白名单（键 = 规范化 baseUrl，M4 §4.6） */
   allowInsecureTls: string[];
   /** 最大转码分辨率档位（默认无限制；直连不受影响） */
   maxResolutionTier: ResolutionTierKey;
-  /** 允许 HEVC 直连（默认 true，设计文档 §8.2；探测仍要求 Main10 才声明 hevc，03 §4.4.2） */
+  /** 允许 HEVC 直连（默认 true，设计文档 §8.2；探测仍要求 Main10 才声明 hevc，M3 §4.4.2） */
   allowHevcDirectPlay: boolean;
   /** 蜂窝自动降档（默认 true，设计文档 §11「可关」） */
   autoDowngradeOnCellular: boolean;
   /** 断点续播（默认 true：点播放从上次停止位置继续；关闭后恒从头播放） */
   resumePlaybackEnabled: boolean;
-  /** 字幕语言偏好（默认 null → 消费时取 DEFAULT_SUBTITLE_LANGUAGE，03 §4.7.2） */
+  /** 字幕语言偏好（默认 null → 消费时取 DEFAULT_SUBTITLE_LANGUAGE，M3 §4.7.2） */
   preferredSubtitleLang: string | null;
-  /** M5：电池白名单引导一次性标记（已展示不再弹，05 文档 §4.14；persist） */
+  /** M5：电池白名单引导一次性标记（已展示不再弹，M5 文档 §4.14；persist） */
   batteryGuideShown: boolean;
-  /** 主题模式（默认 light 亮色优先；随既有 MMKV persist 持久化，06 文档 §4.6.1） */
+  /** 主题模式（默认 light 亮色优先；随既有 MMKV persist 持久化，M6 文档 §4.6.1） */
   themeMode: ThemeModeEnum;
   /** 强调色配色方案（默认翡翠；persist） */
   accentScheme: AccentSchemeEnum;

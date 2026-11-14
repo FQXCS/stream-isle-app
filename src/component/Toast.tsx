@@ -1,5 +1,5 @@
 /**
- * 轻量操作反馈 Toast（04 §4.2：自建 reanimated 浮层，M1 401 提示曾用 ToastAndroid，
+ * 轻量操作反馈 Toast（M4 §4.2：自建 reanimated 浮层，M1 401 提示曾用 ToastAndroid，
  * 收口后操作级失败统一走本组件；无第三方依赖）。
  * - showToast：底部轻提示（失败/常规反馈）；
  * - showCenterToast：屏幕居中的大图标动作提示（加入队列等成功反馈）。

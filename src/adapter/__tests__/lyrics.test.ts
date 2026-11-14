@@ -1,5 +1,5 @@
 /**
- * adapter 歌词单测（06 文档 §6.1 BaseAdapter.lyrics 行）：
+ * adapter 歌词单测（M6 文档 §6.1 BaseAdapter.lyrics 行）：
  * 路径；404 → null；LyricDto 翻译（StartTick→startMs 走 ticksToMs、无 StartTick 行 startMs
  * 缺省）；异常不抛出（其余错误同样降级为 null）。
  */
@@ -21,7 +21,7 @@ function makeAdapter(requestImpl?: () => Promise<unknown>): {
   return { adapter, api };
 }
 
-describe('BaseAdapter 歌词（06 §6.1 lyrics 行）', () => {
+describe('BaseAdapter 歌词（M6 §6.1 lyrics 行）', () => {
   it('GET /Audio/{itemId}/Lyrics（需认证）', async () => {
     const { adapter, api } = makeAdapter(() => Promise.resolve({ Lyrics: [] }));
     await adapter.getLyrics('u1', 'a1');
@@ -52,7 +52,7 @@ describe('BaseAdapter 歌词（06 §6.1 lyrics 行）', () => {
     await expect(adapter.getLyrics('u1', 'a1')).resolves.toBeNull();
   });
 
-  it('404 → null（Emby 未实证端点的优雅降级，06 §4.3.1）', async () => {
+  it('404 → null（Emby 未实证端点的优雅降级，M6 §4.3.1）', async () => {
     const { adapter } = makeAdapter(() => Promise.reject(new AppError('NOT_FOUND')));
     await expect(adapter.getLyrics('u1', 'a1')).resolves.toBeNull();
   });

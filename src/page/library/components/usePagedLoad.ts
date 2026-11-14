@@ -7,7 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 
 import { AppError, type AppErrorCode } from '@/infra/error';
 
-/** 分页加载状态（页面局部，不进 browseStore——05 文档 §4.7「browseStore 无需变更」） */
+/** 分页加载状态（页面局部，不进 browseStore——M5 文档 §4.7「browseStore 无需变更」） */
 export interface PagedState<T> {
   itemList: T[];
   total: number;
@@ -55,7 +55,7 @@ export function usePagedLoad<T extends { id: string }>(
     [loadPage]
   );
 
-  // 聚焦加载（与 M2 详情页同口径：页面局部 state + useFocusEffect 聚焦刷新，05 §4.7）
+  // 聚焦加载（与 M2 详情页同口径：页面局部 state + useFocusEffect 聚焦刷新，M5 §4.7）
   useFocusEffect(
     useCallback(() => {
       void fetchPage(0);

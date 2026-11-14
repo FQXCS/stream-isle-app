@@ -53,7 +53,7 @@ export function OnboardingConnectScreen({ navigation }: Props) {
     if (normalized === null) {
       return;
     }
-    // 白名单键 = 规范化 baseUrl（04 §4.6 终态），原生侧经 toHostPort 解析为 host:port
+    // 白名单键 = 规范化 baseUrl（M4 §4.6 终态），原生侧经 toHostPort 解析为 host:port
     useSettingsStore.getState().actions.setInsecureTlsAllowed(normalized, true);
     handleConnect();
   };

@@ -4,7 +4,7 @@
  * 与 PlaybackService 并列（设计文档 §4）。
  * M5 增量：构造函数 intervalMs 注入（音频档 30s，见设计文档 §7.5，视频档 10s 默认值不破坏）
  * + lastPositionMs 记录（切歌 Stopped 的 positionMs 取 getLastPositionMs()，误差 ≤ 节流间隔可接受）。
- * M6 增量（06 文档 §4.5）：上报失败且「错误码为网络类 且 netinfo 判定离线」→
+ * M6 增量（M6 文档 §4.5）：上报失败且「错误码为网络类 且 netinfo 判定离线」→
  * OfflineProgressService.enqueue 落库后按原语义继续（Progress 静默）；其他错误维持 M2 策略。
  * 本地会话与在线串流会话走同一条失败分支（一条代码路径覆盖两种场景）。
  */
@@ -48,7 +48,7 @@ export class ProgressService {
 
   /**
    * 播放器 onProgress 高频回调（约 500ms 一次）：距上次 ≥ 节流间隔才真正上报。
-   * 上报失败：离线入队（M6 §4.5），否则静默（下个节流窗口自然再报，02 §4.5）。
+   * 上报失败：离线入队（M6 §4.5），否则静默（下个节流窗口自然再报，M2 §4.5）。
    */
   notifyProgress(session: PlaybackSession, positionMs: number, isPaused: boolean): void {
     if (this.stopped) {
@@ -99,7 +99,7 @@ export class ProgressService {
     this.report(session, positionMs, isPaused);
   }
 
-  /** 统一上报出口：失败按「网络类 + 离线」双条件入队，否则静默（02 §4.5 / 06 §4.5） */
+  /** 统一上报出口：失败按「网络类 + 离线」双条件入队，否则静默（M2 §4.5 / M6 §4.5） */
   private report(session: PlaybackSession, positionMs: number, isPaused: boolean): void {
     void getActiveAdapter()
       .reportProgress({
@@ -111,7 +111,7 @@ export class ProgressService {
         playMethod: session.playMethod,
       })
       .catch((err: unknown) => {
-        // 离线入队（双条件内判；非网络类/在线失败维持静默，06 §4.5）
+        // 离线入队（双条件内判；非网络类/在线失败维持静默，M6 §4.5）
         const context = offlineEventContext(session);
         if (context !== null) {
           void enqueueOnReportFailure(err, {

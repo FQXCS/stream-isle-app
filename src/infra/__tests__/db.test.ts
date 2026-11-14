@@ -1,5 +1,5 @@
 /**
- * infra/db DAO 单测（06 文档 §6.1 db DAO 行）：建表幂等、upsert 主键冲突覆盖、
+ * infra/db DAO 单测（M6 文档 §6.1 db DAO 行）：建表幂等、upsert 主键冲突覆盖、
  * pending_progress 有序读取与按 id 删除。以内存假 DbClient（Map 表）驱动 createDownloadDao
  * ——生产 SQLiteDatabase 方法签名同构（openDatabaseAsync 在 jest 由 __mocks__/expo-sqlite 提供）。
  */
@@ -90,7 +90,7 @@ function makeFakeDb(): DbClient & {
         if (sql.includes('WHERE server_id = ? AND user_id = ?')) {
           list = list.filter((row) => row.serverId === params[0] && row.userId === params[1]);
         }
-        // 有序读取：created_at_ms 升序，次键 id 升序（06 §6.1「有序读取」）；
+        // 有序读取：created_at_ms 升序，次键 id 升序（M6 §6.1「有序读取」）；
         // 真实库 getAllAsync 返回列名 snake_case 原始形态，fake 同形（DAO 层 pendingFromRaw 消费）
         return list
           .sort((a, b) => a.createdAtMs - b.createdAtMs || a.id - b.id)
@@ -142,7 +142,7 @@ function makeRow(overrides: Partial<DownloadRow> = {}): DownloadRow {
   };
 }
 
-describe('db DAO（06 §6.1 db DAO 行）', () => {
+describe('db DAO（M6 §6.1 db DAO 行）', () => {
   it('DDL 幂等：CREATE TABLE IF NOT EXISTS 语句可重复执行', async () => {
     // 真实库幂等由 IF NOT EXISTS 保证；此处断言 DDL 文本即幂等形态且重复传入不抛
     expect(DDL_SQL).toContain('CREATE TABLE IF NOT EXISTS downloads');

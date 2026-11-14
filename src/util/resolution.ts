@@ -18,7 +18,7 @@ function rankOf(tier: ResolutionTierKey): number {
  * 网络类型 → 应生效档位：
  * - 'none'（断网）→ null：不动作（断网过渡态不触发任何会话动作，网络错误交由播放器
  *   onError 兜底——WiFi→蜂窝若经飞行模式，type 序列为 wifi→none→cellular，none 必须排除，
- *   否则断网中 resolve 必败并按 03 §4.11 退出播放，降档永不达成）；
+ *   否则断网中 resolve 必败并按 M3 §4.11 退出播放，降档永不达成）；
  * - 'cellular' 且开关开 → 用户档与 480p 取更严格者（蜂窝默认值；调用方在用户手动选择后
  *   不再调用本判定，手动选择优先）；
  * - 其余（wifi/未知类型/开关关）→ userTier（含恢复方向：蜂窝回 WiFi 自动回用户档位）。

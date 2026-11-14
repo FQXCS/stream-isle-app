@@ -3,7 +3,7 @@
  * 按解码能力探测（DecoderCapabilities）× 转码分辨率档位 × 字幕策略矩阵动态构建
  * PlaybackInfo 的 DeviceProfile，取代 M2 最小静态版 buildDirectPlayProfile。
  *
- * 关键决策（03 §4.4.2）：DirectPlayProfile 声明 hevc 的条件是「探测到 HEVC Main10」而非
+ * 关键决策（M3 §4.4.2）：DirectPlayProfile 声明 hevc 的条件是「探测到 HEVC Main10」而非
  * 「有 HEVC 解码器」——仅 8bit 硬解的机型直连 10bit 片会花屏，Main10 才允许声明，
  * 8bit-only 机型让 10bit 片自动转码（h264 输出），即验收 T1 的机制。
  */
@@ -60,7 +60,7 @@ export interface DeviceProfileOptions {
   decoderCaps: DecoderCapabilities;
 }
 
-/** 转码能力声明恒定值（03 §4.4.2：ts 容器 h264+aac HLS） */
+/** 转码能力声明恒定值（M3 §4.4.2：ts 容器 h264+aac HLS） */
 const TRANSCODING_PROFILE_BASE: TranscodingProfile = {
   Container: 'ts',
   Type: 'Video',
@@ -69,7 +69,7 @@ const TRANSCODING_PROFILE_BASE: TranscodingProfile = {
   Protocol: 'hls',
 };
 
-/** 字幕策略矩阵恒定值（03 §4.4.2，与设计文档 §8.2 JSON 逐字一致） */
+/** 字幕策略矩阵恒定值（M3 §4.4.2，与设计文档 §8.2 JSON 逐字一致） */
 const SUBTITLE_PROFILES: SubtitleProfile[] = [
   { Format: 'vtt', Method: 'External' },
   { Format: 'srt', Method: 'External' },

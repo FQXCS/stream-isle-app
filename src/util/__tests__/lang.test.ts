@@ -1,10 +1,10 @@
 /**
- * 字幕语言归一化单测（04 文档 §6.1 normalizeSubtitleLang 行）：
+ * 字幕语言归一化单测（M4 文档 §6.1 normalizeSubtitleLang 行）：
  * 别名归一（zh/Chinese/zho → chi）与未命中透传。
  */
 import { normalizeSubtitleLang } from '@/util/lang';
 
-describe('normalizeSubtitleLang（04 §4.5 匹配定稿）', () => {
+describe('normalizeSubtitleLang（M4 §4.5 匹配定稿）', () => {
   it('别名归一：zh/zho/chinese → chi', () => {
     expect(normalizeSubtitleLang('zh')).toBe('chi');
     expect(normalizeSubtitleLang('zho')).toBe('chi');

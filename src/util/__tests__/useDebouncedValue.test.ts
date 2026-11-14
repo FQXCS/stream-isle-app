@@ -1,12 +1,12 @@
 /**
- * 防抖单测（04 文档 §6.1 useDebouncedValue 行）：400ms 内连续变更仅末次生效。
+ * 防抖单测（M4 文档 §6.1 useDebouncedValue 行）：400ms 内连续变更仅末次生效。
  * React 19 不随包提供 test-renderer/@testing-library 且本里程碑不新增依赖，
  * 防抖行为核心（createDebouncer 纯逻辑）以 fake timers 直接覆盖；hook 为薄接线
  * （cleanup 取消旧计时器 + push 新计时器，语义与核心一致）。
  */
 import { createDebouncer } from '@/util/useDebouncedValue';
 
-describe('createDebouncer（useDebouncedValue 防抖核心，04 §4.3 搜索防抖）', () => {
+describe('createDebouncer（useDebouncedValue 防抖核心，M4 §4.3 搜索防抖）', () => {
   beforeEach(() => {
     jest.useFakeTimers();
   });

@@ -20,7 +20,7 @@ export class EmbyAdapter extends BaseAdapter {
     return {};
   }
 
-  /** ActiveEncodings 参数名：Emby 为 id（设计文档 §7.2 记载形态，03 §4.5.3） */
+  /** ActiveEncodings 参数名：Emby 为 id（设计文档 §7.2 记载形态，M3 §4.5.3） */
   protected activeEncodingsQueryKey(): 'playSessionId' | 'id' {
     return 'id';
   }

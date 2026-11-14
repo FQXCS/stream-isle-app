@@ -1,6 +1,6 @@
 /**
- * 导航参数类型（M1 文档 §4.9；M2 增量 Item/Person/Player，02 §4.5 路由表；
- * M5 增量 AlbumDetail/NowPlaying/PhotoViewer，05 §4.15）。
+ * 导航参数类型（M1 文档 §4.9；M2 增量 Item/Person/Player，M2 §4.5 路由表；
+ * M5 增量 AlbumDetail/NowPlaying/PhotoViewer，M5 §4.15）。
  */
 import type {
   ItemFilterEnum,
@@ -49,18 +49,18 @@ export type RootStackParamList = {
   [ROUTES.MEDIA_MANAGE]: undefined;
   /** 海报墙页：库对象必传（M1 文档 §4.10） */
   [ROUTES.LIBRARY]: { library: MediaLibrary };
-  /** 详情页：电影/剧集；Season/Episode 不进本页（季切换在页内、点集直接播，02 §4.5） */
+  /** 详情页：电影/剧集；Season/Episode 不进本页（季切换在页内、点集直接播，M2 §4.5） */
   [ROUTES.ITEM]: { itemId: string };
   /** 人物页：头像/简介/出演作品网格 */
   [ROUTES.PERSON]: { personId: string };
-  /** 播放页：详情页 resolve 成功后携带会话进入；不参与状态恢复（02 §4.5） */
+  /** 播放页：详情页 resolve 成功后携带会话进入；不参与状态恢复（M2 §4.5） */
   [ROUTES.PLAYER]: { session: PlaybackSession };
-  /** M5：专辑/艺术家/歌单详情三态（05 §4.15） */
+  /** M5：专辑/艺术家/歌单详情三态（M5 §4.15） */
   [ROUTES.ALBUM_DETAIL]: { kind: 'album' | 'artist' | 'playlist'; itemId: string };
   /** M5：Now Playing 全屏页 */
   [ROUTES.NOW_PLAYING]: undefined;
   /**
-   * M5：照片查看器。totalCount 供页码分母、albumId 供查看器续载下一页（05 §4.13）；
+   * M5：照片查看器。totalCount 供页码分母、albumId 供查看器续载下一页（M5 §4.13）；
    * 仅元数据随栈传参（photoList 为已加载片段引用）；
    * sort 供非名称升序入口（首页每库行）续载保持同序，缺省名称升序（网格入口不变）
    */
@@ -71,9 +71,9 @@ export type RootStackParamList = {
     initialIndex: number;
     sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' };
   };
-  /** M6：观看历史（设计文档 §10.2 已预留，06 §4.10 注册） */
+  /** M6：观看历史（设计文档 §10.2 已预留，M6 §4.10 注册） */
   [ROUTES.HISTORY]: undefined;
-  /** M6：下载管理（设计文档 §10.2 已预留，06 §4.10 注册） */
+  /** M6：下载管理（设计文档 §10.2 已预留，M6 §4.10 注册） */
   [ROUTES.DOWNLOADS]: undefined;
   /** 收录类型设置二级页：继续观看/观看历史分别多选 */
   [ROUTES.MEDIA_TYPE_SETTINGS]: undefined;

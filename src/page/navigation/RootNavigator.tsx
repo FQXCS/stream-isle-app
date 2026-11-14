@@ -6,11 +6,11 @@
  * ├─ 免登录：ServerAdd（添加/编辑服务器）、ServerRoutes、ServerRouteEdit
  * ├─ 登录页：OnboardingLogin（同服务器多账号 / 401 重登；modal）
  * └─ Library / Item / Person / Player（M2+）→ M5 追加 AlbumDetail / NowPlaying / PhotoViewer
- *    → M6 追加 History / Downloads（设计文档 §10.2 已预留，06 §4.10 注册）
+ *    → M6 追加 History / Downloads（设计文档 §10.2 已预留，M6 §4.10 注册）
  * 根布局浮层：MiniPlayer（全局迷你播放条，NavigationContainer 同级，M5 §4.10）+
  * SharedPosterOverlay（M6 海报 → 详情共享元素转场浮层）+
  * AudioPermissionGuide（电池引导，非路由，M5 §4.14）。
- * M6 主题（06 §4.6.1）：NavigationContainer theme 由 token 映射（深/浅两套）。
+ * M6 主题（M6 §4.6.1）：NavigationContainer theme 由 token 映射（深/浅两套）。
  */
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -129,7 +129,7 @@ function TabsNavigator() {
 export function RootNavigator() {
   // gate 条件：hydrated && active 存在 → Tabs；否则 Onboarding（§4.9，zustand 响应式）
   const hydrated = useAccountStore((state) => state.hydrated);
-  // M6 主题：NavigationContainer theme 由 token 映射（深/浅两套，06 §4.6.1）
+  // M6 主题：NavigationContainer theme 由 token 映射（深/浅两套，M6 §4.6.1）
   const t = useTheme();
   const tr = useT();
   const scheme = useResolvedScheme();
@@ -292,13 +292,13 @@ export function RootNavigator() {
               component={PhotoViewerScreen}
               options={{ headerShown: false }}
             />
-            {/* M6：观看历史（服务端已看条目倒序分页，06 §4.10） */}
+            {/* M6：观看历史（服务端已看条目倒序分页，M6 §4.10） */}
             <RootStack.Screen
               name={ROUTES.HISTORY}
               component={HistoryScreen}
               options={{ title: tr('settings.history'), headerBackTitle: tr('nav.back') }}
             />
-            {/* M6：下载管理（离线任务列表 + 本地播放入口，06 §4.10） */}
+            {/* M6：下载管理（离线任务列表 + 本地播放入口，M6 §4.10） */}
             <RootStack.Screen
               name={ROUTES.DOWNLOADS}
               component={DownloadsScreen}
@@ -454,15 +454,15 @@ export function RootNavigator() {
             />
         </RootStack.Navigator>
       </NavigationContainer>
-      {/* M5：全局迷你播放条（根布局浮层，四 Tab 与库/详情页上方常驻，05 §4.10） */}
+      {/* M5：全局迷你播放条（根布局浮层，四 Tab 与库/详情页上方常驻，M5 §4.10） */}
       <View style={styles.overlay} pointerEvents="box-none">
         <MiniPlayer />
       </View>
-      {/* M6：海报 → 详情共享元素转场浮层（根级，NavigationContainer 同层，06 §4.6.2） */}
+      {/* M6：海报 → 详情共享元素转场浮层（根级，NavigationContainer 同层，M6 §4.6.2） */}
       <SharedPosterOverlay />
-      {/* M5：电池白名单引导（首次起播一次性，根布局组件非路由，05 §4.14） */}
+      {/* M5：电池白名单引导（首次起播一次性，根布局组件非路由，M5 §4.14） */}
       <AudioPermissionGuide />
-      {/* 全局操作级反馈浮层（04 §4.2）：根组件挂载一次 */}
+      {/* 全局操作级反馈浮层（M4 §4.2）：根组件挂载一次 */}
       <ToastHost />
     </>
   );

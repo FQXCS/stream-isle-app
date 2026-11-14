@@ -3,14 +3,14 @@
  * 浅色为默认主题（亮色优先），深色保持同结构；resolveTokens 为三态（system/light/dark）
  * 纯函数（A9 单测点）。
  * COLORS 保留为「媒体沉浸页固定深色白名单」（Player/PhotoViewer/NowPlaying 大封面态）
- * 与 radius 等非主题量的引用出处——这些页面不随主题（06 文档 §4.6.1 白名单）。
+ * 与 radius 等非主题量的引用出处——这些页面不随主题（M6 文档 §4.6.1 白名单）。
  * 视觉基调：翡翠主色（设置页可切换配色方案）+ 冷调中性底（Isle 意象），白卡片、大圆角、轻阴影。
  */
 import type { ViewStyle } from 'react-native';
 
 import type { MessageKey } from '@/i18n/messages/zh';
 
-/** 主题模式（跟随系统/浅色/深色三态，06 文档 §4.6.1） */
+/** 主题模式（跟随系统/浅色/深色三态，M6 文档 §4.6.1） */
 export type ThemeModeEnum = 'system' | 'light' | 'dark';
 
 /** 系统方案（useColorScheme 产物；resolveTokens 入参） */
@@ -112,7 +112,7 @@ export const ACCENT_SCHEME_OPTIONS = ACCENT_SCHEME_LIST.map(({ key, labelKey, sw
 
 export const DEFAULT_ACCENT_SCHEME: AccentSchemeEnum = 'EMERALD';
 
-/** 主题 token（06 文档 §4.6.1 ThemeTokens；warning 为现状色值反推补充位） */
+/** 主题 token（M6 文档 §4.6.1 ThemeTokens；warning 为现状色值反推补充位） */
 export interface ThemeTokens {
   /** 页面背景 */
   bg: string;
@@ -196,7 +196,7 @@ export function resolveTokens(
 
 /**
  * 固定深色调色板（媒体沉浸页白名单引用 + posterRadius 非 theme 量）：
- * Player / PhotoViewer / NowPlaying 大封面态不随主题（06 文档 §4.6.1），维持深色视觉。
+ * Player / PhotoViewer / NowPlaying 大封面态不随主题（M6 文档 §4.6.1），维持深色视觉。
  */
 export const COLORS = {
   bg: '#0A1418',

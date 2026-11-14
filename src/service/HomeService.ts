@@ -1,5 +1,5 @@
 /**
- * 首页服务（04 文档 §3 认领补齐）：三区数据一次拉齐（继续观看/下一集/最新添加），
+ * 首页服务（M4 文档 §3 认领补齐）：三区数据一次拉齐（继续观看/下一集/最新添加），
  * 复用 adapter 既有 getResume/getNextUp/getLatest 具名封装；
  * 媒体库融合页另加「每库最新添加行」批量拉取（单库失败按空行处理）。
  */
@@ -40,7 +40,7 @@ function requireUserId(): string {
 export class HomeService {
   /**
    * 三区并发拉取（各 12 条上限）：任一失败即整页失败（页面级 ErrorView + 重试），
-   * 分区级空由页面隐藏对应分区（04 §4.2 页面状态约定）。
+   * 分区级空由页面隐藏对应分区（M4 §4.2 页面状态约定）。
    */
   async loadHome(): Promise<HomeSections> {
     const adapter = getActiveAdapter();

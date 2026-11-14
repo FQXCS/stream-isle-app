@@ -3,7 +3,7 @@
  * 登录 / 登录失败 / 重登 / 同服务器多用户最小交互 + Quick Connect 免密登录面板。
  * params { serverInfo?: ServerInfo; serverId?: string }，两个入口都闭环：
  * Connect 正常流程带 serverInfo（服务器尚未入库）；401 重登按 serverId 从 accountStore 恢复。
- * M6 QC 流（06 §4.3.3）：登录表单下方「Quick Connect 免密登录」按钮 → beginQuickConnect →
+ * M6 QC 流（M6 §4.3.3）：登录表单下方「Quick Connect 免密登录」按钮 → beginQuickConnect →
  * QC 面板（大号 6 位授权码 + 同内容二维码 + 引导文案 + 轮询动效 + 取消）；
  * 授权后自动换取 Token 走保存链路进 Tabs；禁用/超时/过期/取消 → 面板内中文提示可重试或回表单。
  */
@@ -52,7 +52,7 @@ export function OnboardingLoginScreen({ route, navigation }: Props) {
     },
     []
   );
-  // QC 轮询生命周期：flow 更换/关闭面板/卸载时 cancel 旧轮询（UI 返回必须 cancel，06 §4.3.2）
+  // QC 轮询生命周期：flow 更换/关闭面板/卸载时 cancel 旧轮询（UI 返回必须 cancel，M6 §4.3.2）
   useEffect(() => () => qcFlow?.cancel(), [qcFlow]);
 
   /**
@@ -137,7 +137,7 @@ export function OnboardingLoginScreen({ route, navigation }: Props) {
       // 消费 401 重登标记（若有），下次登出走 Connect 首屏
       useAccountStore.getState().actions.setReloginServerId(null);
       // 成功后 guest 流程 gate 响应 active 变化自动切到 Tabs（§4.9 响应式）；
-      // authed 追加用户/服务器流程（设置页进入）栈未重建，就地弹回（04 §4.5）
+      // authed 追加用户/服务器流程（设置页进入）栈未重建，就地弹回（M4 §4.5）
       dismissIfMounted();
     } catch (err) {
       if (err instanceof AppError) {
@@ -154,7 +154,7 @@ export function OnboardingLoginScreen({ route, navigation }: Props) {
     }
   };
 
-  // —— M6：Quick Connect 流（06 文档 §4.3.3）——
+  // —— M6：Quick Connect 流（M6 文档 §4.3.3）——
 
   /** 发起 QC：beginQuickConnect（Enabled 探测 → Initiate）→ 切换 QC 面板态 */
   const handleStartQuickConnect = () => {
@@ -176,7 +176,7 @@ export function OnboardingLoginScreen({ route, navigation }: Props) {
           return;
         }
         setQcFlow(null);
-        // 面板内展示对应中文提示（禁用/超时/取消/过期），可重试或回密码登录（06 §4.3.3）
+        // 面板内展示对应中文提示（禁用/超时/取消/过期），可重试或回密码登录（M6 §4.3.3）
         if (err instanceof AppError && err.code !== 'QUICK_CONNECT_CANCELLED') {
           setQcError(err.code);
         } else if (!(err instanceof AppError)) {
@@ -186,7 +186,7 @@ export function OnboardingLoginScreen({ route, navigation }: Props) {
     })();
   };
 
-  /** 取消 QC：置取消标志（立即 reject 且不再轮询）后回登录表单（06 §4.3.2）；
+  /** 取消 QC：置取消标志（立即 reject 且不再轮询）后回登录表单（M6 §4.3.2）；
    *  flow 置 null 触发上方 cleanup 再次 cancel（幂等），无 ref 可变共享 */
   const handleCancelQuickConnect = () => {
     qcFlow?.cancel();
@@ -279,7 +279,7 @@ export function OnboardingLoginScreen({ route, navigation }: Props) {
               {submitting ? tr('server.signingIn') : tr('server.loginTitle')}
             </Text>
           </Pressable>
-          {/* M6：Quick Connect 入口（06 §4.3.3；登录表单下方） */}
+          {/* M6：Quick Connect 入口（M6 §4.3.3；登录表单下方） */}
           <Pressable
             style={({ pressed }) => [
               styles.qcButton,
@@ -310,7 +310,7 @@ export function OnboardingLoginScreen({ route, navigation }: Props) {
 }
 
 /**
- * QC 面板（06 文档 §4.3.3）：大号 6 位授权码（等宽数字字体）+ 同内容二维码
+ * QC 面板（M6 文档 §4.3.3）：大号 6 位授权码（等宽数字字体）+ 同内容二维码
  * （内容 = 授权码字符串本身，供另一台设备相机扫码取码，开放问题 1 形态）+
  * 引导文案「打开已登录设备：网页端 设置 → Quick Connect，输入此码确认」+ 轮询动效 + 取消按钮。
  */

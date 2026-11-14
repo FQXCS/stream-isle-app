@@ -1,5 +1,5 @@
 /**
- * OfflineProgressService 单测（06 文档 §6.1 OfflineProgressService 行）：
+ * OfflineProgressService 单测（M6 文档 §6.1 OfflineProgressService 行）：
  * 入队条件（网络类错误 + 离线双条件，其他错误不入队）；合并规则（连续 Progress→末条、
  * Playing 首条与 Stopped 末条保留、无 Playing 合成、MarkPlayed 折叠且置于组末 Stopped 之后）；
  * flush 按组按序、成功删行、失败保留剩余；假时钟下定时触发。
@@ -90,7 +90,7 @@ function row(overrides: Partial<PendingProgressRow>): PendingProgressRow {
   };
 }
 
-describe('OfflineProgressService（06 §6.1）', () => {
+describe('OfflineProgressService（M6 §6.1）', () => {
   afterEach(() => {
     setOfflineStateForTest(false);
   });
@@ -166,7 +166,7 @@ describe('OfflineProgressService（06 §6.1）', () => {
     expect(replayList[3].id).toBe(7);
   });
 
-  it('组内无 Playing：以最早事件位置合成一条先行上报（06 §4.5 补报算法第 2 条）', () => {
+  it('组内无 Playing：以最早事件位置合成一条先行上报（M6 §4.5 补报算法第 2 条）', () => {
     const replayList = mergeGroupForReplay([
       row({ id: 1, eventType: 'Progress', positionMs: 20_000, createdAtMs: 1 }),
       row({ id: 2, eventType: 'Stopped', positionMs: 30_000, createdAtMs: 2 }),
@@ -194,7 +194,7 @@ describe('OfflineProgressService（06 §6.1）', () => {
       },
     });
     await service.flush();
-    // 组内无 Playing → 以最早事件位置合成一条先行上报（06 §4.5 补报算法第 2 条）
+    // 组内无 Playing → 以最早事件位置合成一条先行上报（M6 §4.5 补报算法第 2 条）
     expect(reported).toEqual(['a:Playing', 'a:Progress']);
     // 组 a 成功删行；组 b 中途失败即停，行保留
     expect(dao.deletedIds).toEqual([1]);
@@ -219,7 +219,7 @@ describe('OfflineProgressService（06 §6.1）', () => {
     });
     await service.flush();
     // p1 组先（组内最早事件更早），组内 Playing 先行 → Progress；
-    // p2 组无 Playing → 合成一条先行上报（06 §4.5 第 2 条）
+    // p2 组无 Playing → 合成一条先行上报（M6 §4.5 第 2 条）
     expect(reported).toEqual([
       'p1:Playing:0',
       'p1:Progress:10',
@@ -243,7 +243,7 @@ describe('OfflineProgressService（06 §6.1）', () => {
       report: () => Promise.resolve(),
     });
     service.installFlushTriggers();
-    // 定时兜底已排程，间隔 = OFFLINE_FLUSH_RETRY_INTERVAL_MS（60s，06 §4.5）
+    // 定时兜底已排程，间隔 = OFFLINE_FLUSH_RETRY_INTERVAL_MS（60s，M6 §4.5）
     expect(ticks).toEqual([60_000]);
     expect(pendingTasks).toHaveLength(1);
     // 推进一次：空队列 flush 廉价退出并排下一轮

@@ -11,7 +11,7 @@ import { runOnJS, useSharedValue } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import { StyleSheet, View } from 'react-native';
 
-/** 水平/垂直手势互斥激活阈值（dp，02 §4.12 failOffset ±10dp） */
+/** 水平/垂直手势互斥激活阈值（dp，M2 §4.12 failOffset ±10dp） */
 const AXIS_FAIL_OFFSET = 12;
 
 interface GestureLayerProps {
@@ -133,7 +133,7 @@ export function GestureLayer(props: GestureLayerProps) {
       runOnJS(onSeekCommit)(seekTargetMsSV.value);
     });
 
-  // 互斥激活：activeOffset/failOffset 保证垂直与水平手势不同时命中（02 §7 手势误触对策）；
+  // 互斥激活：activeOffset/failOffset 保证垂直与水平手势不同时命中（M2 §7 手势误触对策）；
   // Race 让单击与拖动互斥——拖动激活即取消单击，单击成立即取消拖动（避免一次触摸双动作）；
   // 控制层可见时拖动依然可用（SeekBar/按钮等实际控件在自己范围内命中，不会落到本层）；
   // 锁屏时仅保留单击

@@ -1,5 +1,5 @@
 /**
- * 主题 token 单测（06 文档 §6.1 theme 行）：resolveTokens 三态
+ * 主题 token 单测（M6 文档 §6.1 theme 行）：resolveTokens 三态
  * （system × 双系统方案、light、dark）。
  */
 import {
@@ -11,7 +11,7 @@ import {
 } from '@/constant/theme';
 import { translateFor } from '@/i18n/translate';
 
-describe('resolveTokens 三态（06 §6.1 theme 行）', () => {
+describe('resolveTokens 三态（M6 §6.1 theme 行）', () => {
   it('system + dark → DARK_TOKENS；system + light → LIGHT_TOKENS', () => {
     expect(resolveTokens('system', 'dark')).toBe(DARK_TOKENS);
     expect(resolveTokens('system', 'light')).toBe(LIGHT_TOKENS);

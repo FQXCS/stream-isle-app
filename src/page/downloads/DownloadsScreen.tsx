@@ -3,7 +3,7 @@
  * 任务列表（本地海报 + 标题/副标题 + 状态行：进度条/大小/失败原因），行内主操作
  * （暂停/继续/重试/播放）+ 次操作（删除，二次确认）；头部总占用；空态「暂无下载」。
  * 数据 = downloadStore（SQLite 内存投影，rehydrate/refreshFromDb 整体刷新）；
- * 错误态复用 ErrorView 不适用（本地数据），加载态即 rehydrate 瞬时（06 文档 §4.4.5）。
+ * 错误态复用 ErrorView 不适用（本地数据），加载态即 rehydrate 瞬时（M6 文档 §4.4.5）。
  */
 import { useCallback } from 'react';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -26,7 +26,7 @@ import { formatBytes } from '@/util/formatBytes';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-/** 状态行文案（06 文档 §4.4.5 状态行） */
+/** 状态行文案（M6 文档 §4.4.5 状态行） */
 function statusText(task: DownloadTaskUi, tr: Translator): string {
   switch (task.status) {
     case 'queued':
@@ -74,7 +74,7 @@ export function DownloadsScreen() {
   const taskMap = useDownloadStore((state) => state.taskMap);
   const totalCompletedBytes = useDownloadStore((state) => state.totalCompletedBytes);
 
-  // 聚焦刷新（SQLite → store；详情页发起的下载/断点恢复后回到本页同步，06 §4.4.4）
+  // 聚焦刷新（SQLite → store；详情页发起的下载/断点恢复后回到本页同步，M6 §4.4.4）
   useFocusEffect(
     useCallback(() => {
       void downloadService.refreshFromDb().catch(() => {
@@ -85,7 +85,7 @@ export function DownloadsScreen() {
 
   const taskList = Object.values(taskMap);
 
-  /** 删除二次确认（06 §4.4.5 次操作；删除后本地文件与快照行清空，占用归还） */
+  /** 删除二次确认（M6 §4.4.5 次操作；删除后本地文件与快照行清空，占用归还） */
   const confirmDelete = useCallback(
     (task: DownloadTaskUi) => {
       Alert.alert(

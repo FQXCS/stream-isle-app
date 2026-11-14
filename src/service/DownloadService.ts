@@ -41,7 +41,7 @@ import { newUid } from '@/util/uuid';
 /**
  * 下载入参：电影为 MediaLibraryItem 基类字段；剧集为集级条目（M2 增量 EpisodeItem 已定型）。
  * 剧集上下文字段（seriesName/seasonNumber）由详情页拼好传入（集条目模型不携带剧名/季号，
- * 06 文档 §4.4.1 副标题「剧名 · S1E2 集名」的取材来源）。
+ * M6 文档 §4.4.1 副标题「剧名 · S1E2 集名」的取材来源）。
  */
 export type DownloadableItem = MediaLibraryItem &
   Partial<EpisodeItem> & { seriesName?: string; seasonNumber?: number };
@@ -116,7 +116,7 @@ export class DownloadService {
   }
 
   /**
-   * 发起下载（06 文档 §4.4.2 签名语义）：查重（同 (serverId, itemId) 已有任意行 →
+   * 发起下载（M6 文档 §4.4.2 签名语义）：查重（同 (serverId, itemId) 已有任意行 →
    * DOWNLOAD_DUPLICATE，同条目仅保留一份下载）→ 详情快照 → resolve 判定（非 DirectPlay →
    * DOWNLOAD_UNAVAILABLE）→ 磁盘空间校验（sizeBytes 已知且剩余不足 → DOWNLOAD_NO_SPACE）
    * → 建目录 + downloads 行（queued）→ worker 调度。
@@ -184,7 +184,7 @@ export class DownloadService {
       createdAtMs: this.nowFn(),
     };
     if (detail.type === 'Episode') {
-      // 剧集专属快照字段（剧集本身无单文件，下载入口必须落到集级，06 §4.4.5）
+      // 剧集专属快照字段（剧集本身无单文件，下载入口必须落到集级，M6 §4.4.5）
       row.seriesId = item.seriesId;
       row.seasonId = item.seasonId;
       row.indexNumber = item.indexNumber;
@@ -250,7 +250,7 @@ export class DownloadService {
   }
 
   /**
-   * 删除（06 文档 §4.4.2 删除语义）：下载中先 cancelAsync → 删目录（幂等）→ 删行；
+   * 删除（M6 文档 §4.4.2 删除语义）：下载中先 cancelAsync → 删目录（幂等）→ 删行；
    * 只删文件与 downloads 行，pending_progress 独立存续（补报不依赖本地文件）。
    */
   async deleteDownload(itemId: string): Promise<void> {
@@ -279,7 +279,7 @@ export class DownloadService {
   }
 
   /**
-   * 本地播放会话（06 文档 §4.4.2）：读快照行 → 构造 PlaybackSession
+   * 本地播放会话（M6 文档 §4.4.2）：读快照行 → 构造 PlaybackSession
    * （url=media_file_uri、playSessionId=客户端生成 UUID、playMethod="DirectPlay"、local=true、
    * positionMsAtStart=离线续播判定（user_played=1 或断点续播关闭 → 0））。
    */
@@ -315,7 +315,7 @@ export class DownloadService {
   }
 
   /**
-   * 冷启动恢复（06 文档 §4.4.2）：downloading 态一律降为 paused（进程死后无活动连接），
+   * 冷启动恢复（M6 文档 §4.4.2）：downloading 态一律降为 paused（进程死后无活动连接），
    * 有 resumeData 的保留续传能力；恢复 downloadStore；重启 worker 处理 queued。
    */
   async rehydrate(): Promise<void> {
@@ -412,7 +412,7 @@ export class DownloadService {
     }
   }
 
-  /** 完成收尾（06 §4.4.2）：文件校验（存在且 >0 字节）→ 海报本地化 → completed */
+  /** 完成收尾（M6 §4.4.2）：文件校验（存在且 >0 字节）→ 海报本地化 → completed */
   private async completeDownload(serverId: string, row: DownloadRow): Promise<void> {
     const dao = await this.dao;
     const info = await FileSystem.getInfoAsync(row.mediaFileUri);
@@ -438,7 +438,7 @@ export class DownloadService {
   }
 
   /**
-   * 下载 URL（06 文档 §4.4.2）：视频 {base}/Videos/{id}/stream，音频 {base}/Audio/{id}/stream，
+   * 下载 URL（M6 文档 §4.4.2）：视频 {base}/Videos/{id}/stream，音频 {base}/Audio/{id}/stream，
    * 均 static=true + MediaSourceId + api_key。与 PlaybackSource.url 同模板——resolve 的 URL
    * 含 token 不落库，起任务（含续传/重试）时按快照行重建。Token 内存未命中回源 secure-store
    * （getToken，与 OfflineProgressService.buildAdapterFor 同款）——冷启动仅预热活跃账号，
@@ -503,7 +503,7 @@ function requireActiveAccount(): { serverId: string; userId: string } {
   return { serverId: active.serverId, userId: active.userId };
 }
 
-/** 快照行副标题（06 文档 §4.4.1：「2024」或「剧名 · S1E2 集名」） */
+/** 快照行副标题（M6 文档 §4.4.1：「2024」或「剧名 · S1E2 集名」） */
 function buildRowSubtitle(detail: MediaDetail, item: DownloadableItem): string | undefined {
   if (detail.type === 'Episode') {
     const seriesName = item.seriesName ?? '';

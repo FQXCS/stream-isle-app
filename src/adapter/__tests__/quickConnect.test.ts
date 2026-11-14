@@ -1,5 +1,5 @@
 /**
- * adapter Quick Connect 单测（06 文档 §6.1 BaseAdapter.quickConnect 行）：
+ * adapter Quick Connect 单测（M6 文档 §6.1 BaseAdapter.quickConnect 行）：
  * Enabled/Initiate/Connect 路径与方法（POST Initiate 无 body、Connect query 带 secret、
  * AuthenticateWithQuickConnect body {Secret}）；401 → QUICK_CONNECT_DISABLED、404 →
  * QUICK_CONNECT_EXPIRED；AuthResult 翻译（AccessToken/User）双 Adapter 各断言一遍。
@@ -24,7 +24,7 @@ function makeAdapter(
   return { adapter, api };
 }
 
-describe('BaseAdapter Quick Connect（06 §6.1）', () => {
+describe('BaseAdapter Quick Connect（M6 §6.1）', () => {
   it('isQuickConnectEnabled：GET /QuickConnect/Enabled 免认证（设备头无 token）', async () => {
     const { adapter, api } = makeAdapter('JELLYFIN', () => Promise.resolve(true));
     await expect(adapter.isQuickConnectEnabled()).resolves.toBe(true);

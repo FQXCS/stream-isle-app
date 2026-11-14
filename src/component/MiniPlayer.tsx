@@ -39,7 +39,7 @@ import { audioService, type AdjacentTrackPreview } from '@/service/AudioService'
 import { usePlayerStore } from '@/store/playerStore';
 import { navigationRef } from '@/page/navigation/navigationRef';
 
-/** 迷你条总高（含顶部描边，列表页底部 padding 补偿可复用，05 文档 §4.10） */
+/** 迷你条总高（含顶部描边，列表页底部 padding 补偿可复用，M5 文档 §4.10） */
 export const MINI_PLAYER_TOTAL_HEIGHT = 60;
 
 /**
@@ -66,7 +66,7 @@ const SWIPE_COMMIT_RATIO = 0.4;
 const SWIPE_COMMIT_MIN = 56;
 
 /**
- * 列表页底部让位（05 文档 §4.10）：音频活跃时返回迷你条高度、否则 0；
+ * 列表页底部让位（M5 文档 §4.10）：音频活跃时返回迷你条高度、否则 0；
  * 组件内部订阅，停止播放后立即归零（不残留白条）。
  */
 export function useMiniPlayerPadding(): number {

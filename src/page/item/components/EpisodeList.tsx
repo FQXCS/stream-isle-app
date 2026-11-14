@@ -1,9 +1,9 @@
 /**
- * 集列表（M2 文档 §4.11 + 04 §4.4 收口；M6 增量集行下载徽标位，06 文档 §4.4.5）：
+ * 集列表（M2 文档 §4.11 + M4 §4.4 收口；M6 增量集行下载徽标位，M6 文档 §4.4.5）：
  * 单季集数量级有限，普通 View 渲染。
  * 卡片：缩略图（Primary@400）+「第 N 集 名称」+ 单行简介 + 时长 + 已看勾（可点击 toggle）+
- * 底部细进度条 + 行尾扩展位（M6 下载徽标）。点集 = 点播放（断点取该集自己的 userData，02 §4.11）；
- * 点已看勾 = 标记已看/未看 toggle（乐观更新由页面处理，04 §4.4）。
+ * 底部细进度条 + 行尾扩展位（M6 下载徽标）。点集 = 点播放（断点取该集自己的 userData，M2 §4.11）；
+ * 点已看勾 = 标记已看/未看 toggle（乐观更新由页面处理，M4 §4.4）。
  */
 import type { ReactNode } from 'react';
 import { Image } from 'expo-image';
@@ -19,9 +19,9 @@ interface EpisodeListProps {
   episodeList: EpisodeItem[];
   /** 点集回调（页面统一走点播放流程） */
   onSelectEpisode: (episode: EpisodeItem) => void;
-  /** 已看勾 toggle 回调（04 §4.4 新增；乐观更新/回滚在页面） */
+  /** 已看勾 toggle 回调（M4 §4.4 新增；乐观更新/回滚在页面） */
   onTogglePlayed?: (episode: EpisodeItem) => void;
-  /** M6：行尾扩展位（集级下载徽标；06 文档 §4.4.5） */
+  /** M6：行尾扩展位（集级下载徽标；M6 文档 §4.4.5） */
   renderTrailing?: (episode: EpisodeItem) => ReactNode;
 }
 
@@ -74,7 +74,7 @@ function EpisodeCard({
         ) : (
           <View style={[styles.thumb, { backgroundColor: t.surface }]} />
         )}
-        {/* 已看勾（02 §4.11 显示；04 §4.4 升级为可点击 toggle） */}
+        {/* 已看勾（M2 §4.11 显示；M4 §4.4 升级为可点击 toggle） */}
         {onTogglePlayed !== undefined ? (
           <Pressable
             style={[styles.watchedBadge, styles.watchedBadgePressable]}
@@ -120,7 +120,7 @@ function EpisodeCard({
           </Text>
         )}
       </View>
-      {/* M6：集行下载徽标（右侧图标态，06 §4.4.5） */}
+      {/* M6：集行下载徽标（右侧图标态，M6 §4.4.5） */}
       {trailing !== undefined && <View style={styles.trailing}>{trailing}</View>}
     </Pressable>
   );
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  /** 勾的点击热区（04 §4.4 toggle） */
+  /** 勾的点击热区（M4 §4.4 toggle） */
   watchedBadgePressable: { backgroundColor: 'rgba(0,0,0,0.35)' },
   /** 勾本体：未看空心、已看实心（色随主题 token） */
   watchedDot: {

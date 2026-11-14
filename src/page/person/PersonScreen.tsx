@@ -1,6 +1,6 @@
 /**
  * 人物页（M2 文档 §4.1/§4.5）：头像、姓名、简介、出演作品网格（Movie/Series），
- * 点击作品回详情页（02 §1.2 A3）。
+ * 点击作品回详情页（M2 §1.2 A3）。
  */
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';

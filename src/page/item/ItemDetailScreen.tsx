@@ -1,11 +1,11 @@
 /**
- * 详情页（M2 文档 §4.11 + 04 §4.4 收口 + M6 §4.4.5 下载状态机 + M8 参考稿重排）：
+ * 详情页（M2 文档 §4.11 + M4 §4.4 收口 + M6 §4.4.5 下载状态机 + M8 参考稿重排）：
  * Hero（返回/更多浮层 + 居中标题与元数据）、大播放按钮 + 收藏/已看图标、
  * 音视频字幕信息卡、简介折叠、剧集季集导航（仅 Series）、演员横滑行、相似推荐行、
  * 底部文件信息卡；「更多」菜单承载下载与已看标记（参考稿）。
  * 数据经 DetailService；聚焦即刷新（useFocusEffect，覆盖播放返回/标记已看后的变化）。
  * 点播放流程：按「断点续播」设置取断点（关闭/无效 → 0）→ resolve → navigate Player
- * （会话携带 itemType/seriesId 供自动连播判定，04 §4.4）；PLAYBACK_UNSUPPORTED 就地 toast。
+ * （会话携带 itemType/seriesId 供自动连播判定，M4 §4.4）；PLAYBACK_UNSUPPORTED 就地 toast。
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -50,7 +50,7 @@ import { formatBytes } from '@/util/formatBytes';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-/** toast 错误提示（文案一律取 ERROR_MESSAGE_MAP 唯一出处；04 §4.2 操作级失败 → Toast） */
+/** toast 错误提示（文案一律取 ERROR_MESSAGE_MAP 唯一出处；M4 §4.2 操作级失败 → Toast） */
 function toastError(err: unknown): void {
   const code = err instanceof AppError ? err.code : 'UNKNOWN';
   showToast(errorMessageOf(code), 'error');
@@ -136,7 +136,7 @@ export function ItemDetailScreen() {
   const [overviewExpanded, setOverviewExpanded] = useState(false);
   const [seasonPickerOpen, setSeasonPickerOpen] = useState(false);
   const [marking, setMarking] = useState(false);
-  /** 收藏乐观更新在途（防连点，04 §4.4） */
+  /** 收藏乐观更新在途（防连点，M4 §4.4） */
   const [markingFavorite, setMarkingFavorite] = useState(false);
   /** 「更多」菜单（null=关闭；参考稿顶部右侧入口；菜单项在打开时按当前状态构建） */
   const [moreMenu, setMoreMenu] = useState<{
@@ -204,7 +204,7 @@ export function ItemDetailScreen() {
       if (loaded.type === 'Series') {
         const seasonList = await detailService.loadSeasons(loaded.id);
         setSeasons(seasonList);
-        // 默认选中第一项（adapter 已按季号升序，缺失/0 排最后，02 §4.3）并随即拉取集列表；
+        // 默认选中第一项（adapter 已按季号升序，缺失/0 排最后，M2 §4.3）并随即拉取集列表；
         // 已有选中（播放返回刷新）保持用户所选季
         const targetSeasonId = selectedSeasonIdRef.current ?? seasonList[0]?.id ?? null;
         selectedSeasonIdRef.current = targetSeasonId;
@@ -232,7 +232,7 @@ export function ItemDetailScreen() {
     }, [loadDetail])
   );
 
-  // —— 点播放流程（电影按钮与集卡片共用，02 §4.11；04 §4.4 会话携带连播判定字段）——
+  // —— 点播放流程（电影按钮与集卡片共用，M2 §4.11；M4 §4.4 会话携带连播判定字段）——
   const resolveAndPlay = useCallback(
     async (target: {
       itemId: string;
@@ -246,7 +246,7 @@ export function ItemDetailScreen() {
           startPositionMs: target.startPositionMs,
         });
         navigation.navigate(ROUTES.PLAYER, {
-          // 会话标题（02 §4.12 控制层「标题 · S1E2 集名」）+ 连播判定字段（04 §4.4）：
+          // 会话标题（M2 §4.12 控制层「标题 · S1E2 集名」）+ 连播判定字段（M4 §4.4）：
           // itemType/seriesId 由详情页拼好传入，播完 EPISODE 分支据此走 getNextUp
           session: {
             ...session,
@@ -279,14 +279,14 @@ export function ItemDetailScreen() {
     [resolveAndPlay]
   );
 
-  // —— M6：下载发起（电影按钮行/集行共用；DOWNLOAD_UNAVAILABLE/NO_SPACE/DUPLICATE 就地 toast，06 §4.4.5）——
+  // —— M6：下载发起（电影按钮行/集行共用；DOWNLOAD_UNAVAILABLE/NO_SPACE/DUPLICATE 就地 toast，M6 §4.4.5）——
   const startDownloadFor = useCallback((downloadItem: DownloadableItem) => {
     void downloadService.startDownload(downloadItem).catch((err: unknown) => {
       toastError(err);
     });
   }, []);
 
-  // —— M6：本地播放（完成态 tap → buildLocalSession → Player；06 §4.4.5）——
+  // —— M6：本地播放（完成态 tap → buildLocalSession → Player；M6 §4.4.5）——
   const playLocal = useCallback(
     (localItemId: string) => {
       void (async () => {
@@ -451,7 +451,7 @@ export function ItemDetailScreen() {
     ]
   );
 
-  // —— 收藏 toggle（04 §4.4 新增）：乐观更新——立即翻转 UI → await → 失败回滚 + Toast ——
+  // —— 收藏 toggle（M4 §4.4 新增）：乐观更新——立即翻转 UI → await → 失败回滚 + Toast ——
   const toggleFavorite = useCallback(async () => {
     if (detail === null || markingFavorite) {
       return;
@@ -459,12 +459,12 @@ export function ItemDetailScreen() {
     const nextFavorite = !detail.userData.favorite;
     const previous = detail.userData.favorite;
     setMarkingFavorite(true);
-    // 立即翻转 UI（04 §4.4 乐观更新规则）
+    // 立即翻转 UI（M4 §4.4 乐观更新规则）
     setDetail({ ...detail, userData: { ...detail.userData, favorite: nextFavorite } });
     try {
       await markService.setFavorite(detail.id, nextFavorite);
     } catch (err) {
-      // 失败回滚 + Toast（04 §4.4）
+      // 失败回滚 + Toast（M4 §4.4）
       setDetail({ ...detail, userData: { ...detail.userData, favorite: previous } });
       toastError(err);
     } finally {
@@ -472,7 +472,7 @@ export function ItemDetailScreen() {
     }
   }, [detail, markingFavorite]);
 
-  // —— 集列表已看勾 toggle（04 §4.4 新增）：乐观更新同款，失败回滚 + Toast ——
+  // —— 集列表已看勾 toggle（M4 §4.4 新增）：乐观更新同款，失败回滚 + Toast ——
   const toggleEpisodePlayed = useCallback(async (episode: EpisodeItem) => {
     const nextPlayed = !episode.userData.played;
     const patch = (played: boolean) => {

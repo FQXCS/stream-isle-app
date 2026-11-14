@@ -1,6 +1,6 @@
 /**
  * 续播/兜底判定真值表单测（M2 文档 §6.1 util/resume 行；§4.9 规则）。
- * M6（06 文档 §4.7/§6.1）：入参放宽为 ResumeSource 后，原真值表经 toResumeSource
+ * M6（M6 文档 §4.7/§6.1）：入参放宽为 ResumeSource 后，原真值表经 toResumeSource
  * 适配回归，断言值全部保持不变；新增下载快照行直接构造 ResumeSource 的离线续播用例。
  */
 import type { UserItemData } from '@/adapter/model';

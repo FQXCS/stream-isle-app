@@ -103,7 +103,7 @@ export async function saveAccount(
 }
 
 /**
- * 登出（04 §4.5 设置页行为）：deleteToken + removeUser；服务器记录保留（可直接重登），
+ * 登出（M4 §4.5 设置页行为）：deleteToken + removeUser；服务器记录保留（可直接重登），
  * 活跃用户登出时写入 reloginServerId —— gate 自动回 OnboardingLogin（携带 serverId，
  * 手测 2a「登出 → 回登录页」）；服务器记录不存在时 gate 落 OnboardingConnect。
  */
@@ -173,7 +173,7 @@ export async function reloginWithStoredCredential(
   }
 }
 
-// —— M6：Quick Connect 免密登录（06 文档 §4.3.2；设计文档 §6.1 QC 行）——
+// —— M6：Quick Connect 免密登录（M6 文档 §4.3.2；设计文档 §6.1 QC 行）——
 
 /** Quick Connect 一次完整流程句柄（登录页持有；返回/关闭面板时必须 cancel） */
 export interface QuickConnectFlow {
@@ -190,7 +190,7 @@ export interface QuickConnectFlow {
   cancel(): void;
 }
 
-/** Quick Connect 依赖注入（单测假节拍器断言轮询节奏与终止条件，06 文档 §4.3.2） */
+/** Quick Connect 依赖注入（单测假节拍器断言轮询节奏与终止条件，M6 文档 §4.3.2） */
 export interface QuickConnectDeps {
   adapter: Pick<ServerAdapter, 'isQuickConnectEnabled' | 'initiateQuickConnect' | 'pollQuickConnect' | 'loginWithQuickConnect'>;
   pollIntervalMs?: number;
@@ -280,7 +280,7 @@ class QuickConnectFlowImpl implements QuickConnectFlow {
               return;
             }
             if (err instanceof AppError && err.code === 'QUICK_CONNECT_EXPIRED') {
-              // 授权码已失效：立即终止（06 §4.3.1 表「按超时处理」口径的立即失败路径）
+              // 授权码已失效：立即终止（M6 §4.3.1 表「按超时处理」口径的立即失败路径）
               fail(err);
               return;
             }
@@ -307,7 +307,7 @@ class QuickConnectFlowImpl implements QuickConnectFlow {
 async function saveAccountByAuth(auth: AuthResult): Promise<void> {
   const servers = useAccountStore.getState().servers;
   // QC 上下文里服务器记录可能已存在（为已有服务器加用户）：按上游 serverId 匹配记录，
-  // 追加到该记录而不是新开卡片（06 §4.3.3）
+  // 追加到该记录而不是新开卡片（M6 §4.3.3）
   const known = servers.find((server) => upstreamServerIdOf(server) === auth.serverId);
   if (known === undefined) {
     // 理论不可达（登录页必有 serverInfo 上下文）；保底按最小信息登记，避免 Token 已发而账号未存
@@ -334,7 +334,7 @@ async function saveAccountByAuth(auth: AuthResult): Promise<void> {
 }
 
 /**
- * 发起 Quick Connect（06 文档 §4.3.2）：Enabled 探测（关闭/失败抛 QUICK_CONNECT_DISABLED）
+ * 发起 Quick Connect（M6 文档 §4.3.2）：Enabled 探测（关闭/失败抛 QUICK_CONNECT_DISABLED）
  * → Initiate；返回流程句柄供登录页 QC 面板消费。
  * 「连接新服务器」「为已有服务器添加用户」两种登录上下文均可用（OnboardingLogin 是唯一登录页）。
  * recordId：已有服务器上下文传入 → 授权后追加到该记录；不传 → 按新服务器添加（同 IP 不自动合并）。
@@ -363,7 +363,7 @@ export async function beginQuickConnect(
   }
 }
 
-/** 流程工厂（测试入口：注入假 adapter/假节拍器，06 文档 §4.3.2「节拍器可注入」） */
+/** 流程工厂（测试入口：注入假 adapter/假节拍器，M6 文档 §4.3.2「节拍器可注入」） */
 export function createQuickConnectFlow(
   session: QuickConnectSession,
   deps: QuickConnectDeps

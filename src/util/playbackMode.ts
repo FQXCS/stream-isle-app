@@ -1,5 +1,5 @@
 /**
- * 播放模式合并展示口径（05 文档 §4.10/§4.11）：shuffle 优先，其次单曲循环，其余列表循环。
+ * 播放模式合并展示口径（M5 文档 §4.10/§4.11）：shuffle 优先，其次单曲循环，其余列表循环。
  * NowPlaying 模式按钮与队列面板标题共用同一份 labelKey/icon，避免两处各写一套映射。
  */
 import type { RepeatModeEnum } from '@/adapter/model';

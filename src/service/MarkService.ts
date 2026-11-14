@@ -1,6 +1,6 @@
 /**
  * 标记服务（M2 文档 §4.5）：已看标记（收藏方法 M4 补充）。
- * M2 只落 setPlayed；04 文档已确认「标记已看按钮 M2 已交付（A9），M4 回归」。
+ * M2 只落 setPlayed；M4 文档已确认「标记已看按钮 M2 已交付（A9），M4 回归」。
  */
 import { getActiveAdapter } from '@/service/adapterProvider';
 import { useAccountStore } from '@/store/accountStore';
@@ -29,7 +29,7 @@ export class MarkService {
   }
 
   /**
-   * 收藏/取消收藏（04 §4.4 新增）：true → POST /Users/{uid}/FavoriteItems/{itemId}；
+   * 收藏/取消收藏（M4 §4.4 新增）：true → POST /Users/{uid}/FavoriteItems/{itemId}；
    * false → DELETE。供详情页收藏按钮与海报墙收藏筛选联动调用。
    */
   async setFavorite(itemId: string, favorite: boolean): Promise<void> {

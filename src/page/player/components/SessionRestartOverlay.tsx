@@ -1,6 +1,6 @@
 /**
  * 会话重启浮层（M3 文档 §4.8.1）：isRestartingSession 期间全屏半透明 + 转圈 + 文案；
- * 重启中页面据此屏蔽三菜单重复点击与 netinfo 重复触发（03 §4.7.1）。
+ * 重启中页面据此屏蔽三菜单重复点击与 netinfo 重复触发（M3 §4.7.1）。
  */
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 

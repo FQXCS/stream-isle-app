@@ -174,7 +174,7 @@ describe('PlaybackService（M3 会话重启与切换）', () => {
       expect(useSettingsStore.getState().maxResolutionTier).toBe('UNLIMITED');
     });
 
-    it('蜂窝降档态（旧会话 720p）切字幕重启：maxResolutionTier 沿用旧会话，不抬升回用户档位（03 §4.9）', async () => {
+    it('蜂窝降档态（旧会话 720p）切字幕重启：maxResolutionTier 沿用旧会话，不抬升回用户档位（M3 §4.9）', async () => {
       useSettingsStore.setState({ maxResolutionTier: 'UNLIMITED' });
       usePlayerStore.getState().setActiveSubtitle(4); // 激活烧录轨（出烧录路径必重启）
       const service = new PlaybackService();

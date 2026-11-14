@@ -173,7 +173,7 @@ describe('resolvePlayback（直连分支，M2 回归）', () => {
     expect(source.url).not.toContain('m3u8');
   });
 
-  it('传 mediaSourceId 时精确匹配该源（03 §4.5.1 源选取）', async () => {
+  it('传 mediaSourceId 时精确匹配该源（M3 §4.5.1 源选取）', async () => {
     const { adapter } = makeAdapter('JELLYFIN', {
       PlaySessionId: 'ps-2',
       MediaSources: [
@@ -303,7 +303,7 @@ describe('resolvePlayback（转码分支，M3）', () => {
   });
 });
 
-describe('buildSubtitleUrl（外挂 vtt，双端共享，03 §4.5.2）', () => {
+describe('buildSubtitleUrl（外挂 vtt，双端共享，M3 §4.5.2）', () => {
   it('双实例路径一致：/Videos/{itemId}/{msId}/Subtitles/{index}/Stream.vtt?api_key=', () => {
     for (const flavor of ['JELLYFIN', 'EMBY'] as const) {
       const { adapter } = makeAdapter(flavor);
@@ -357,7 +357,7 @@ describe('report 三方法（Playing/Progress/Stopped）', () => {
   });
 });
 
-describe('markPlayed / unmarkPlayed（成对式，02 §4.3）', () => {
+describe('markPlayed / unmarkPlayed（成对式，M2 §4.3）', () => {
   it('双实例：POST 与 DELETE 路径', async () => {
     for (const flavor of ['JELLYFIN', 'EMBY'] as const) {
       const { adapter, api } = makeAdapter(flavor);

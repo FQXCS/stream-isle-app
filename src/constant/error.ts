@@ -33,7 +33,7 @@ export const ERROR_MESSAGE_KEYS: Record<AppErrorCode, MessageKey> = {
   UNKNOWN: 'error.UNKNOWN',
 };
 
-/** 可自动重试的错误码集合（04 §4.2 定稿：网络类 5 码可重试，其余不可） */
+/** 可自动重试的错误码集合（M4 §4.2 定稿：网络类 5 码可重试，其余不可） */
 export const RETRYABLE_ERROR_CODES: ReadonlySet<AppErrorCode> = new Set([
   'NETWORK_UNREACHABLE',
   'TLS_ERROR',
@@ -43,10 +43,10 @@ export const RETRYABLE_ERROR_CODES: ReadonlySet<AppErrorCode> = new Set([
 ]);
 
 /**
- * TLS 错误 message 关键词启发式（04 §4.2 收口补全；小写匹配）。
+ * TLS 错误 message 关键词启发式（M4 §4.2 收口补全；小写匹配）。
  * Android RN 的 XHR 网络错误不透传结构化错误码，JS 层只能靠 message 关键词
  * 识别证书错误（启发式可能漏判）——本表为运行期请求的主判，
- * 与 connect 链路原生 probe 精确细分两层并存、产出同一码 TLS_ERROR（04 §4.2 唯一规范）。
+ * 与 connect 链路原生 probe 精确细分两层并存、产出同一码 TLS_ERROR（M4 §4.2 唯一规范）。
  */
 export const TLS_ERROR_PATTERNS: ReadonlySet<string> = new Set([
   'certificate',

@@ -1,7 +1,7 @@
 /**
- * 设置页（04 文档 §4.5 完整化；设计文档 §5.1/§8.2/§9/§10.2/§11；M6 文档 §4.4.5/§4.9.3）：
+ * 设置页（M4 文档 §4.5 完整化；设计文档 §5.1/§8.2/§9/§10.2/§11；M6 文档 §4.4.5/§4.9.3）：
  * 播放（M3 PlaybackSettingsSection 收编回归 + M4 新增「默认字幕语言」单选弹层）/
- * 外观（M6 浅色主题三态，06 §4.6.1）/ 下载与历史入口（06 §4.4.5 设置页入口）/
+ * 外观（M6 浅色主题三态，M6 §4.6.1）/ 下载与历史入口（M6 §4.4.5 设置页入口）/
  * 收录类型二级页入口 / 关于（应用名/版本号，版本号进入软件更新页）。
  * 账号与服务器管理已迁至「媒体服务器」Tab（MediaServerScreen）。
  */
@@ -30,10 +30,10 @@ import { PlaybackSettingsSection } from '@/page/tabs/components/PlaybackSettings
 import type { RootStackParamList } from '@/page/navigation/types';
 import { useSettingsStore } from '@/store/settingsStore';
 
-/** 字幕语言单选 key（04 §4.5：code ?? "default"） */
+/** 字幕语言单选 key（M4 §4.5：code ?? "default"） */
 type SubtitleOptionKey = string;
 
-/** 主题三态选项（06 文档 §4.6.1：跟随系统/浅色/深色） */
+/** 主题三态选项（M6 文档 §4.6.1：跟随系统/浅色/深色） */
 const THEME_MODE_OPTIONS: readonly { key: ThemeModeEnum; labelKey: MessageKey }[] = [
   { key: 'system', labelKey: 'theme.system' },
   { key: 'light', labelKey: 'theme.light' },
@@ -64,7 +64,7 @@ export function SettingsScreen() {
   const [accentSheetOpen, setAccentSheetOpen] = useState(false);
   const [languageSheetOpen, setLanguageSheetOpen] = useState(false);
 
-  /** 当前选中 key：null → "default"（04 §4.5 UI 单选 key 约定） */
+  /** 当前选中 key：null → "default"（M4 §4.5 UI 单选 key 约定） */
   const selectedSubtitleKey: SubtitleOptionKey = preferredSubtitleLang ?? 'default';
   const selectedOption: SubtitleLangOption | undefined = SUBTITLE_LANG_OPTION_LIST.find(
     (option) => (option.code ?? 'default') === selectedSubtitleKey
@@ -87,7 +87,7 @@ export function SettingsScreen() {
       contentContainerStyle={[styles.content, { paddingTop: insets.top + SPACING.l }]}
     >
       <Text style={[styles.title, { color: t.textPrimary }]}>{tr('settings.title')}</Text>
-      {/* 播放分区：M3 PlaybackSettingsSection 原样收编（行为零改动，04 §4.5）+ M4 字幕语言行 */}
+      {/* 播放分区：M3 PlaybackSettingsSection 原样收编（行为零改动，M4 §4.5）+ M4 字幕语言行 */}
       <View style={styles.playGroup}>
         <PlaybackSettingsSection />
         <View style={[styles.card, { backgroundColor: t.surface }]}>
@@ -103,7 +103,7 @@ export function SettingsScreen() {
           />
         </View>
       </View>
-      {/* M6 外观分区（06 §4.4.5/§4.6.1）：语言 + 主题三态（默认亮色） */}
+      {/* M6 外观分区（M6 §4.4.5/§4.6.1）：语言 + 主题三态（默认亮色） */}
       <View style={[styles.card, { backgroundColor: t.surface }]}>
         <Text style={[styles.groupTitle, { color: t.textTertiary }]}>{tr('settings.appearance')}</Text>
         <SettingRow
@@ -158,7 +158,7 @@ export function SettingsScreen() {
           />
         ))}
       </View>
-      {/* M6 下载与历史入口（06 §4.4.5 设置页入口行） */}
+      {/* M6 下载与历史入口（M6 §4.4.5 设置页入口行） */}
       <View style={[styles.card, { backgroundColor: t.surface }]}>
         <SettingRow
           label={tr('settings.downloads')}
@@ -173,7 +173,7 @@ export function SettingsScreen() {
           onPress={() => navigation.navigate(ROUTES.HISTORY)}
         />
       </View>
-      {/* 关于分区（04 §4.5 容器；版本号行进入软件更新页） */}
+      {/* 关于分区（M4 §4.5 容器；版本号行进入软件更新页） */}
       <View style={[styles.card, { backgroundColor: t.surface }]}>
         <Text style={[styles.groupTitle, { color: t.textTertiary }]}>{tr('settings.about')}</Text>
         <SettingRow label={tr('settings.appName')} value={CLIENT_NAME} />
@@ -196,7 +196,7 @@ export function SettingsScreen() {
         onSelect={handleSelectSubtitle}
         onClose={() => setSubtitleSheetOpen(false)}
       />
-      {/* M6 主题三态弹层（06 §4.6.1） */}
+      {/* M6 主题三态弹层（M6 §4.6.1） */}
       <RadioOptionSheet
         title={tr('settings.theme')}
         visible={themeSheetOpen}

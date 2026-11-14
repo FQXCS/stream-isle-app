@@ -20,7 +20,7 @@ export class JellyfinAdapter extends BaseAdapter {
     return tag ? { tag } : {};
   }
 
-  /** ActiveEncodings 参数名：Jellyfin 新版 playSessionId（03 §4.5.3；实测不生效则兜底双参数并回评差异表） */
+  /** ActiveEncodings 参数名：Jellyfin 新版 playSessionId（M3 §4.5.3；实测不生效则兜底双参数并回评差异表） */
   protected activeEncodingsQueryKey(): 'playSessionId' | 'id' {
     return 'playSessionId';
   }

@@ -36,7 +36,7 @@ jobs:
       - name: 安装依赖
         run: npm ci
 
-      # —— 与 CI 同序的质量门禁（release 前置复跑，06 §4.9.2「node 环境与 ci 同序的 lint/test 门禁」）——
+      # —— 与 CI 同序的质量门禁（release 前置复跑，M6 §4.9.2「node 环境与 ci 同序的 lint/test 门禁」）——
       - name: 质量门禁 1/3 lint
         run: npm run lint
 
@@ -46,7 +46,7 @@ jobs:
       - name: 质量门禁 3/3 jest
         run: npx jest
 
-      - name: 还原 keystore（仓库 Secrets 四件套，06 §4.9.1）
+      - name: 还原 keystore（仓库 Secrets 四件套，M6 §4.9.1）
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |

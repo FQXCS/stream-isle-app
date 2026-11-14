@@ -1,5 +1,5 @@
 /**
- * 歌词面板（05 文档 §4.10；设计文档 §7.5 歌词 P1）：NowPlaying 大封面下方的常驻歌词区。
+ * 歌词面板（M5 文档 §4.10；设计文档 §7.5 歌词 P1）：NowPlaying 大封面下方的常驻歌词区。
  * 三态：同步歌词（.lrc，逐行高亮 + 活动行滚动居中）/ 纯文本歌词（静态列表）/ 无歌词占位。
  * 同步判定 util/lyrics.activeLyricIndex；位置源复用 M5 track-player 进度流
  * （useProgress，刷新节流 LYRIC_SYNC_INTERVAL_MS，不新建引擎）；歌词不进队列/通知栏。
@@ -61,7 +61,7 @@ export function LyricsPanel({
     };
   }, [itemId]);
 
-  // 位置源复用 track-player 进度流（每 LYRIC_SYNC_INTERVAL_MS 刷新一次，06 §4.6.3）
+  // 位置源复用 track-player 进度流（每 LYRIC_SYNC_INTERVAL_MS 刷新一次，M6 §4.6.3）
   const progress = useProgress(LYRIC_SYNC_INTERVAL_MS / 1000);
   const isSynced = lines !== null && lines !== undefined && lines.some((line) => line.startMs !== undefined);
   const activeIndex = isSynced && lines !== undefined ? activeLyricIndex(lines, progress.position * 1000) : -1;

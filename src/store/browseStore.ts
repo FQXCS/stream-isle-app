@@ -97,10 +97,10 @@ interface BrowseActions {
   refreshWall(key: string, query: ItemQuery): Promise<void>;
   /** 账号切换时清理（keyPrefix = `${serverId}:${userId}`） */
   resetAllForAccount(keyPrefix: string): void;
-  /** 删除服务器级联清理（04 §4.7）：清除该 serverId（含其下所有 userId）的浏览缓存 */
+  /** 删除服务器级联清理（M4 §4.7）：清除该 serverId（含其下所有 userId）的浏览缓存 */
   resetAllForServer(serverId: string): void;
   /**
-   * 海报墙收藏乐观更新（04 §4.4）：收藏筛选下取消收藏仅本地翻转 userData.favorite
+   * 海报墙收藏乐观更新（M4 §4.4）：收藏筛选下取消收藏仅本地翻转 userData.favorite
    * （卡片淡化置灰而非立即移除，避免服务端分页索引跳动），下拉刷新后自然收敛。
    * 返回翻转前的值供失败回滚。
    */
@@ -130,7 +130,7 @@ export const useBrowseStore = create<BrowseState>()((set, get) => ({
         const libraries = await fetchLibraries();
         set((state) => ({ librariesByKey: { ...state.librariesByKey, [key]: libraries } }));
       } catch {
-        // 失败置空数组：页面以空态呈现，下拉刷新可重试（错误码维度 M4 收口，01 §2.1）
+        // 失败置空数组：页面以空态呈现，下拉刷新可重试（错误码维度 M4 收口，M1 §2.1）
         set((state) => ({ librariesByKey: { ...state.librariesByKey, [key]: [] } }));
       }
     },
@@ -251,7 +251,7 @@ export const useBrowseStore = create<BrowseState>()((set, get) => ({
     },
 
     resetAllForServer: (serverId: string) => {
-      // 删除服务器级联（04 §4.7）：该 serverId 下所有 userId 的缓存一并清除
+      // 删除服务器级联（M4 §4.7）：该 serverId 下所有 userId 的缓存一并清除
       // （浏览数据本不持久化，仅内存态，无磁盘残留）
       set((state) => {
         const librariesByKey: Record<string, MediaLibrary[]> = {};

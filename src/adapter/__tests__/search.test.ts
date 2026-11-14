@@ -1,5 +1,5 @@
 /**
- * adapter.search 单测（04 文档 §6.1 adapter.search 行）：
+ * adapter.search 单测（M4 文档 §6.1 adapter.search 行）：
  * 按类型三次请求的 SearchTerm/IncludeItemTypes/Recursive/Limit=12 参数构造
  * （断言未传 SortBy、端点为 /Users/{uid}/Items 形态）；响应翻译分组
  * （Movie/Series/Person 归组、空组剔除）。
@@ -25,13 +25,13 @@ function makeAdapter(requests: unknown[]): { adapter: JellyfinAdapter; api: { re
   return { adapter, api };
 }
 
-describe('adapter.search（按类型三请求，04 §4.3）', () => {
+describe('adapter.search（按类型三请求，M4 §4.3）', () => {
   it('三次请求参数构造：SearchTerm/IncludeItemTypes/Recursive/Limit=12，未传 SortBy', async () => {
     const { adapter, api } = makeAdapter([itemsResponse([]), itemsResponse([]), itemsResponse([])]);
     await adapter.search('u1', '海贼');
     expect(api.request).toHaveBeenCalledTimes(3);
     const urls = api.request.mock.calls.map((call) => (call[0] as { url: string }).url);
-    // 端点为 /Users/{uid}/Items 形态（与 listItems 同形态，04 §4.1 #10）
+    // 端点为 /Users/{uid}/Items 形态（与 listItems 同形态，M4 §4.1 #音画同步延时）
     urls.forEach((url) => expect(url).toMatch(/^http:\/\/srv\/Users\/u1\/Items\?/));
     expect(urls[0]).toContain('IncludeItemTypes=Movie');
     expect(urls[1]).toContain('IncludeItemTypes=Series');

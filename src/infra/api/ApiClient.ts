@@ -21,7 +21,7 @@ export interface ApiRequest {
   timeoutMs?: number;
   /**
    * M6：401 时抑制全局登出事件（Quick Connect 免认证端点以 401 表达「服务器未启用 QC」，
-   * 非 Token 失效语义；06 文档 §4.3.1）。默认 undefined = 照常 emit。
+   * 非 Token 失效语义；M6 文档 §4.3.1）。默认 undefined = 照常 emit。
    */
   skipUnauthorizedEmit?: boolean;
 }

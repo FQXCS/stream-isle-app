@@ -1,5 +1,5 @@
 /**
- * 横向海报卡行（04 文档 §4.3 新建，搜索结果分组与首页三区共用）：
+ * 横向海报卡行（M4 文档 §4.3 新建，搜索结果分组与首页三区共用）：
  * FlatList 横滑，卡片宽度固定；空列表不渲染（分区级空 → 隐藏分区）。
  */
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';

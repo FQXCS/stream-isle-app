@@ -33,7 +33,7 @@ describe('normalizeAddress（§4.4 五类输入 + 非法输入）', () => {
   });
 });
 
-describe('toHostPort（04 §4.6：TLS 白名单原生键 baseUrl→host:port）', () => {
+describe('toHostPort（M4 §4.6：TLS 白名单原生键 baseUrl→host:port）', () => {
   it('显式端口保留', () => {
     expect(toHostPort('https://192.168.1.5:8920')).toBe('192.168.1.5:8920');
     expect(toHostPort('http://myhost.lan:8096/jellyfin')).toBe('myhost.lan:8096');

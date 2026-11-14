@@ -62,7 +62,7 @@ export type ItemFilterEnum = 'IsPlayed' | 'IsUnplayed' | 'IsFavorite';
 
 /**
  * 排序字段（服务器 SortBy 词表，客户端自有枚举，参数映射见 sortCatalog）。
- * 现有 15 项保持原值（libraryViewStore 旧快照可继续读取），新增项对应 docs/09 的菜单字段。
+ * 现有 15 项保持原值（libraryViewStore 旧快照可继续读取），新增项对应 docs/feature/Emby与Jellyfin内容类型排序与筛选.md 的菜单字段。
  */
 export type SortByEnum =
   | 'SORT_NAME'
@@ -81,7 +81,7 @@ export type SortByEnum =
   // 音频专有排序（音乐库菜单；Emby 音乐排序词表）
   | 'ALBUM'
   | 'ALBUM_ARTIST'
-  // docs/09 补齐的菜单字段
+  // docs/feature/Emby与Jellyfin内容类型排序与筛选.md 补齐的菜单字段
   | 'NAME'
   | 'ARTIST'
   | 'COMPOSER'
@@ -133,14 +133,14 @@ export interface AuthResult {
   avatarUrl?: string;
 }
 
-/** 服务器 UserData 翻译（02/05 消费同名类型） */
+/** 服务器 UserData 翻译（M2/M5 消费同名类型） */
 export interface UserItemData {
   played: boolean;
   playCount: number;
   favorite: boolean;
   /** PlaybackPositionTicks 经 ticksToMs 换算 */
   playbackPositionMs: number;
-  /** 非服务器字段直传：adapter 由 playbackPositionMs/runtimeMs 计算（0–100），无 runtimeMs 时不产出（02 口径） */
+  /** 非服务器字段直传：adapter 由 playbackPositionMs/runtimeMs 计算（0–100），无 runtimeMs 时不产出（M2 口径） */
   playedPercentage?: number;
 }
 
@@ -178,7 +178,7 @@ export interface EntitySummary {
 export interface MediaLibrary {
   id: string;
   name: string;
-  /** 服务器 CollectionType 原值存档备查；布局分发按 type 枚举（05 §4.12 口径） */
+  /** 服务器 CollectionType 原值存档备查；布局分发按 type 枚举（M5 §4.12 口径） */
   collectionType?: string;
   /** 由 collectionType 经 COLLECTION_TYPE_MAP 翻译（缺省 MIXED） */
   type: LibraryTypeEnum;
@@ -232,7 +232,7 @@ export interface Paged<T> {
   startIndex: number;
 }
 
-// —— 以下为 M5 音乐/照片消费（05 文档 §4.2）——
+// —— 以下为 M5 音乐/照片消费（M5 文档 §4.2）——
 
 /**
  * 歌曲条目——命名说明：设计 §6.2 统一模型清单中的 AudioTrack 与 SubtitleTrack 并列，
@@ -273,15 +273,15 @@ export interface PhotoItem extends MediaLibraryItem {
   takenAtMs?: number;
   /** PremiereDate → ms（信息面板「发行时间」；服务端缺失时整行不展示） */
   premiereDateMs?: number;
-  /** 网格缩略（maxWidth=格子尺寸，见 05 §4.6） */
+  /** 网格缩略（maxWidth=格子尺寸，见 M5 §4.6） */
   gridImageUrl: string;
   /** 查看器缩放图（maxWidth=屏幕宽×dpr，见设计文档 §7.6） */
   viewerImageUrl: string;
-  /** 原图（查看原图/保存用，无缩放参数；仅显式动作加载，05 §4.6） */
+  /** 原图（查看原图/保存用，无缩放参数；仅显式动作加载，M5 §4.6） */
   originalImageUrl: string;
 }
 
-/** 专辑/歌单详情（AlbumDetailScreen kind=album|playlist，05 §4.12） */
+/** 专辑/歌单详情（AlbumDetailScreen kind=album|playlist，M5 §4.12） */
 export interface AlbumDetailModel {
   id: string;
   kind: 'album' | 'playlist';
@@ -308,14 +308,14 @@ export interface ArtistDetailModel {
   hotSongList: AudioItem[];
 }
 
-// —— 以下为 M2+ 消费，M1 仅定义（字段名以 02/03/04 已落地终态为准）——
+// —— 以下为 M2+ 消费，M1 仅定义（字段名以 M2/M3/M4 已落地终态为准）——
 
-/** 季条目（02 口径） */
+/** 季条目（M2 口径） */
 export interface SeasonItem extends MediaLibraryItem {
   indexNumber: number;
 }
 
-/** 集条目（02 口径） */
+/** 集条目（M2 口径） */
 export interface EpisodeItem extends MediaLibraryItem {
   seasonId: string;
   seriesId: string;
@@ -325,7 +325,7 @@ export interface EpisodeItem extends MediaLibraryItem {
   overview?: string;
 }
 
-/** 人物引用（02 口径） */
+/** 人物引用（M2 口径） */
 export interface PersonRef {
   id: string;
   name: string;
@@ -337,7 +337,7 @@ export interface PersonRef {
   headImageUrl?: string;
 }
 
-/** 详情（电影与剧集共用，02 口径） */
+/** 详情（电影与剧集共用，M2 口径） */
 export interface MediaDetail {
   id: string;
   type: MediaItemTypeEnum;
@@ -459,7 +459,7 @@ export interface AudioTrack {
   isDefault?: boolean;
 }
 
-/** 播放决策产物（UI/播放器唯一消费形态；03 终态） */
+/** 播放决策产物（UI/播放器唯一消费形态；M3 终态） */
 export interface PlaybackSource {
   playSessionId: string;
   itemId: string;
@@ -480,23 +480,23 @@ export interface PlaybackSource {
   sourceHeight?: number;
 }
 
-/** 一次播放会话 = PlaybackSource + 会话元数据（进入播放页后不可变，02 §4.2） */
+/** 一次播放会话 = PlaybackSource + 会话元数据（进入播放页后不可变，M2 §4.2） */
 export type PlaybackSession = PlaybackSource & {
   startedAtEpochMs: number;
-  /** 播放页控制层标题「标题 · S1E2 集名」（02 §4.12 要求展示而 §4.2 模型缺此字段，加法修订由详情页拼好传入） */
+  /** 播放页控制层标题「标题 · S1E2 集名」（M2 §4.12 要求展示而 §4.2 模型缺此字段，加法修订由详情页拼好传入） */
   name?: string;
-  /** M4 自动连播判定（04 §4.4）：当前条目类型（详情页传入；缺省不参与连播） */
+  /** M4 自动连播判定（M4 §4.4）：当前条目类型（详情页传入；缺省不参与连播） */
   itemType?: MediaItemTypeEnum;
-  /** M4 自动连播（04 §4.4）：Episode 时所属剧集 id（getNextUp 结果按此匹配下一集） */
+  /** M4 自动连播（M4 §4.4）：Episode 时所属剧集 id（getNextUp 结果按此匹配下一集） */
   seriesId?: string;
   /**
-   * M6 增量（06 文档 §4.2）：本地文件会话为 true（DownloadService.buildLocalSession 置位）；
+   * M6 增量（M6 文档 §4.2）：本地文件会话为 true（DownloadService.buildLocalSession 置位）；
    * PlayerScreen 据此做控制层降级（分辨率按钮隐藏、字幕仅本地内嵌轨）。以交叉类型扩展，不改 M2 既有定义。
    */
   local?: boolean;
 };
 
-// —— M6 增量（06 文档 §4.2）：Quick Connect / 观看历史 / 歌词 ——
+// —— M6 增量（M6 文档 §4.2）：Quick Connect / 观看历史 / 歌词 ——
 
 /** Quick Connect 发起结果（服务器 QuickConnectResult 的翻译） */
 export interface QuickConnectSession {
@@ -540,16 +540,16 @@ export interface LyricLine {
   startMs?: number;
 }
 
-/** 搜索分组类型（04 口径：三分组） */
+/** 搜索分组类型（M4 口径：三分组） */
 export type SearchGroupKind = 'MOVIE' | 'SERIES' | 'PERSON';
 
-/** 搜索结果分组（04 落地版） */
+/** 搜索结果分组（M4 落地版） */
 export interface SearchResultGroup {
   kind: SearchGroupKind;
   itemList: MediaLibraryItem[];
 }
 
-/** resolvePlayback 入参（03 终态回写；M3 起 profileInputs 恢复必填消费） */
+/** resolvePlayback 入参（M3 终态回写；M3 起 profileInputs 恢复必填消费） */
 export interface ResolvePlaybackOpts {
   mediaSourceId?: string;
   /** 会话重启时传当前毫秒位置 */
@@ -560,11 +560,11 @@ export interface ResolvePlaybackOpts {
   audioStreamIndex?: number;
   /** 烧录字幕场景指定烧录轨；undefined = 不烧录（切回文本/关闭时显式传 undefined） */
   subtitleStreamIndex?: number;
-  /** 由服务层组装后传入，adapter 保持纯函数（03 §4.4.2） */
+  /** 由服务层组装后传入，adapter 保持纯函数（M3 §4.4.2） */
   profileInputs: ProfileInputs;
 }
 
-/** DeviceProfile 输入（03 §4.3 终态；服务层由 settingsStore + mediaCaps 组装） */
+/** DeviceProfile 输入（M3 §4.3 终态；服务层由 settingsStore + mediaCaps 组装） */
 export interface ProfileInputs {
   allowHevcDirectPlay: boolean;
   decoderCaps: DecoderCapabilities;
@@ -584,7 +584,7 @@ export interface ReportArgs {
   isPaused?: boolean;
   /**
    * M5 增量改为可选：playMethod 为 "Universal" 时 adapter 上报 body 不含 PlayMethod 字段
-   * （客户端不知道服务器实际选了直连还是转码，不谎报，05 文档 §4.2）
+   * （客户端不知道服务器实际选了直连还是转码，不谎报，M5 文档 §4.2）
    */
   playMethod?: PlayMethodEnum;
 }

@@ -56,7 +56,7 @@ export function PhotoGridScreen({ parentId, title, sort, emptyTitle }: PhotoGrid
   // 与 PhotoViewerScreen 续载路径同口径——viewerImageUrl 由 adapter 预拼，网格页一次定版）
   const gridMaxWidth = getPhotoCellMaxWidth(windowWidth, pixelRatio, PHOTO_GRID_COLUMNS);
   const viewerMaxWidth = getPhotoViewerMaxWidth(windowWidth, pixelRatio);
-  // 迷你条让位（05 §4.10）：音频活跃时网格底部 padding 叠加迷你条高度
+  // 迷你条让位（M5 §4.10）：音频活跃时网格底部 padding 叠加迷你条高度
   const miniPlayerPadding = useMiniPlayerPadding();
 
   const sortBy = sort?.sortBy;
@@ -94,7 +94,7 @@ export function PhotoGridScreen({ parentId, title, sort, emptyTitle }: PhotoGrid
     [parentId, sortBy, sortOrder]
   );
 
-  // 聚焦与排序变化：重置拉第一页（M2 详情页同口径：页面局部 state + useFocusEffect，05 §4.7）
+  // 聚焦与排序变化：重置拉第一页（M2 详情页同口径：页面局部 state + useFocusEffect，M5 §4.7）
   useFocusEffect(
     useCallback(() => {
       setLoading(true);

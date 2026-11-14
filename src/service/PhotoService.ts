@@ -1,11 +1,11 @@
 /**
  * 照片服务（M5 文档 §4.6/§4.14）：相册/照片分页 + 保存到系统相册。
- * 保存链路为本节唯一实现契约（06 文档 :481 的 saveToLibraryAsync 口径按 05 §4.14 回改为
+ * 保存链路为本节唯一实现契约（M6 文档 :481 的 saveToLibraryAsync 口径按 M5 §4.14 回改为
  * 回归验证）：requestPermissionsAsync(writeOnly) → FileSystem.downloadAsync 原图到 cacheDirectory
  * → createAssetAsync → getAlbumAsync/createAlbumAsync「Stream Isle」→ addAssetsToAlbumAsync。
  * 照片浏览全程零播放会话、零进度上报（设计文档 §7.6，A21）。
  * SDK 58 口径：组合式资产/相册 API 在 expo-media-library/legacy 导出（根导出运行时抛错）；
- * requestPermissionsAsync 签名为 (writeOnly?: boolean)（05 文档的对象参数按锁定 SDK 修正）。
+ * requestPermissionsAsync 签名为 (writeOnly?: boolean)（M5 文档的对象参数按锁定 SDK 修正）。
  */
 import * as MediaLibrary from 'expo-media-library/legacy';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -40,7 +40,7 @@ export class PhotoService {
   }
 
   /**
-   * 保存原图到系统相册「Stream Isle」（05 文档 §4.14 流程）。
+   * 保存原图到系统相册「Stream Isle」（M5 文档 §4.14 流程）。
    * GIF 下载保存后仍为动图（downloadAsync 原字节落盘）；任一步失败抛
    * PHOTO_SAVE_PERMISSION_DENIED / PHOTO_SAVE_FAILED，调用方 toast。
    */
@@ -64,7 +64,7 @@ export class PhotoService {
    */
   async saveFileToGallery(fileUri: string, withAlbum = true): Promise<void> {
     // 1) 相册权限：取/建相册（getAlbumAsync）需读权限，writeOnly 在新版 Android 会被拒，
-    //    故请求完整权限（Android 10+ 弹系统授权框；SDK 58 签名 = 布尔参）
+    //    故请求完整权限（Android 音画同步延时+ 弹系统授权框；SDK 58 签名 = 布尔参）
     let permission: MediaLibrary.PermissionResponse;
     try {
       permission = await MediaLibrary.requestPermissionsAsync(false);

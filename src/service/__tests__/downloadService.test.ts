@@ -1,5 +1,5 @@
 /**
- * DownloadService 单测（06 文档 §6.1 DownloadService 行）：
+ * DownloadService 单测（M6 文档 §6.1 DownloadService 行）：
  * resolve 非 DirectPlay → DOWNLOAD_UNAVAILABLE 且不落库；空间不足 → DOWNLOAD_NO_SPACE
  * 且不落库；状态机流转（queued→downloading→completed/paused/failed）；删除清文件与行（mock fs）；
  * buildLocalSession 字段（本地 uri、UUID 会话号、DirectPlay、离线续播起点）。
@@ -229,7 +229,7 @@ function makeRow(overrides: Partial<DownloadRow> = {}): DownloadRow {
   };
 }
 
-describe('DownloadService（06 §6.1 DownloadService 行）', () => {
+describe('DownloadService（M6 §6.1 DownloadService 行）', () => {
   beforeEach(() => {
     setActiveAccount();
     useDownloadStore.getState().replaceAll([]);
@@ -434,7 +434,7 @@ describe('DownloadService（06 §6.1 DownloadService 行）', () => {
     expect(session.playMethod).toBe('DirectPlay');
     expect(session.local).toBe(true);
     expect(session.positionMsAtStart).toBe(30 * 60 * 1000);
-    // UUID v4 形态（客户端生成会话号，06 §4.5 关键决策）
+    // UUID v4 形态（客户端生成会话号，M6 §4.5 关键决策）
     expect(session.playSessionId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
     );

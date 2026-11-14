@@ -1,5 +1,5 @@
 /**
- * 队列面板（05 文档 §4.10/§4.11）：NowPlaying 与全局队列弹层（QueueSheet）复用。
+ * 队列面板（M5 文档 §4.10/§4.11）：NowPlaying 与全局队列弹层（QueueSheet）复用。
  * 头部：模式图标 + 「列表循环（N 首）」+ 清空/收起；行：曲名 + 「艺人 - 专辑」+ 当前曲均衡器 + 移除。
  * 队列真源在 track-player 原生侧，仅面板打开时 getQueueSnapshot 拉全量（不进 store）；
  * 拖动 → moveInQueue，删除 → removeFromQueue，点击行 → skipToIndex（UI 不直呼 TrackPlayer.*）。

@@ -19,7 +19,7 @@ import { getToken } from '@/infra/tokenVault';
 import { useAccountStore } from '@/store/accountStore';
 import { useDownloadStore } from '@/store/downloadStore';
 
-/** 离线进度事件（enqueue 入参；event_type 词表 06 文档 §4.4.1） */
+/** 离线进度事件（enqueue 入参；event_type 词表 M6 文档 §4.4.1） */
 export interface OfflineProgressEvent {
   serverId: string;
   userId: string;
@@ -31,7 +31,7 @@ export interface OfflineProgressEvent {
   isPaused?: boolean;
 }
 
-/** 可注入依赖（单测假时钟/假 DAO/假上报断言分组与顺序，06 §6.1） */
+/** 可注入依赖（单测假时钟/假 DAO/假上报断言分组与顺序，M6 §6.1） */
 export interface OfflineProgressDeps {
   dao?: Promise<DownloadDao> | DownloadDao;
   nowFn?: () => number;
@@ -43,19 +43,19 @@ export interface OfflineProgressDeps {
   isOffline?: () => boolean;
 }
 
-/** 组 key（06 文档 §4.5：按 (server_id, user_id, item_id, play_session_id) 分组） */
+/** 组 key（M6 文档 §4.5：按 (server_id, user_id, item_id, play_session_id) 分组） */
 function groupKeyOf(row: PendingProgressRow): string {
   return `${row.serverId}|${row.userId}|${row.itemId}|${row.playSessionId}`;
 }
 
-/** 网络类错误判定（06 §4.5 入队条件之一：错误码为网络类） */
+/** 网络类错误判定（M6 §4.5 入队条件之一：错误码为网络类） */
 export function isNetworkErrorCode(error: unknown): boolean {
   return error instanceof AppError && error.code === 'NETWORK_UNREACHABLE';
 }
 
 /**
- * 入队双条件纯函数（06 §4.5）：网络类错误 且 离线。
- * 误入队（captive portal 等假阳性）由联网后 flush 正常补报，语义无损（06 §7 风险表）。
+ * 入队双条件纯函数（M6 §4.5）：网络类错误 且 离线。
+ * 误入队（captive portal 等假阳性）由联网后 flush 正常补报，语义无损（M6 §7 风险表）。
  */
 export function shouldEnqueueOnFailure(error: unknown, isOffline: boolean): boolean {
   return isNetworkErrorCode(error) && isOffline;
@@ -116,7 +116,7 @@ export class OfflineProgressService {
   async enqueue(event: OfflineProgressEvent): Promise<void> {
     const dao = await this.daoPromise;
     await dao.appendPendingProgress({ ...event, createdAtMs: this.nowFn() });
-    // 本地快照同步（06 §4.5 第 5 条）：离线播放期间每节流窗口同时更新 downloads.user_position_ms
+    // 本地快照同步（M6 §4.5 第 5 条）：离线播放期间每节流窗口同时更新 downloads.user_position_ms
     // （与入队并行做，本地断点即时可见）；非下载条目 UPDATE 零命中无副作用
     if (event.eventType !== 'MarkPlayed') {
       await this.syncLocalPosition(event.serverId, event.itemId, event.positionMs);
@@ -247,7 +247,7 @@ export async function enqueueOnReportFailure(
 }
 
 /**
- * 组内事件序列化（06 文档 §4.5 补报算法第 2/3 条）：
+ * 组内事件序列化（M6 文档 §4.5 补报算法第 2/3 条）：
  * - 连续多条 Progress 合并为最后一条（服务器只认最终位置，语义等价）；
  * - Playing 保留首条、Stopped 保留末条，永不合并丢弃；
  * - MarkPlayed 幂等，折叠为一条且置于组末 Stopped 之后；
@@ -277,7 +277,7 @@ export function mergeGroupForReplay(rows: PendingProgressRow[]): PendingProgress
   if (firstPlaying !== undefined) {
     replayList.push(firstPlaying);
   } else if (ordered.length > 0) {
-    // 无 Playing：以最早事件位置合成一条（客户端生成会话号，上报先建会话，06 §4.5 关键决策）
+    // 无 Playing：以最早事件位置合成一条（客户端生成会话号，上报先建会话，M6 §4.5 关键决策）
     replayList.push({ ...ordered[0], eventType: 'Playing', isPaused: undefined });
   }
   replayList.push(...progressList);
@@ -291,7 +291,7 @@ export function mergeGroupForReplay(rows: PendingProgressRow[]): PendingProgress
   return replayList;
 }
 
-/** 按 (serverId, userId) 构造 adapter 实例（不要求该服务器为当前活跃账号；06 §3.1 工厂签名） */
+/** 按 (serverId, userId) 构造 adapter 实例（不要求该服务器为当前活跃账号；M6 §3.1 工厂签名） */
 async function buildAdapterFor(serverId: string, userId: string) {
   const state = useAccountStore.getState();
   const server = state.servers.find((item) => item.serverId === serverId);

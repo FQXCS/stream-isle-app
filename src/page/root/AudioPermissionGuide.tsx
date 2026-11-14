@@ -82,7 +82,7 @@ async function runGuideFlow(showDialog: (value: boolean) => void): Promise<void>
       const { PermissionsAndroid } = await import('react-native');
       await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
     } catch {
-      // 通知权限被拒不阻塞播放（05 文档 §4.17：可在系统设置补开）
+      // 通知权限被拒不阻塞播放（M5 文档 §4.17：可在系统设置补开）
     }
   }
   showDialog(true);
@@ -90,7 +90,7 @@ async function runGuideFlow(showDialog: (value: boolean) => void): Promise<void>
 
 /**
  * 「去设置」：直达电池优化弹窗；被 ROM 拦截（目标 activity 不存在等，异步 rejection）
- * 回退系统设置（05 文档 §4.14 回退路径）。
+ * 回退系统设置（M5 文档 §4.14 回退路径）。
  */
 async function openBatteryOptimizationSettings(): Promise<void> {
   try {

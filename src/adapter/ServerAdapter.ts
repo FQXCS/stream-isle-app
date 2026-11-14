@@ -1,5 +1,5 @@
 /**
- * ServerAdapter 接口（M1 文档 §4.6.2；设计文档 §6.2；04 收口全量落地）。
+ * ServerAdapter 接口（M1 文档 §4.6.2；设计文档 §6.2；M4 收口全量落地）。
  * UI 不感知服务器类型：全部 Emby/Jellyfin 差异压进 adapter 实现。
  * M1 实现 probe / login / getUserViews / getLibraryItemCount / listItems / imageUrl；
  * M2 增详情/季集/人物/上报/已看，M3 增播放决策/字幕/停止转码，M4 增搜索/首页三区/收藏成对端点。
@@ -66,11 +66,11 @@ export interface ServerAdapter {
 
   getSeasons(userId: string, seriesId: string): Promise<SeasonItem[]>;
 
-  /** 端点 /Shows/{seriesId}/Episodes 要求 seriesId 路径参数（02 回写） */
+  /** 端点 /Shows/{seriesId}/Episodes 要求 seriesId 路径参数（M2 回写） */
   getEpisodes(userId: string, seriesId: string, seasonId: string): Promise<EpisodeItem[]>;
 
   /**
-   * 下一集（GET /Shows/NextUp）：返回 EpisodeItem（含 seriesId）——04 §4.4 自动连播
+   * 下一集（GET /Shows/NextUp）：返回 EpisodeItem（含 seriesId）——M4 §4.4 自动连播
    * 需按当前剧集 seriesId 匹配下一集；首页三区按 MediaLibraryItem 基类字段消费不受影响。
    */
   getNextUp(userId: string): Promise<EpisodeItem[]>;
@@ -100,11 +100,11 @@ export interface ServerAdapter {
 
   getSimilar(userId: string, itemId: string): Promise<MediaLibraryItem[]>;
 
-  /** M2：人物出演作品（GET /Users/{uid}/Items?PersonIds=…，只含 Movie/Series，02 §4.3） */
+  /** M2：人物出演作品（GET /Users/{uid}/Items?PersonIds=…，只含 Movie/Series，M2 §4.3） */
   getPersonFilmography(userId: string, personId: string): Promise<MediaLibraryItem[]>;
 
   /**
-   * M4：搜索（04 §4.3）——按类型并发三次 GET /Users/{userId}/Items（SearchTerm/IncludeItemTypes/
+   * M4：搜索（M4 §4.3）——按类型并发三次 GET /Users/{userId}/Items（SearchTerm/IncludeItemTypes/
    * Recursive/Limit=SEARCH_GROUP_LIMIT，不传 SortBy），汇齐后组装分组、剔除空组。
    */
   search(userId: string, term: string): Promise<SearchResultGroup[]>;
@@ -145,7 +145,7 @@ export interface ServerAdapter {
   /** M3（设计文档 §8.3） */
   stopTranscodingSession(playSessionId: string): Promise<void>;
 
-  // —— M5：音频 universal 与音乐/照片浏览（05 文档 §4.3；全部共享实现，双 Adapter 不新增覆写）——
+  // —— M5：音频 universal 与音乐/照片浏览（M5 文档 §4.3；全部共享实现，双 Adapter 不新增覆写）——
 
   /**
    * 音频 universal 统一端点 URL（设计文档 §8.4）：直连时服务器 302 原流、否则实时转 AAC。
@@ -172,7 +172,7 @@ export interface ServerAdapter {
 
   /**
    * 歌单区：IncludeItemTypes=Playlist 全量查询，**不带 ParentId**——歌单常独立于音乐库
-   * 存在（服务端全局条目），四区内查全量歌单（05 文档 §4.3）
+   * 存在（服务端全局条目），四区内查全量歌单（M5 文档 §4.3）
    */
   getMusicPlaylists(userId: string, page: number): Promise<Paged<MediaLibraryItem>>;
 
@@ -298,11 +298,11 @@ export interface ServerAdapter {
    */
   imageUrl(itemId: string, type: ImageTypeEnum, maxWidth?: number): string;
 
-  // —— M6 增量（06 文档 §4.3.1；全部落 BaseAdapter 共享实现）——
+  // —— M6 增量（M6 文档 §4.3.1；全部落 BaseAdapter 共享实现）——
 
   /**
    * Quick Connect 是否启用（GET /QuickConnect/Enabled，免认证）。
-   * 06 §4.3.1：也可跳过此探测直接 initiate 以 401 判禁用（官方 SDK 视为可选步骤），
+   * M6 §4.3.1：也可跳过此探测直接 initiate 以 401 判禁用（官方 SDK 视为可选步骤），
    * 本实现按文档主路径先行探测。
    */
   isQuickConnectEnabled(): Promise<boolean>;

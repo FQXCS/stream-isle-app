@@ -1,5 +1,5 @@
 /**
- * 搜索服务（04 文档 §4.3）：关键词搜索，经 adapter 按类型三请求分组。
+ * 搜索服务（M4 文档 §4.3）：关键词搜索，经 adapter 按类型三请求分组。
  * 服务层不直接发请求，一律经 adapter（设计文档 §4）。
  */
 import type { SearchResultGroup } from '@/adapter/model';

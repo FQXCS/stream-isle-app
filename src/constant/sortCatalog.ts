@@ -1,5 +1,5 @@
 /**
- * 排序目录（docs/09 §1.3/§2.4/§4）：客户端排序项 → 双端服务器参数链，以及每个
+ * 排序目录（docs/feature/Emby与Jellyfin内容类型排序与筛选.md §1.3/§2.4/§4）：客户端排序项 → 双端服务器参数链，以及每个
  * 条目类型可用的排序集合。设置页按 flavor 过滤 null 项；库页 SortMenu 按解析结果展示。
  */
 import type { ServerFlavor, SortByEnum } from '@/adapter/model';
@@ -13,7 +13,7 @@ import {
   type SortOption,
 } from '@/constant/browse';
 
-/** 排序项元数据（label/defaultOrder 与既有菜单一致；新项按 docs/09 中文名） */
+/** 排序项元数据（label/defaultOrder 与既有菜单一致；新项按 docs/feature/Emby与Jellyfin内容类型排序与筛选.md 中文名） */
 export const SORT_OPTION_META: Record<SortByEnum, SortOption> = {
   SORT_NAME: { value: 'SORT_NAME', labelKey: 'sort.name', defaultOrder: 'ASC' },
   DATE_CREATED: { value: 'DATE_CREATED', labelKey: 'sort.dateAdded', defaultOrder: 'DESC' },

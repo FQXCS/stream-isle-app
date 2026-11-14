@@ -14,7 +14,7 @@ import { formatBytes } from '@/util/formatBytes';
 
 interface WallGridCellProps {
   item: MediaLibraryItem;
-  /** 收藏筛选下已取消收藏的卡片淡化置灰（04 §4.4） */
+  /** 收藏筛选下已取消收藏的卡片淡化置灰（M4 §4.4） */
   dimmed: boolean;
   onPress: () => void;
   onLongPress: (item: MediaLibraryItem, anchor: AnchorRect) => void;

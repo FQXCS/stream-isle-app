@@ -1,5 +1,5 @@
 /**
- * adapter 观看历史单测（06 文档 §6.1 BaseAdapter.history 行）：
+ * adapter 观看历史单测（M6 文档 §6.1 BaseAdapter.history 行）：
  * query 参数全量断言（Filters=IsPlayed、SortBy=DatePlayed、SortOrder=Descending、
  * StartIndex/Limit、IncludeItemTypes 由设置页多选传入）；LastPlayedDate → lastPlayedAtMs 换算。
  */
@@ -20,8 +20,8 @@ function makeAdapter(
   return { adapter, api };
 }
 
-describe('BaseAdapter 观看历史（06 §6.1 history 行）', () => {
-  it('query 参数全量断言（06 §4.3.1 端点映射表）', async () => {
+describe('BaseAdapter 观看历史（M6 §6.1 history 行）', () => {
+  it('query 参数全量断言（M6 §4.3.1 端点映射表）', async () => {
     const { adapter, api } = makeAdapter('JELLYFIN', { Items: [], TotalRecordCount: 0 });
     await adapter.getWatchHistory('u1', {
       startIndex: 40,

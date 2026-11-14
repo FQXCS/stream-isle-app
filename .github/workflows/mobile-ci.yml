@@ -24,7 +24,7 @@ jobs:
         with:
           distribution: temurin
           # JDK 21：compileSdk 37（RN 0.88 版本目录）的 core-for-system-modules.jar 需 JDK 21 的
-          # jlink 处理（JDK 17 实测 JdkImageTransform 失败，见 docs/07-实施决策记录.md）
+          # jlink 处理（JDK 17 实测 JdkImageTransform 失败，见 docs/decision/实施决策记录.md）
           java-version: 21
 
       - name: 释放 Runner 磁盘空间
@@ -50,7 +50,7 @@ jobs:
       - name: Android debug 构建（android/ 已入库；prebuild 后断言产物无 diff，防 app.config 与 android/ 漂移）
         run: |
           npx expo prebuild -p android --no-install
-          # 06 §4.9.2「prebuild 校验产物无 diff」可执行断言：prebuild 重放后 android/ 入库文件
+          # M6 §4.9.2「prebuild 校验产物无 diff」可执行断言：prebuild 重放后 android/ 入库文件
           # 必须与提交一致（构建产物已被 .gitignore 排除，不参与 diff）；漂移即失败并列出差异
           if ! git diff --exit-code -- android/; then
             echo "::error::expo prebuild 产物与入库 android/ 存在漂移——请本地跑 npx expo prebuild -p android 后提交更新（勿手改 android/ 内由 plugin 驱动的文件）"

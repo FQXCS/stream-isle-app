@@ -190,7 +190,7 @@ interface ServerItemResponse {
   Status?: string;
 }
 
-/** 详情响应原始形态（getItemDetail；Fields 覆盖 MediaDetail 全部字段，02 §4.3） */
+/** 详情响应原始形态（getItemDetail；Fields 覆盖 MediaDetail 全部字段，M2 §4.3） */
 interface DetailItemResponse extends ServerItemResponse {
   OriginalTitle?: string;
   Overview?: string;
@@ -217,7 +217,7 @@ interface PersonResponse {
   PrimaryImageTag?: string;
 }
 
-/** MediaStream 原始形态（PlaybackInfo 响应 MediaStreams[]，03 §4.5.1） */
+/** MediaStream 原始形态（PlaybackInfo 响应 MediaStreams[]，M3 §4.5.1） */
 interface MediaStreamResponse {
   Index?: number;
   Type?: string;
@@ -321,7 +321,7 @@ function translateUserData(item: ServerItemResponse): UserItemData {
     favorite: raw?.IsFavorite ?? false,
     playbackPositionMs,
   };
-  // 非服务器字段直传：由 playbackPositionMs/runtimeMs 计算（0–100），无 runtimeMs 时不产出（02 口径）
+  // 非服务器字段直传：由 playbackPositionMs/runtimeMs 计算（0–100），无 runtimeMs 时不产出（M2 口径）
   if (runtimeMs !== undefined && runtimeMs > 0 && playbackPositionMs > 0) {
     data.playedPercentage = Math.min(100, Math.round((playbackPositionMs / runtimeMs) * 100));
   }
@@ -335,8 +335,8 @@ function isVersionTooLow(flavor: ServerFlavor, version: string): boolean {
 }
 
 /**
- * 季号排序权重（02 §4.3）：缺失/0 排最后，其余按季号升序——
- * 「默认选中第一季」依赖该确定性（02 §4.11）。
+ * 季号排序权重（M2 §4.3）：缺失/0 排最后，其余按季号升序——
+ * 「默认选中第一季」依赖该确定性（M2 §4.11）。
  */
 function seasonNumberOrder(indexNumber: number): number {
   return indexNumber > 0 ? indexNumber : Number.MAX_SAFE_INTEGER;
@@ -392,7 +392,7 @@ function translateItemType(
   return VALID_ITEM_TYPES.has(raw) ? (raw as MediaItemTypeEnum) : undefined;
 }
 
-/** 服务器 Person.Type（小写化）→ PersonRef.kind 映射（02 §4.2） */
+/** 服务器 Person.Type（小写化）→ PersonRef.kind 映射（M2 §4.2） */
 const PERSON_KIND_MAP: Record<string, PersonRef['kind']> = {
   actor: 'Actor',
   director: 'Director',
@@ -420,13 +420,13 @@ function basenameOf(path: string | undefined): string | undefined {
   return lastSlash === -1 ? normalized : normalized.slice(lastSlash + 1);
 }
 
-/** 演员排前权重（02 §4.2 peopleList「演员在前」） */
+/** 演员排前权重（M2 §4.2 peopleList「演员在前」） */
 function personKindOrder(kind: PersonRef['kind']): number {
   return kind === 'Actor' ? 0 : 1;
 }
 
 /**
- * 音轨翻译（03 §4.5.1 第 3 条）：Type==="Audio" → AudioTrack，
+ * 音轨翻译（M3 §4.5.1 第 3 条）：Type==="Audio" → AudioTrack，
  * title 取 DisplayTitle || Title || Language，Channels/Codec 直传。
  */
 function translateAudioTracks(source: MediaSourceInfoResponse): AudioTrack[] {
@@ -582,7 +582,7 @@ export abstract class BaseAdapter implements ServerAdapter {
   protected abstract imageTagQuery(tag?: string): Record<string, string>;
 
   /**
-   * DELETE /Videos/ActiveEncodings 的 query 参数名（03 §4.5.3 flavor 差异）：
+   * DELETE /Videos/ActiveEncodings 的 query 参数名（M3 §4.5.3 flavor 差异）：
    * Jellyfin 新版为 playSessionId，Emby 为 id（设计文档 §7.2 记载形态）。
    */
   protected abstract activeEncodingsQueryKey(): 'playSessionId' | 'id';
@@ -913,7 +913,7 @@ export abstract class BaseAdapter implements ServerAdapter {
 
   /**
    * 带 token 的完整图片 URL（对外契约；tag 仅在 adapter 内部列表翻译时可得）。
-   * M5：maxWidth 缺省 → 原图（不带 maxWidth/quality 参数，「查看原图」与保存用，05 文档 §4.3）。
+   * M5：maxWidth 缺省 → 原图（不带 maxWidth/quality 参数，「查看原图」与保存用，M5 文档 §4.3）。
    */
   imageUrl(itemId: string, type: ImageTypeEnum, maxWidth?: number): string {
     if (maxWidth === undefined) {
@@ -934,7 +934,7 @@ export abstract class BaseAdapter implements ServerAdapter {
   // —— M2：详情主数据与列表封装（共享实现，设计 §6.1 差异表未列为两端差异）——
 
   /**
-   * 详情主数据：GET /Users/{userId}/Items/{itemId}，Fields 覆盖 MediaDetail 全部字段（02 §4.3）。
+   * 详情主数据：GET /Users/{userId}/Items/{itemId}，Fields 覆盖 MediaDetail 全部字段（M2 §4.3）。
    * Person 也是条目（人物页复用本方法取头像/简介/姓名）。
    */
   async getItemDetail(userId: string, itemId: string): Promise<MediaDetail> {
@@ -960,7 +960,7 @@ export abstract class BaseAdapter implements ServerAdapter {
         if (personId === '') {
           return [];
         }
-        // Person.Type 小写化映射（02 §4.2）；映射表外（Composer 等）按演员处理：peopleList 仅
+        // Person.Type 小写化映射（M2 §4.2）；映射表外（Composer 等）按演员处理：peopleList 仅
         // 以 kind 决定排序权重（演员在前），无其他语义消费，避免演职员在映射表缺口处整条丢失
         const kind: PersonRef['kind'] =
           (person.Type !== undefined ? PERSON_KIND_MAP[person.Type.toLowerCase()] : undefined) ??
@@ -978,11 +978,11 @@ export abstract class BaseAdapter implements ServerAdapter {
         }
         return [ref];
       })
-      // 稳定排序：演员在前、其余保持服务器顺序（02 §4.2）
+      // 稳定排序：演员在前、其余保持服务器顺序（M2 §4.2）
       .sort((a, b) => personKindOrder(a.kind) - personKindOrder(b.kind));
 
     const primaryTag = data.ImageTags?.Primary;
-    // Person 条目的 Primary 即头像：按 02 §4.3「imageUrl(personId, "Primary", 200)」用
+    // Person 条目的 Primary 即头像：按 M2 §4.3「imageUrl(personId, "Primary", 200)」用
     // PERSON_HEAD_MAX_WIDTH 产出（页面 96px 圆头像直接消费，避免 600px 宽图的带宽/解码浪费）
     const posterImageUrl = primaryTag
       ? this.buildImageUrl(
@@ -992,7 +992,7 @@ export abstract class BaseAdapter implements ServerAdapter {
           primaryTag
         )
       : undefined;
-    // Hero：Backdrop 取首标签（maxWidth=1280）；无 Backdrop 回退 Primary（02 §4.2）
+    // Hero：Backdrop 取首标签（maxWidth=1280）；无 Backdrop 回退 Primary（M2 §4.2）
     const backdropTag = data.BackdropImageTags?.[0];
     const heroImageUrl = backdropTag
       ? this.buildImageUrl(id, 'Backdrop', DETAIL_BACKDROP_MAX_WIDTH, backdropTag)
@@ -1027,9 +1027,9 @@ export abstract class BaseAdapter implements ServerAdapter {
   }
 
   /**
-   * 季列表：GET /Shows/{seriesId}/Seasons（端点要求 seriesId 路径参数，02 §4.3）。
+   * 季列表：GET /Shows/{seriesId}/Seasons（端点要求 seriesId 路径参数，M2 §4.3）。
    * 结果按 indexNumber 升序（缺失/0 排最后），不依赖服务器返回顺序——「默认选中第一季」
-   * 的确定性依赖该排序（02 §4.3/§4.11）。
+   * 的确定性依赖该排序（M2 §4.3/§4.11）。
    */
   async getSeasons(userId: string, seriesId: string): Promise<SeasonItem[]> {
     const data = await this.api.request<ItemsResponse>({
@@ -1056,7 +1056,7 @@ export abstract class BaseAdapter implements ServerAdapter {
   }
 
   /**
-   * 集列表：GET /Shows/{seriesId}/Episodes（SeasonId 必传，02 §4.3）。
+   * 集列表：GET /Shows/{seriesId}/Episodes（SeasonId 必传，M2 §4.3）。
    * Fields=Overview 供集卡片单行简介（§4.11）；缩略图/进度/已看复用列表翻译（UserData 默认返回）。
    */
   async getEpisodes(
@@ -1092,7 +1092,7 @@ export abstract class BaseAdapter implements ServerAdapter {
     });
   }
 
-  /** 相似推荐：GET /Items/{itemId}/Similar，上限 SIMILAR_LIMIT（02 §4.3） */
+  /** 相似推荐：GET /Items/{itemId}/Similar，上限 SIMILAR_LIMIT（M2 §4.3） */
   async getSimilar(userId: string, itemId: string): Promise<MediaLibraryItem[]> {
     const data = await this.api.request<ItemsResponse>({
       method: 'GET',
@@ -1114,7 +1114,7 @@ export abstract class BaseAdapter implements ServerAdapter {
 
   /**
    * 人物出演作品：GET /Users/{uid}/Items?PersonIds=…&IncludeItemTypes=Movie,Series&Recursive=true
-   * &SortBy=SortName（归并为 listItems 的具名封装，02 §4.3；不含集级条目）。
+   * &SortBy=SortName（归并为 listItems 的具名封装，M2 §4.3；不含集级条目）。
    */
   async getPersonFilmography(userId: string, personId: string): Promise<MediaLibraryItem[]> {
     const data = await this.api.request<ItemsResponse>({
@@ -1138,7 +1138,7 @@ export abstract class BaseAdapter implements ServerAdapter {
     });
   }
 
-  // —— M4：首页三区与搜索（04 §3/§4.3；共享 listItems 翻译路径的具名封装）——
+  // —— M4：首页三区与搜索（M4 §3/§4.3；共享 listItems 翻译路径的具名封装）——
 
   /**
    * 继续观看：GET /Users/{uid}/Items?Filters=IsResumable&IncludeItemTypes={类型}&Recursive=true
@@ -1174,7 +1174,7 @@ export abstract class BaseAdapter implements ServerAdapter {
 
   /**
    * 下一集：GET /Shows/NextUp（两端一致端点），Limit=HOME_ROW_LIMIT。
-   * 翻译为 EpisodeItem（响应含 SeriesId/SeasonId/IndexNumber）——04 §4.4 自动连播
+   * 翻译为 EpisodeItem（响应含 SeriesId/SeasonId/IndexNumber）——M4 §4.4 自动连播
    * 需按 seriesId 匹配当前剧集的下一集。
    */
   async getNextUp(userId: string): Promise<EpisodeItem[]> {
@@ -1264,7 +1264,7 @@ export abstract class BaseAdapter implements ServerAdapter {
   }
 
   /**
-   * 搜索（04 §4.3）：按类型并发三次 GET /Users/{uid}/Items——SearchTerm={term}、
+   * 搜索（M4 §4.3）：按类型并发三次 GET /Users/{uid}/Items——SearchTerm={term}、
    * IncludeItemTypes 分别为 Movie/Series/Person、Recursive=true、Limit=SEARCH_GROUP_LIMIT、
    * 不传 SortBy（服务器按默认相关序返回）。按类型各设限额保证每组可见性。
    * 响应复用 listItems 翻译路径；人物头像复用 Primary 图、按 PERSON_AVATAR_MAX_WIDTH 收窄。
@@ -1319,7 +1319,7 @@ export abstract class BaseAdapter implements ServerAdapter {
     return groups.filter((group) => group.itemList.length > 0);
   }
 
-  // —— M4：收藏（mark/unmark 成对式，04 §4.4；端点两端一致，共享基础实现）——
+  // —— M4：收藏（mark/unmark 成对式，M4 §4.4；端点两端一致，共享基础实现）——
 
   /** 收藏：POST /Users/{userId}/FavoriteItems/{itemId} */
   async markFavorite(userId: string, itemId: string): Promise<void> {
@@ -1363,7 +1363,7 @@ export abstract class BaseAdapter implements ServerAdapter {
     });
   }
 
-  // —— M5：音频 universal 与音乐/照片浏览（05 文档 §4.3 端点映射表；全部共享实现）——
+  // —— M5：音频 universal 与音乐/照片浏览（M5 文档 §4.3 端点映射表；全部共享实现）——
 
   /**
    * 音频 universal 统一端点 URL（设计文档 §8.4 原文模板 + PlaySessionId 增量参数）。
@@ -1493,7 +1493,7 @@ export abstract class BaseAdapter implements ServerAdapter {
 
   /**
    * 歌单区：IncludeItemTypes=Playlist 全量查询，**不带 ParentId**——歌单常独立于
-   * 音乐库存在（服务端全局条目），四区内查全量歌单（05 文档 §4.3）。
+   * 音乐库存在（服务端全局条目），四区内查全量歌单（M5 文档 §4.3）。
    */
   async getMusicPlaylists(userId: string, page: number): Promise<Paged<MediaLibraryItem>> {
     const data = await this.api.request<ItemsResponse>({
@@ -1561,7 +1561,7 @@ export abstract class BaseAdapter implements ServerAdapter {
 
   /**
    * 专辑曲目：ParentId={albumId}&IncludeItemTypes=Audio&Recursive=true，数量级小不翻页。
-   * 曲序用服务器原生曲号字段（盘号/曲号多键排序），不依赖曲名带序号前缀的命名习惯（05 §4.3）。
+   * 曲序用服务器原生曲号字段（盘号/曲号多键排序），不依赖曲名带序号前缀的命名习惯（M5 §4.3）。
    */
   async getAlbumTracks(userId: string, albumId: string): Promise<AudioItem[]> {
     const data = await this.api.request<ItemsResponse>({
@@ -1656,7 +1656,7 @@ export abstract class BaseAdapter implements ServerAdapter {
 
   /**
    * 歌单曲目：GET /Playlists/{playlistId}/Items?UserId={uid} 专用端点——
-   * 保证歌单自定义顺序（而非 ParentId 查询的服务端默认排序，05 文档 §4.3）。
+   * 保证歌单自定义顺序（而非 ParentId 查询的服务端默认排序，M5 文档 §4.3）。
    */
   async getPlaylistItems(userId: string, playlistId: string): Promise<AudioItem[]> {
     const data = await this.api.request<ItemsResponse>({
@@ -1716,7 +1716,7 @@ export abstract class BaseAdapter implements ServerAdapter {
   /**
    * 照片分页：IncludeItemTypes=Photo，三个 URL 按 widths 预拼
    * （grid/viewer/original，UI 拿到即用不感知拼接）；fileName 取 Path 的 basename
-   * （缺失回退 name），只透传文件名、不透传完整服务器路径（05 文档 §4.2/§4.3）。
+   * （缺失回退 name），只透传文件名、不透传完整服务器路径（M5 文档 §4.2/§4.3）。
    * parentId 可传相册 id 或库 id（库 id + Recursive=true 即「全部图片」）；
    * sort 缺省按名称升序（库页排序菜单选择后由调用方传入）。
    */
@@ -2179,7 +2179,7 @@ export abstract class BaseAdapter implements ServerAdapter {
     }
     const mediaSourceId = rawSource.Id ?? '';
     const runTimeMs = rawSource.RunTimeTicks !== undefined ? ticksToMs(rawSource.RunTimeTicks) : undefined;
-    // MediaStreams 翻译（03 §4.5.1 第 3/4 条）：直连与转码均携带（字幕菜单/音轨菜单数据源）
+    // MediaStreams 翻译（M3 §4.5.1 第 3/4 条）：直连与转码均携带（字幕菜单/音轨菜单数据源）
     const subtitleList = this.translateSubtitleTracks(rawSource, itemId);
     const audioList = translateAudioTracks(rawSource);
     const positionMsAtStart = opts?.startPositionMs ?? 0;
@@ -2214,7 +2214,7 @@ export abstract class BaseAdapter implements ServerAdapter {
   }
 
   /**
-   * 字幕轨翻译（03 §4.5.1 第 3/4 条）：DeliveryMethod 服务器判定为准（Encode→burnIn、
+   * 字幕轨翻译（M3 §4.5.1 第 3/4 条）：DeliveryMethod 服务器判定为准（Encode→burnIn、
    * External→isExternal），不在客户端按格式猜；vttUrl 仅外挂文本轨产出。
    */
   private translateSubtitleTracks(source: MediaSourceInfoResponse, itemId: string): SubtitleTrack[] {
@@ -2245,7 +2245,7 @@ export abstract class BaseAdapter implements ServerAdapter {
   }
 
   /**
-   * 外挂 vtt 完整 URL 三分支（03 §4.5.1 第 4 条）：
+   * 外挂 vtt 完整 URL 三分支（M3 §4.5.1 第 4 条）：
    * DeliveryUrl 缺省 → buildSubtitleUrl 兜底（恒含 api_key）；
    * 有 DeliveryUrl → 拼 baseUrl（绝对 URL 防御性原样），query 已含 api_key 原样保留（不重复追加）、
    * 缺则补齐——播放器请求不经 axios，凭证只能进 URL。
@@ -2266,7 +2266,7 @@ export abstract class BaseAdapter implements ServerAdapter {
     return `${url}${url.includes('?') ? '&' : '?'}api_key=${encodeURIComponent(this.token ?? '')}`;
   }
 
-  /** 上报公共 body（02 §4.3）：PositionTicks 由 msToTicks 换算，服务层只管毫秒 */
+  /** 上报公共 body（M2 §4.3）：PositionTicks 由 msToTicks 换算，服务层只管毫秒 */
   private reportBody(args: ReportArgs): Record<string, unknown> {
     const body: Record<string, unknown> = {
       ItemId: args.itemId,
@@ -2274,7 +2274,7 @@ export abstract class BaseAdapter implements ServerAdapter {
       MediaSourceId: args.mediaSourceId,
       PositionTicks: msToTicks(args.positionMs),
     };
-    // M5（05 文档 §4.2）：playMethod 为 "Universal" 时 body 不含 PlayMethod 字段——
+    // M5（M5 文档 §4.2）：playMethod 为 "Universal" 时 body 不含 PlayMethod 字段——
     // 客户端不知道服务器实际选了直连还是转码，不谎报
     if (args.playMethod !== undefined && args.playMethod !== 'Universal') {
       body.PlayMethod = args.playMethod;
@@ -2285,7 +2285,7 @@ export abstract class BaseAdapter implements ServerAdapter {
     return body;
   }
 
-  /** Playing 事件：POST /Sessions/Playing（播放器加载成功后调，02 §4.3） */
+  /** Playing 事件：POST /Sessions/Playing（播放器加载成功后调，M2 §4.3） */
   async reportPlaying(args: ReportArgs): Promise<void> {
     await this.api.request({
       method: 'POST',
@@ -2295,7 +2295,7 @@ export abstract class BaseAdapter implements ServerAdapter {
     });
   }
 
-  /** Progress 事件：POST /Sessions/Playing/Progress（10s 节流 + 即时，02 §4.3） */
+  /** Progress 事件：POST /Sessions/Playing/Progress（10s 节流 + 即时，M2 §4.3） */
   async reportProgress(args: ReportArgs): Promise<void> {
     await this.api.request({
       method: 'POST',
@@ -2305,7 +2305,7 @@ export abstract class BaseAdapter implements ServerAdapter {
     });
   }
 
-  /** Stopped 事件：POST /Sessions/Stopped（退出/播完调，body 同 Playing，02 §4.3） */
+  /** Stopped 事件：POST /Sessions/Stopped（退出/播完调，body 同 Playing，M2 §4.3） */
   async reportStopped(args: ReportArgs): Promise<void> {
     await this.api.request({
       method: 'POST',
@@ -2315,7 +2315,7 @@ export abstract class BaseAdapter implements ServerAdapter {
     });
   }
 
-  // —— M2：已看（mark/unmark 成对式，02 §4.3；设计文档 §7.3）——
+  // —— M2：已看（mark/unmark 成对式，M2 §4.3；设计文档 §7.3）——
 
   /** 手动标已看：POST /Users/{userId}/PlayedItems/{itemId} */
   async markPlayed(userId: string, itemId: string): Promise<void> {
@@ -2336,7 +2336,7 @@ export abstract class BaseAdapter implements ServerAdapter {
   }
 
   /**
-   * M3：外挂字幕 vtt URL（03 §4.5.2；设计文档 §6.1 字幕流行）。
+   * M3：外挂字幕 vtt URL（M3 §4.5.2；设计文档 §6.1 字幕流行）。
    * {base}/Videos/{itemId}/{mediaSourceId}/Subtitles/{streamIndex}/Stream.vtt?api_key={token}
    * 播放器请求不走 axios，必须带 api_key；双服务器联调与 DeliveryUrl 对照（路径有出入时差异覆写）。
    */
@@ -2348,7 +2348,7 @@ export abstract class BaseAdapter implements ServerAdapter {
   }
 
   /**
-   * M3：停止转码会话（03 §4.5.3；设计文档 §8.3）——DELETE /Videos/ActiveEncodings。
+   * M3：停止转码会话（M3 §4.5.3；设计文档 §8.3）——DELETE /Videos/ActiveEncodings。
    * 共享骨架：构造 DELETE 请求；query 参数名由子类覆写 activeEncodingsQueryKey()
    * （Jellyfin=playSessionId / Emby=id）。失败吞错仅记日志——清理必须幂等且不阻塞收尾流程，
    * 残留会话由服务器播放会话超时回收。
@@ -2363,12 +2363,12 @@ export abstract class BaseAdapter implements ServerAdapter {
         headers: this.buildHeaders(this.token),
       });
     } catch {
-      // 幂等吞错（03 §4.5.3 / §4.11：清理请求失败不阻塞收尾，含 401 登出场景）
+      // 幂等吞错（M3 §4.5.3 / §4.11：清理请求失败不阻塞收尾，含 401 登出场景）
       console.warn('[adapter] 停止转码会话请求失败（幂等忽略）');
     }
   }
 
-  // —— M6：Quick Connect（06 文档 §4.3.1；设计文档 §6.1「两端点行为一致」→ BaseAdapter 共享实现）——
+  // —— M6：Quick Connect（M6 文档 §4.3.1；设计文档 §6.1「两端点行为一致」→ BaseAdapter 共享实现）——
 
   /**
    * Quick Connect 是否启用：GET /QuickConnect/Enabled（免认证，带设备头）。
@@ -2431,7 +2431,7 @@ export abstract class BaseAdapter implements ServerAdapter {
       });
     } catch (err) {
       if (err instanceof AppError && (err.code === 'NOT_FOUND' || err.code === 'UNAUTHORIZED')) {
-        // 404 → 授权码已失效（06 §4.3.1 表：按超时处理）
+        // 404 → 授权码已失效（M6 §4.3.1 表：按超时处理）
         throw new AppError('QUICK_CONNECT_EXPIRED', { httpStatus: err.httpStatus, cause: err });
       }
       throw err;
@@ -2474,7 +2474,7 @@ export abstract class BaseAdapter implements ServerAdapter {
   }
 
   /**
-   * 观看历史（06 文档 §4.3.1 端点映射表）：GET /Users/{uid}/Items，已看条目按观看时间倒序。
+   * 观看历史（M6 文档 §4.3.1 端点映射表）：GET /Users/{uid}/Items，已看条目按观看时间倒序。
    * Filters=IsPlayed + SortBy=DatePlayed + SortOrder=Descending + IncludeItemTypes={设置页多选}
    * + Recursive=true + StartIndex/Limit（分页沿用海报墙步长口径，页大小由调用方传入）。
    */
@@ -2524,7 +2524,7 @@ export abstract class BaseAdapter implements ServerAdapter {
   }
 
   /**
-   * 歌词（06 文档 §4.3.1/§4.6.3）：GET /Audio/{itemId}/Lyrics（需认证）。
+   * 歌词（M6 文档 §4.3.1/§4.6.3）：GET /Audio/{itemId}/Lyrics（需认证）。
    * 404/无歌词 → null（Emby 端点未公开实证，404 一律优雅降级为「暂无歌词」）；
    * 响应 LyricDto.Lyrics[] 逐行取 Text，StartTick 经 ticksToMs 换算为 startMs
    * （Ticks=100ns，与播放进度同一换算函数）；无 StartTick 的行为纯文本行（startMs 缺省）。
@@ -2561,7 +2561,7 @@ export abstract class BaseAdapter implements ServerAdapter {
   }
 }
 
-/** QuickConnectResult 响应原始形态（Initiate/Connect 共用；06 文档 §4.3.1） */
+/** QuickConnectResult 响应原始形态（Initiate/Connect 共用；M6 文档 §4.3.1） */
 interface QuickConnectResultResponse {
   Code?: string;
   Secret?: string;

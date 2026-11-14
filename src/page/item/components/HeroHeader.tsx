@@ -1,7 +1,7 @@
 /**
  * 详情页 Hero 区（M2 文档 §4.11 + M6 §4.6.2 转场目标 + M8 参考稿重排）：
  * 背景大图 + 顶部返回/更多浮层 + 居中标题（Logo 优先）与元数据行。
- * M6 转场目标（06 文档 §4.6.2）：挂载时测量目标矩形回填 transitionStore.markTarget；
+ * M6 转场目标（M6 文档 §4.6.2）：挂载时测量目标矩形回填 transitionStore.markTarget；
  * 飞行期间（transitionStore.active 命中本页）Hero 真图延后淡入，避免飞行图与真图叠影，
  * end() 后立即显示。测量失败/无转场上下文 → 立即显示（退化为普通转场）。
  */
@@ -51,7 +51,7 @@ export function HeroHeader({ detail, metaText, rating, onBack, onMore }: HeroHea
       ref={containerRef}
       style={styles.container}
       onLayout={() => {
-        // M6 转场目标测量（06 §4.6.2）：measureInWindow 取屏幕绝对矩形 → markTarget
+        // M6 转场目标测量（M6 §4.6.2）：measureInWindow 取屏幕绝对矩形 → markTarget
         containerRef.current?.measureInWindow((x, y, width, height) => {
           markTarget({ x, y, width, height: Math.min(height, 300) });
         });

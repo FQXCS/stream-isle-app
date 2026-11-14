@@ -1,5 +1,5 @@
 /**
- * 页面级错误组件（04 §4.2 终态接口）：文案一律取 ERROR_MESSAGE_MAP 唯一出处；
+ * 页面级错误组件（M4 §4.2 终态接口）：文案一律取 ERROR_MESSAGE_MAP 唯一出处；
  * 仅 isRetryable(code) 且传入 onRetry 时才渲染「重试」按钮；extraAction 扩展位
  * （如已登录态 TLS_ERROR 的「去设置」）。
  */
@@ -13,7 +13,7 @@ import { errorMessageKeyOf, isRetryable, type AppError } from '@/infra/error';
 interface ErrorViewProps {
   /** 业务错误（文案经 errorMessageOf 查询，页面不自行定义文案） */
   error: AppError;
-  /** 重试回调（可重试码且传入时才渲染「重试」按钮，04 §4.2） */
+  /** 重试回调（可重试码且传入时才渲染「重试」按钮，M4 §4.2） */
   onRetry?: () => void;
   /** 扩展动作（如已登录态 TLS_ERROR 的「去设置」） */
   extraAction?: { label: string; onPress: () => void };
