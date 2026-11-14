@@ -60,7 +60,7 @@ export default {
     android: {
       package: "com.streamisle.mobile", // 包名随应用名一并在 M1 §8.2 评审确认
       // 发版递增（覆盖安装依赖单调递增；与 app version 同步在发版前手动 bump）
-      versionCode: 3,
+      versionCode: 4,
       // minSdkVersion: 26 的实际生效见 plugins 内 expo-build-properties（SDK 58 该配置字段
       // 不进 gradle 体系，裸配置经构建日志验证落的是版本目录默认 24）
       usesCleartextTraffic: true, // 字段保留作意图声明；SDK 58 实际生效靠上方 withCleartextTraffic 插件

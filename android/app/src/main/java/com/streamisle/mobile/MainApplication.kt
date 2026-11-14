@@ -31,7 +31,7 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
-    // M1 §4.5.4：选择性证书校验注入（默认严格，仅白名单 host:port 豁免；07 决策 M1-S4/M4-S2）
+    // M1 §4.5.4：选择性证书校验注入（默认严格，仅白名单 host:port 豁免；决策记录 M1-S4/M4-S2）
     StreamIsleNetworkInjection.install()
     DefaultNewArchitectureEntryPoint.releaseLevel = try {
       ReleaseLevel.valueOf(BuildConfig.REACT_NATIVE_RELEASE_LEVEL.uppercase())

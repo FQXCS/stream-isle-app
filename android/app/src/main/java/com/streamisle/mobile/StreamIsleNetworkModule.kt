@@ -14,7 +14,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 
 /**
- * TLS 白名单与诊断模块（M1 基座 classic module，04 §4.6 终态命名对齐）：
+ * TLS 白名单与诊断模块（M1 基座 classic module，M4 §4.6 终态命名对齐）：
  * - setBypassHosts：全量覆写「豁免证书校验」的 host:port 白名单；
  * - probe：trust-all 专用 client 发一次 HEAD 诊断 → resolve "OK" / "TLS_FAIL" / "UNREACHABLE"
  *   （TLS_ERROR 唯一生产者，AuthService.connect 探测链路消费）。
@@ -25,7 +25,7 @@ class StreamIsleNetworkModule(reactContext: ReactApplicationContext) :
 
   override fun getName(): String = "StreamIsleNetwork"
 
-  /** 全量覆写白名单（04 §4.6：syncTlsBypassHosts 传去重后的 host:port 列表） */
+  /** 全量覆写白名单（M4 §4.6：syncTlsBypassHosts 传去重后的 host:port 列表） */
   @ReactMethod
   fun setBypassHosts(hostList: ReadableArray) {
     val next = mutableListOf<String>()

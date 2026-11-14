@@ -11,8 +11,8 @@ import javax.net.ssl.X509ExtendedTrustManager
 import okhttp3.Interceptor
 
 /**
- * OkHttp 注入点（M1 文档 §4.5.4 / 07 决策 M1-S4：`setCustomClientBuilder` 在 RN 0.88 不存在，
- * 实测采用文档备选 `setOkHttpClientFactory`；07 决策 M4-S2：白名单键 = host:port）。
+ * OkHttp 注入点（M1 文档 §4.5.4 / 决策记录 M1-S4：`setCustomClientBuilder` 在 RN 0.88 不存在，
+ * 实测采用文档备选 `setOkHttpClientFactory`；决策记录 M4-S2：白名单键 = host:port）。
  * 语义：默认严格（系统 TrustManager），仅请求 host:port 命中白名单时在 checkServerTrusted
  * 豁免证书链校验；主机名校验保持 OkHttp 默认。
  */
