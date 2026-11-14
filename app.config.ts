@@ -48,7 +48,7 @@ export default {
     name: "Stream Isle",
     slug: "stream-isle-mobile",
     // 认证头 Version 字段取值来源：expo-constants nativeApplicationVersion
-    version: "1.1.0",
+    version: "1.1.1",
     orientation: "portrait", // 播放页横屏由 Player 页运行时锁定（M2）
     icon: "./assets/icon.png",
     userInterfaceStyle: "automatic", // 亮色默认由 settingsStore.themeMode 决定；系统方案跟随时需 automatic
