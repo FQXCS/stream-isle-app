@@ -38,6 +38,12 @@ export const enPlayer: Record<PlayerMessageKey, Message> = {
   'player.aspectStretch': 'Stretch',
   'player.aspectFill': 'Fill',
   'player.primarySubtitle': 'Primary subtitles',
+  'player.audioDelay': 'Audio delay',
+  'player.subtitleDelay': 'Subtitle delay',
+  'player.delayUnavailable': 'Burned-in and local embedded subtitles cannot be delayed',
+  'player.delayReset': '{label} {value} s, tap to reset',
+  'player.delayDecrease': 'Decrease {label} by {step} s',
+  'player.delayIncrease': 'Increase {label} by {step} s',
 
   // —— Player states, errors and hints ——
   'player.errorTranscode': 'Transcode playback failed. Please try again',

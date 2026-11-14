@@ -3,7 +3,7 @@
  * M3 增量：HLS 转码分支（source 直用会话 URL）、外挂文本轨注入与纯客户端切换、烧录字幕/
  * 分辨率/转码音轨三类会话重启编排、三菜单入口、蜂窝自动降档订阅、SessionRestartOverlay。
  * 挂载即锁横屏、退出恢复竖屏；控制层/锁屏/三组手势；AppState 进后台暂停即报；
- * back/unmount 报 Stopped、onEnd 收尾（02 §4.12 生命周期状态机）。
+ * back/unmount 报 Stopped、onEnd 收尾（M2 §4.12 生命周期状态机）。
  * 时间口径：react-native-video 事件为秒，服务层/store 全部毫秒（页面层换算）。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -80,10 +80,10 @@ const HUD_HIDE_DELAY_MS = 600;
 type VisibleMenu = 'none' | 'more' | 'speed';
 
 /**
- * 起播默认字幕策略（03 §4.8.3 + 04 §4.5 匹配定稿，仅首次起播/连播新集执行）：
+ * 起播默认字幕策略（M3 §4.8.3 + M4 §4.5 匹配定稿，仅首次起播/连播新集执行）：
  * 仅在可外挂注入的文本轨中匹配——非烧录且 vttUrl 已产出（DeliveryMethod 缺省/Embed 的轨
  * 无 vttUrl、播放器无法加载，命中会造成「高亮已选而画面无字幕」）；偏好语言经
- * normalizeSubtitleLang 归一化后与轨语言等值比较（04 §4.5：前缀法匹配不到 zh/Chinese
+ * normalizeSubtitleLang 归一化后与轨语言等值比较（M4 §4.5：前缀法匹配不到 zh/Chinese
  * 形态的中文轨）→ isDefault → isForced；无命中不开启字幕。
  * 烧录轨不自动激活（烧录只由用户手动选择触发，减少转码触发面）。
  */
@@ -109,6 +109,8 @@ export function PlayerScreen() {
   const isLocked = usePlayerStore((state) => state.isLocked);
   const controlsVisible = usePlayerStore((state) => state.controlsVisible);
   const playbackSpeed = usePlayerStore((state) => state.playbackSpeed);
+  const subtitleDelayMs = usePlayerStore((state) => state.subtitleDelayMs);
+  const audioDelayMs = usePlayerStore((state) => state.audioDelayMs);
   const videoAspect = usePlayerStore((state) => state.videoAspect);
   const activeSubtitleStreamIndex = usePlayerStore((state) => state.activeSubtitleStreamIndex);
   const activeAudioStreamIndex = usePlayerStore((state) => state.activeAudioStreamIndex);
@@ -127,7 +129,7 @@ export function PlayerScreen() {
   const seekTargetMsSV = useSharedValue(0);
   const [hud, setHud] = useState<HudState | null>(null);
   const hudHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** 锁屏态解锁按钮显隐（单击呼出后自动隐藏，02 §4.12「单击仅显示解锁按钮」） */
+  /** 锁屏态解锁按钮显隐（单击呼出后自动隐藏，M2 §4.12「单击仅显示解锁按钮」） */
   const [unlockVisible, setUnlockVisible] = useState(false);
   /** 三菜单显隐（互斥） */
   const [visibleMenu, setVisibleMenu] = useState<VisibleMenu>('none');
@@ -138,7 +140,7 @@ export function PlayerScreen() {
     { index: number; title?: string; language?: string }[]
   >([]);
   /**
-   * 引擎内嵌文本轨列表（M6 本地会话消费，06 文档 §4.4.2）：本地 fileUri 会话的字幕
+   * 引擎内嵌文本轨列表（M6 本地会话消费，M6 文档 §4.4.2）：本地 fileUri 会话的字幕
    * 仅来自容器内嵌轨（react-native-video onLoad textTracks），无服务器外挂 vtt。
    */
   const [engineTextTracks, setEngineTextTracks] = useState<
@@ -159,7 +161,7 @@ export function PlayerScreen() {
   /** 截图防重入（原生抓帧 + 入相册为异步链路） */
   const snapshotBusyRef = useRef(false);
 
-  // —— 进页初始化：store 会话 + 状态（首次起播：选中态重置 + 默认字幕选轨，03 §4.8.3）——
+  // —— 进页初始化：store 会话 + 状态（首次起播：选中态重置 + 默认字幕选轨，M3 §4.8.3）——
   useEffect(() => {
     const store = usePlayerStore.getState();
     store.setSession(initialSession, { resetTrackSelection: true });
@@ -172,7 +174,7 @@ export function PlayerScreen() {
     }
   }, [initialSession]);
 
-  // 挂载即锁横屏、退出恢复竖屏（02 §4.12）
+  // 挂载即锁横屏、退出恢复竖屏（M2 §4.12）
   useFocusEffect(
     useCallback(() => {
       void (async () => {
@@ -199,7 +201,7 @@ export function PlayerScreen() {
       .catch(() => {
         // 原生读取失败保持默认值（手势仍可用，只是起点非真实值）
       });
-    // 窗口亮度：-1 表示跟随系统（02 §4.8 契约），此时真实亮度无法经本模块获知
+    // 窗口亮度：-1 表示跟随系统（M2 §4.8 契约），此时真实亮度无法经本模块获知
     // （读系统亮度超出 §4.8 四方法契约），保持现值——首次手势落点可能与系统亮度有偏差，属已知限制
     void PlaybackGestures.getWindowBrightness()
       .then((brightness) => {
@@ -225,13 +227,13 @@ export function PlayerScreen() {
     }
   }, []);
 
-  // —— unmount 收尾：报 Stopped + 亮度恢复跟随系统 + 清 store（02 §4.8/§4.12）——
+  // —— unmount 收尾：报 Stopped + 亮度恢复跟随系统 + 清 store（M2 §4.8/§4.12）——
   useEffect(
     () => () => {
       void finishOnce(endReasonRef.current ?? 'user_exit').catch(() => {
         // 收尾失败静默（Stopped 重试逻辑在 service 内）
       });
-      // 窗口亮度恢复 -1 跟随系统（02 §4.8）
+      // 窗口亮度恢复 -1 跟随系统（M2 §4.8）
       void PlaybackGestures.setWindowBrightness(-1).catch(() => {
         // 静默
       });
@@ -242,7 +244,7 @@ export function PlayerScreen() {
   );
 
   // —— AppState：进后台 → 立即暂停并即时上报一次（设计文档 §7.2/§11）；回前台不自动恢复 ——
-  // 暂停 ≠ 退出：不停会话（转码分片由服务器会话超时兜底，03 §4.6.3/§7 风险 8）
+  // 暂停 ≠ 退出：不停会话（转码分片由服务器会话超时兜底，M3 §4.6.3/§7 风险 8）
   // PiP 例外：小窗仍可见，进后台不暂停；回前台按 store 重新对齐 native（PiP 窗内按钮只改 native 态）
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
@@ -271,7 +273,7 @@ export function PlayerScreen() {
     return () => subscription.remove();
   }, []);
 
-  // —— Video 事件（02 §4.5 编排表 + M3 §4.8.2）——
+  // —— Video 事件（M2 §4.5 编排表 + M3 §4.8.2）——
   const handleLoad = useCallback(
     (data: OnLoadData) => {
       const store = usePlayerStore.getState();
@@ -279,20 +281,20 @@ export function PlayerScreen() {
       const startMs = data.currentTime * 1000;
       store.updateProgress(startMs, 0, data.duration * 1000);
       store.setStatus('playing');
-      // 引擎音轨缓存（03 §4.8.2 音轨精确匹配的候选；selectedAudioTrack 派生消费）
+      // 引擎音轨缓存（M3 §4.8.2 音轨精确匹配的候选；selectedAudioTrack 派生消费）
       setEngineAudioTracks(data.audioTracks.map((track) => ({ index: track.index, title: track.title, language: track.language })));
-      // M6：引擎内嵌文本轨缓存（本地会话字幕菜单数据源，06 §4.4.2 控制层降级）
+      // M6：引擎内嵌文本轨缓存（本地会话字幕菜单数据源，M6 §4.4.2 控制层降级）
       setEngineTextTracks(
         (data.textTracks ?? []).map((track) => ({ index: track.index, title: track.title, language: track.language }))
       );
-      // 会话重启完成（03 §4.8.2：onLoad → begin → endRestart）
+      // 会话重启完成（M3 §4.8.2：onLoad → begin → endRestart）
       if (store.isRestartingSession) {
         store.endRestart();
       }
       const currentSession = store.session ?? initialSession;
       void (async () => {
         try {
-          // Playing 上报携带实际起点（02 §4.13 时序：PositionTicks=起点；重启后带新 PlaySessionId）
+          // Playing 上报携带实际起点（M2 §4.13 时序：PositionTicks=起点；重启后带新 PlaySessionId）
           await playbackService.begin(currentSession, startMs);
         } catch {
           // Playing 失败静默（进度上报链路不受影响）
@@ -334,7 +336,7 @@ export function PlayerScreen() {
     if (store.session !== null) {
       progressRef.current.notifyError(store.session, store.positionMs);
     }
-    // 日志脱敏（02 §4.3/§4.14）：errorString 透传 ExoPlayer 异常文本，网络/403 场景
+    // 日志脱敏（M2 §4.3/§4.14）：errorString 透传 ExoPlayer 异常文本，网络/403 场景
     // 可能含带 api_key 的完整播放 URL，统一经 sanitizedForLog 处理后再留痕
     console.warn(
       '[播放页] 播放器错误:',
@@ -345,12 +347,12 @@ export function PlayerScreen() {
   const handleEnd = useCallback(() => {
     void (async () => {
       const store = usePlayerStore.getState();
-      // 自然播完：按完成时长收尾（服务器判定 + 客户端 ≥95% 兜底双保险，02 §4.5）
+      // 自然播完：按完成时长收尾（服务器判定 + 客户端 ≥95% 兜底双保险，M2 §4.5）
       if (store.durationMs > 0) {
         store.updateProgress(store.durationMs, store.bufferedMs, store.durationMs);
       }
       await finishOnce('natural_end');
-      // 自动连播下一集（04 §4.4）：集数场景 natural_end 后经 getNextUp 换源续播，
+      // 自动连播下一集（M4 §4.4）：集数场景 natural_end 后经 getNextUp 换源续播，
       // 进度从 0 起新会话上报；电影等非集内容照旧退出播放页
       const current = store.session ?? initialSession;
       if (current.itemType === 'Episode') {
@@ -360,10 +362,10 @@ export function PlayerScreen() {
             // 新会话允许再次收尾（连播后再退出仍需报 Stopped）
             endReasonRef.current = null;
             // 先换会话（resetTrackSelection 会同时清重启态），再置重启浮层：
-            // 新集 onLoad 时 endRestart 收起（03 §4.8.2 时序）
+            // 新集 onLoad 时 endRestart 收起（M3 §4.8.2 时序）
             store.setSession(next, { resetTrackSelection: true });
             store.beginRestart(tr(AUTO_NEXT_RESTART_NOTICE));
-            // 新集字幕按 03 §4.8.3 重新自动选轨（音轨由 resetTrackSelection 取默认轨）
+            // 新集字幕按 M3 §4.8.3 重新自动选轨（音轨由 resetTrackSelection 取默认轨）
             const autoSubtitleIndex = autoSelectSubtitleStreamIndex(next);
             if (autoSubtitleIndex !== null) {
               store.setActiveSubtitle(autoSubtitleIndex);
@@ -507,7 +509,7 @@ export function PlayerScreen() {
     hudHideTimerRef.current = setTimeout(() => setHud(null), HUD_HIDE_DELAY_MS);
   }, []);
 
-  // 单击手势：切换控制层显隐；锁屏时单击仅呼出解锁按钮（02 §4.12 手势表），数秒无操作自动隐藏
+  // 单击手势：切换控制层显隐；锁屏时单击仅呼出解锁按钮（M2 §4.12 手势表），数秒无操作自动隐藏
   const handleTap = useCallback(() => {
     const store = usePlayerStore.getState();
     if (store.isLocked) {
@@ -517,7 +519,7 @@ export function PlayerScreen() {
     store.toggleControls();
   }, []);
 
-  // —— 会话切换统一编排（03 §4.8.2/§4.11）：service 内完成 Stopped→DELETE→resolve→
+  // —— 会话切换统一编排（M3 §4.8.2/§4.11）：service 内完成 Stopped→DELETE→resolve→
   // setSession→回填；endRestart 在新会话 onLoad（SessionRestartOverlay 覆盖加载全程）。
   // 重启中互斥（重复点击/蜂窝事件忽略）；resolve 失败（重试后仍败）→ finish 收尾退出播放 ——
   const runSwitch = useCallback(
@@ -529,7 +531,7 @@ export function PlayerScreen() {
       try {
         await action();
       } catch (err) {
-        // 旧会话已在重启第 2–3 步终止，不可续用：收尾退出播放（03 §4.11）
+        // 旧会话已在重启第 2–3 步终止，不可续用：收尾退出播放（M3 §4.11）
         console.warn('[播放页] 会话切换失败:', err instanceof Error ? err.message : '');
         await finishOnce('error');
         ToastAndroid.show(tr('player.switchFailed'), ToastAndroid.SHORT);
@@ -542,7 +544,7 @@ export function PlayerScreen() {
   // 用户本次会话手动选过分辨率：蜂窝自动降档仅作默认，不再覆盖手动结果（网络切换时复位）
   const manualResolutionOverrideRef = useRef(false);
 
-  // —— 蜂窝自动降分辨率（03 §4.9）：netinfo type 变化时判定；断网（none）跳过；自动降档与
+  // —— 蜂窝自动降分辨率（M3 §4.9）：netinfo type 变化时判定；断网（none）跳过；自动降档与
   // 恢复均不写 settingsStore（用户档位以 settingsStore.maxResolutionTier 为准，回 WiFi 恢复原档）。
   // 判定逻辑抽取为 evaluateResolutionForConnection 供两处共用：①订阅回调（type 变化去重）；
   // ②重启结束补判——重启期间被 isRestartingSession 挡掉的事件已随 lastTypeRef 更新不再触发，
@@ -551,7 +553,7 @@ export function PlayerScreen() {
     (type: string) => {
       setConnectionType(type);
       const store = usePlayerStore.getState();
-      // 重启中忽略（03 §4.7.1，重启结束后由补判兜底）；直连会话不干预（不自动改走转码）
+      // 重启中忽略（M3 §4.7.1，重启结束后由补判兜底）；直连会话不干预（不自动改走转码）
       if (store.isRestartingSession || store.session === null || store.session.playMethod !== 'Transcode') {
         return;
       }
@@ -596,7 +598,7 @@ export function PlayerScreen() {
     return () => unsubscribe();
   }, [evaluateResolutionForConnection]);
 
-  // 重启结束（isRestartingSession true→false）后按当前实际网络补判定一次（03 §4.9）
+  // 重启结束（isRestartingSession true→false）后按当前实际网络补判定一次（M3 §4.9）
   const prevRestartingRef = useRef(false);
   useEffect(() => {
     const wasRestarting = prevRestartingRef.current;
@@ -613,7 +615,7 @@ export function PlayerScreen() {
       });
   }, [isRestartingSession, evaluateResolutionForConnection]);
 
-  // 分辨率选择：先落盘（T4 依赖，唯一入口语义见 03 §4.8.1）再 switchResolution；直连仅提示
+  // 分辨率选择：先落盘（T4 依赖，唯一入口语义见 M3 §4.8.1）再 switchResolution；直连仅提示
   const handleResolutionSelect = useCallback(
     (tier: ResolutionTierKey) => {
       // 手动选择优先于蜂窝自动降档（本次会话内保持）
@@ -626,7 +628,7 @@ export function PlayerScreen() {
         }
         const newSession = await playbackService.switchResolution(store.session, tier);
         if (newSession === null) {
-          // 直连会话不重启：设置已落盘，下次转码会话生效（03 §4.6.2）
+          // 直连会话不重启：设置已落盘，下次转码会话生效（M3 §4.6.2）
           ToastAndroid.show(tr('player.directResolutionNotice'), ToastAndroid.SHORT);
         }
         return newSession;
@@ -636,7 +638,7 @@ export function PlayerScreen() {
   );
 
   // 字幕选择：烧录轨进出由 switchSubtitle 判定重启；纯客户端切换（null）已由 service 更新选中态；
-  // M6 本地会话（06 §4.4.2）：仅本地内嵌轨、不发任何服务器请求，纯客户端选中切换
+  // M6 本地会话（M6 §4.4.2）：仅本地内嵌轨、不发任何服务器请求，纯客户端选中切换
   const handleSubtitleSelect = useCallback(
     (track: SubtitleTrack | null) => {
       const store = usePlayerStore.getState();
@@ -656,7 +658,7 @@ export function PlayerScreen() {
   );
 
   // 音轨选择：直连走 ExoPlayer selectedAudioTrack 即时生效（props 驱动）；转码经会话重启；
-  // M6 本地会话同直连（ExoPlayer 本地内嵌轨选择，纯客户端操作，06 §4.4.2）
+  // M6 本地会话同直连（ExoPlayer 本地内嵌轨选择，纯客户端操作，M6 §4.4.2）
   const handleAudioSelect = useCallback(
     (track: AudioTrack) => {
       const store = usePlayerStore.getState();
@@ -678,12 +680,12 @@ export function PlayerScreen() {
     void (async () => {
       const store = usePlayerStore.getState();
       const currentPosition = store.positionMs;
-      // 分辨率保持：旧会话生效档位随重试沿用（蜂窝降档态重试不抬升回用户档位，03 §4.9；
+      // 分辨率保持：旧会话生效档位随重试沿用（蜂窝降档态重试不抬升回用户档位，M3 §4.9；
       // 直连旧会话 undefined → resolve 回落 settingsStore 用户档位）
       const previousMaxResolutionTier = store.session?.maxResolutionTier;
       await finishOnce('error');
       endReasonRef.current = null; // 新会话允许再次收尾
-      // 旧会话已收尾：从 store 摘除，避免 resolve 的防御式收尾重复上报（03 §4.6.2）
+      // 旧会话已收尾：从 store 摘除，避免 resolve 的防御式收尾重复上报（M3 §4.6.2）
       store.setSession(null);
       try {
         const newSession = await playbackService.resolve(initialSession.itemId, {
@@ -709,7 +711,7 @@ export function PlayerScreen() {
     })();
   }, [finishOnce, navigation]);
 
-  // 锁屏/解锁（02 §4.12：上锁屏蔽全部手势与控制层，单击仅呼出解锁按钮）
+  // 锁屏/解锁（M2 §4.12：上锁屏蔽全部手势与控制层，单击仅呼出解锁按钮）
   const toggleLock = useCallback(() => {
     const store = usePlayerStore.getState();
     store.setLocked(!store.isLocked);
@@ -783,7 +785,7 @@ export function PlayerScreen() {
   }, [videoAspect, screenWidth, screenHeight]);
   const videoResizeMode =
     videoAspect === 'default' ? 'contain' : videoAspect === 'fill' ? 'cover' : 'stretch';
-  // M6 本地会话（06 文档 §4.4.2 控制层降级）：字幕菜单仅本地内嵌轨、音轨菜单用引擎轨、分辨率按钮隐藏
+  // M6 本地会话（M6 文档 §4.4.2 控制层降级）：字幕菜单仅本地内嵌轨、音轨菜单用引擎轨、分辨率按钮隐藏
   const isLocalSession = session.local === true;
   const localSubtitleTracks: SubtitleTrack[] = isLocalSession
     ? engineTextTracks.map((track) => ({
@@ -809,9 +811,9 @@ export function PlayerScreen() {
     () => ({
       uri: session.url,
       // 直连 URL 不带起点，起点由播放器 startPosition 承载（毫秒：Android 直接传给
-      // ExoPlayer setMediaSource、iOS 内部 /1000 转秒；02 §4.3）；转码 HLS 同机制恢复
+      // ExoPlayer setMediaSource、iOS 内部 /1000 转秒；M2 §4.3）；转码 HLS 同机制恢复
       startPosition: session.positionMsAtStart,
-      // 外挂文本轨注入（03 §4.8.2）：只注入非烧录轨；uri 用 adapter 已拼好的完整 URL
+      // 外挂文本轨注入（M3 §4.8.2）：只注入非烧录轨；uri 用 adapter 已拼好的完整 URL
       textTracks: session.subtitleList
         .filter((track) => !track.burnIn && track.vttUrl !== undefined)
         .map((track) => ({
@@ -826,9 +828,9 @@ export function PlayerScreen() {
     [session.url, session.positionMsAtStart, session.subtitleList, tr]
   );
 
-  // selectedTextTrack 派生（03 §4.8.2；streamIndex → 本地数组序号的映射只在此处发生）：
+  // selectedTextTrack 派生（M3 §4.8.2；streamIndex → 本地数组序号的映射只在此处发生）：
   // 烧录中/未开字幕 → disabled；否则按非烧录注入序号选中；
-  // M6 本地会话：引擎内嵌轨序号即选中序号（无服务器外挂注入，06 §4.4.2）
+  // M6 本地会话：引擎内嵌轨序号即选中序号（无服务器外挂注入，M6 §4.4.2）
   const selectedTextTrack = useMemo(() => {
     if (session.local === true) {
       if (activeSubtitleStreamIndex === null) {
@@ -851,9 +853,19 @@ export function PlayerScreen() {
     return { type: SelectedTrackType.INDEX, value: localIndex };
   }, [session.local, session.subtitleList, activeSubtitleStreamIndex]);
 
-  // selectedAudioTrack 派生（03 §4.8.2）：引擎 audioTracks 可按 language/title 匹配时优先
+  // M8 音画同步延时：字幕延时仅在线外挂文本轨可调（烧录已进画面、本地内嵌轨非 sideload 路径）
+  const activeSubtitleTrack = session.subtitleList.find(
+    (track) => track.streamIndex === activeSubtitleStreamIndex
+  );
+  const subtitleDelayDisabled =
+    isLocalSession ||
+    activeSubtitleStreamIndex === null ||
+    activeSubtitleTrack?.burnIn === true ||
+    activeSubtitleTrack?.vttUrl === undefined;
+
+  // selectedAudioTrack 派生（M3 §4.8.2）：引擎 audioTracks 可按 language/title 匹配时优先
   // 精确匹配（onLoad 校正缓存）；否则按「服务器 Audio 子序列序号=引擎序号」假设直连生效；
-  // M6 本地会话：选中值即引擎音轨序号（ExoPlayer 本地内嵌轨，06 §4.4.2）
+  // M6 本地会话：选中值即引擎音轨序号（ExoPlayer 本地内嵌轨，M6 §4.4.2）
   const selectedAudioTrack = useMemo(() => {
     if (activeAudioStreamIndex === null) {
       return undefined;
@@ -898,6 +910,8 @@ export function PlayerScreen() {
           resizeMode={videoResizeMode}
           paused={status !== 'playing'}
           rate={playbackSpeed}
+          audioDelayMs={audioDelayMs}
+          subtitleDelayMs={subtitleDelayMs}
           progressUpdateInterval={500}
           selectedTextTrack={selectedTextTrack}
           selectedAudioTrack={selectedAudioTrack}
@@ -930,7 +944,7 @@ export function PlayerScreen() {
             onSeekPreview={handleSeekPreview}
             onSeekCommit={handleSeekCommit}
           />
-          {/* 锁屏态：单击呼出解锁按钮（02 §4.12「锁屏时单击仅显示解锁按钮」），数秒无操作自动隐藏 */}
+          {/* 锁屏态：单击呼出解锁按钮（M2 §4.12「锁屏时单击仅显示解锁按钮」），数秒无操作自动隐藏 */}
           {isLocked && unlockVisible && (
             <View style={styles.lockBar} pointerEvents="box-none">
               <Pressable
@@ -995,10 +1009,15 @@ export function PlayerScreen() {
               subtitleTracks={localSubtitleTracks}
               activeSubtitleIndex={activeSubtitleStreamIndex}
               onSubtitleSelect={handleSubtitleSelect}
+              audioDelayMs={audioDelayMs}
+              onAudioDelay={(ms) => usePlayerStore.getState().setAudioDelay(ms)}
+              subtitleDelayMs={subtitleDelayMs}
+              onSubtitleDelay={(ms) => usePlayerStore.getState().setSubtitleDelay(ms)}
+              subtitleDelayDisabled={subtitleDelayDisabled}
             />
           )}
           <GestureHud hud={hud} />
-          {/* 会话重启浮层（03 §4.8.1：屏蔽重复点击，onLoad 后由 endRestart 收起） */}
+          {/* 会话重启浮层（M3 §4.8.1：屏蔽重复点击，onLoad 后由 endRestart 收起） */}
           <SessionRestartOverlay />
           {/* 加载态（重启浮层自带转圈与文案，同时成立时避免叠出两个圈） */}
           {status === 'loading' && !isRestartingSession && (
@@ -1006,7 +1025,7 @@ export function PlayerScreen() {
               <ActivityIndicator color={immersiveAccent.accent} size="large" />
             </View>
           )}
-          {/* 错误态 + 重试（02 §4.14：从出错位置继续而非从头；转码文案区分，03 §4.11） */}
+          {/* 错误态 + 重试（M2 §4.14：从出错位置继续而非从头；转码文案区分，M3 §4.11） */}
           {status === 'error' && (
             <View style={styles.errorLayer}>
               <Text style={styles.errorText}>

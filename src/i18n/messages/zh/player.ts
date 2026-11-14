@@ -40,6 +40,12 @@ export const zhPlayer = {
   'player.aspectStretch': '拉伸',
   'player.aspectFill': '填充',
   'player.primarySubtitle': '主字幕',
+  'player.audioDelay': '音频延迟',
+  'player.subtitleDelay': '字幕延时',
+  'player.delayUnavailable': '烧录字幕与本地内嵌轨不支持延时调节',
+  'player.delayReset': '{label} {value} 秒，点按归零',
+  'player.delayDecrease': '{label}减少 {step} 秒',
+  'player.delayIncrease': '{label}增加 {step} 秒',
 
   // —— 播放器状态、错误与提示 ——
   'player.errorTranscode': '转码播放失败，请重试',

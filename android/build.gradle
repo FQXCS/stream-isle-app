@@ -25,5 +25,10 @@ allprojects {
   }
 }
 
+// M8 音画同步延时：media3 1.12 提供 SubtitleConfiguration.timeOffsetUs（稳定版未发，见 docs/todo/media3-稳定版回切.md）
+ext {
+  media3Version = '1.12.0-beta01'
+}
+
 apply plugin: "expo-root-project"
 apply plugin: "com.facebook.react.rootproject"

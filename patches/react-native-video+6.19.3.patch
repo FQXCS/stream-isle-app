@@ -1,0 +1,398 @@
+diff --git a/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/AudioDelayProcessor.java b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/AudioDelayProcessor.java
+new file mode 100644
+index 0000000..8465450
+--- /dev/null
++++ b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/AudioDelayProcessor.java
+@@ -0,0 +1,161 @@
++package com.brentvatne.exoplayer;
++
++import androidx.annotation.OptIn;
++import androidx.media3.common.C;
++import androidx.media3.common.audio.AudioProcessor;
++import androidx.media3.common.util.UnstableApi;
++import java.nio.ByteBuffer;
++import java.nio.ByteOrder;
++
++/**
++ * 音频延迟处理器（M8 音画同步延时）：PCM 层插静音（正延迟=音频延后）或丢前导样本
++ * （负延迟=音频提前），实现音频相对视频的偏移；ExoPlayer 以音频为主时钟，偏移真实生效。
++ * 仅 PCM_16BIT 生效，其余格式（float/passthrough 等）原样透传不处理。
++ * flush（seek/切轨）按绝对偏移重 arm 保证 seek 后语义；流中 setDelayUs 按增量即时生效。
++ */
++@OptIn(markerClass = UnstableApi.class)
++public class AudioDelayProcessor implements AudioProcessor {
++
++    /** 微秒→秒换算基数 */
++    private static final long MICROS_PER_SECOND = 1_000_000L;
++
++    /** 16-bit PCM 每样本字节数 */
++    private static final int BYTES_PER_SAMPLE = 2;
++
++    /** 空输出缓冲（复用避免重复分配） */
++    private static final ByteBuffer EMPTY_BUFFER =
++            ByteBuffer.allocateDirect(0).order(ByteOrder.nativeOrder());
++
++    /** 绝对偏移（微秒）：正=延后，负=提前 */
++    private long delayUs;
++
++    /** 仅 PCM_16BIT 配置成功后为 true */
++    private boolean active;
++
++    /** 当前流采样率（configure 回填） */
++    private int sampleRate;
++
++    /** 每帧字节数 = 声道数 * 2（configure 回填） */
++    private int bytesPerFrame;
++
++    /** 待插静音字节数（正延迟） */
++    private long pendingSilenceBytes;
++
++    /** 待丢样本字节数（负延迟） */
++    private long pendingSkipBytes;
++
++    /** 已 queueEndOfStream 且输出排空后 isEnded 为 true */
++    private boolean endOfStreamQueued;
++
++    /** 本次 queueInput 的处理结果 */
++    private ByteBuffer outputBuffer = EMPTY_BUFFER;
++
++    @Override
++    public AudioFormat configure(AudioFormat inputAudioFormat) throws UnhandledAudioFormatException {
++        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT) {
++            // 非 PCM_16BIT（float/passthrough 等）不处理，交回原格式
++            active = false;
++            return inputAudioFormat;
++        }
++        active = true;
++        sampleRate = inputAudioFormat.sampleRate;
++        bytesPerFrame = inputAudioFormat.channelCount * BYTES_PER_SAMPLE;
++        rearm();
++        return inputAudioFormat;
++    }
++
++    @Override
++    public boolean isActive() {
++        return active;
++    }
++
++    @Override
++    public void queueInput(ByteBuffer inputBuffer) {
++        int remaining = inputBuffer.remaining();
++        // 负延迟：先丢前导样本
++        if (pendingSkipBytes > 0) {
++            int skip = (int) Math.min(pendingSkipBytes, remaining);
++            inputBuffer.position(inputBuffer.position() + skip);
++            pendingSkipBytes -= skip;
++            remaining = inputBuffer.remaining();
++        }
++        // 正延迟：输出头部补静音（allocateDirect 零初始化，静音段无需显式写）
++        int silenceBytes = (int) Math.min(pendingSilenceBytes, Integer.MAX_VALUE - remaining);
++        if (silenceBytes == 0 && remaining == 0) {
++            outputBuffer = EMPTY_BUFFER;
++            return;
++        }
++        ByteBuffer buffer =
++                ByteBuffer.allocateDirect(silenceBytes + remaining).order(ByteOrder.nativeOrder());
++        buffer.position(silenceBytes);
++        buffer.put(inputBuffer);
++        buffer.flip();
++        pendingSilenceBytes -= silenceBytes;
++        outputBuffer = buffer;
++    }
++
++    @Override
++    public void queueEndOfStream() {
++        endOfStreamQueued = true;
++    }
++
++    @Override
++    public ByteBuffer getOutput() {
++        ByteBuffer buffer = outputBuffer;
++        outputBuffer = EMPTY_BUFFER;
++        return buffer;
++    }
++
++    @Override
++    public boolean isEnded() {
++        return endOfStreamQueued && outputBuffer.remaining() == 0;
++    }
++
++    @Override
++    public void flush(StreamMetadata streamMetadata) {
++        // seek/切轨：按绝对偏移重 arm（视频回到 t 时音频应 heard t-delay）
++        rearm();
++        outputBuffer = EMPTY_BUFFER;
++        endOfStreamQueued = false;
++    }
++
++    @Override
++    public void reset() {
++        active = false;
++        pendingSilenceBytes = 0;
++        pendingSkipBytes = 0;
++        outputBuffer = EMPTY_BUFFER;
++        endOfStreamQueued = false;
++    }
++
++    /**
++     * 设置绝对偏移（微秒）。流中调用按增量插静音/丢样本即时生效（下游已缓冲 PCM
++     * 排空后可闻，约 100–500ms）；未配置时仅记录，configure/flush 时重 arm。
++     *
++     * @param delayUs 绝对偏移微秒数，正=音频延后，负=音频提前
++     */
++    public void setDelayUs(long delayUs) {
++        long deltaUs = delayUs - this.delayUs;
++        this.delayUs = delayUs;
++        if (!active) {
++            return;
++        }
++        if (deltaUs > 0) {
++            pendingSilenceBytes += usToBytes(deltaUs);
++        } else if (deltaUs < 0) {
++            pendingSkipBytes += usToBytes(-deltaUs);
++        }
++    }
++
++    /** 按绝对偏移重 arm 待插/待丢字节数 */
++    private void rearm() {
++        pendingSilenceBytes = delayUs > 0 ? usToBytes(delayUs) : 0;
++        pendingSkipBytes = delayUs < 0 ? usToBytes(-delayUs) : 0;
++    }
++
++    /** 微秒→字节（按帧对齐，避免半帧撕裂） */
++    private long usToBytes(long us) {
++        long frames = us * sampleRate / MICROS_PER_SECOND;
++        return frames * bytesPerFrame;
++    }
++}
+\ No newline at end of file
+diff --git a/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/DelayRenderersFactory.java b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/DelayRenderersFactory.java
+new file mode 100644
+index 0000000..4acb093
+--- /dev/null
++++ b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/DelayRenderersFactory.java
+@@ -0,0 +1,44 @@
++package com.brentvatne.exoplayer;
++
++import android.content.Context;
++import androidx.annotation.OptIn;
++import androidx.media3.common.audio.AudioProcessor;
++import androidx.media3.common.util.UnstableApi;
++import androidx.media3.exoplayer.DefaultRenderersFactory;
++import androidx.media3.exoplayer.audio.AudioSink;
++import androidx.media3.exoplayer.audio.DefaultAudioSink;
++
++/**
++ * 带音频延迟的渲染器工厂（M8 音画同步延时）：经 DefaultAudioSink.Builder.setAudioProcessors
++ * 向 PCM 处理器链注入 {@link AudioDelayProcessor}；其余构建参数镜像 DefaultRenderersFactory 默认实现。
++ * passthrough/offload 模式处理器链被 media3 整体 bypass（本 app 默认不开启）。
++ */
++@OptIn(markerClass = UnstableApi.class)
++public class DelayRenderersFactory extends DefaultRenderersFactory {
++
++    /** 音频延迟处理器（随工厂实例生命周期，View 经 getter 实时写偏移） */
++    private final AudioDelayProcessor audioDelayProcessor = new AudioDelayProcessor();
++
++    public DelayRenderersFactory(Context context) {
++        super(context);
++    }
++
++    /**
++     * 暴露处理器实例供 View 的 audioDelayMs prop 实时写入。
++     *
++     * @return 本工厂注入处理器链的音频延迟处理器
++     */
++    public AudioDelayProcessor getAudioDelayProcessor() {
++        return audioDelayProcessor;
++    }
++
++    @Override
++    protected AudioSink buildAudioSink(
++            Context context, boolean enableFloatOutput, boolean enableAudioOutputPlaybackParams) {
++        return new DefaultAudioSink.Builder(context)
++                .setEnableFloatOutput(enableFloatOutput)
++                .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)
++                .setAudioProcessors(new AudioProcessor[] {audioDelayProcessor})
++                .build();
++    }
++}
+\ No newline at end of file
+diff --git a/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerView.java b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerView.java
+index 623d90c..f8c5492 100644
+--- a/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerView.java
++++ b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerView.java
+@@ -805,6 +805,13 @@ public class ReactExoplayerView extends FrameLayout implements
+         }
+     }
+ 
++    /** M8 音画同步延时：音频延迟（毫秒，prop audioDelayMs），正=延后 负=提前 */
++    private double audioDelayMs = 0;
++    /** M8 音画同步延时：字幕延迟（微秒，prop subtitleDelayMs），仅 sideloaded 外挂轨生效 */
++    private long subtitleDelayUs = 0;
++    /** 当前 player 的音频延迟处理器（随 player 重建） */
++    private AudioDelayProcessor audioDelayProcessor;
++
+     private void initializePlayerCore(ReactExoplayerView self) {
+         ExoTrackSelection.Factory videoTrackSelectionFactory = new AdaptiveTrackSelection.Factory();
+         self.trackSelector = new DefaultTrackSelector(getContext(), videoTrackSelectionFactory);
+@@ -819,11 +826,14 @@ public class ReactExoplayerView extends FrameLayout implements
+             this.bandwidthMeter = config.getBandwidthMeter();
+         }
+ 
+-        DefaultRenderersFactory renderersFactory =
+-                new DefaultRenderersFactory(getContext())
+-                        .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF)
+-                        .setEnableDecoderFallback(true)
+-                        .forceEnableMediaCodecAsynchronousQueueing();
++        // M8 音画同步延时：换带音频延迟处理器链的工厂，其余配置保持原口径
++        DelayRenderersFactory delayRenderersFactory = new DelayRenderersFactory(getContext());
++        delayRenderersFactory.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF)
++                .setEnableDecoderFallback(true)
++                .forceEnableMediaCodecAsynchronousQueueing();
++        audioDelayProcessor = delayRenderersFactory.getAudioDelayProcessor();
++        audioDelayProcessor.setDelayUs((long) (audioDelayMs * 1000));
++        DefaultRenderersFactory renderersFactory = delayRenderersFactory;
+ 
+         DefaultMediaSourceFactory mediaSourceFactory;
+         
+@@ -1276,7 +1286,9 @@ public class ReactExoplayerView extends FrameLayout implements
+                         .setId(trackId)
+                         .setMimeType(track.getType())
+                         .setLabel(label)
+-                        .setRoleFlags(C.ROLE_FLAG_SUBTITLE);
++                        .setRoleFlags(C.ROLE_FLAG_SUBTITLE)
++                        // M8 音画同步延时：外挂字幕时间戳偏移（media3 1.12+，正=延后 负=提前）
++                        .setTimeOffsetUs(subtitleDelayUs);
+                 
+                 // Set language if available
+                 if (track.getLanguage() != null && !track.getLanguage().isEmpty()) {
+@@ -2828,6 +2840,43 @@ public class ReactExoplayerView extends FrameLayout implements
+         exoPlayerView.setSubtitleStyle(style);
+     }
+ 
++    /**
++     * M8 音画同步延时：音频延迟 prop（毫秒，正=延后 负=提前）。
++     * 流中调整按增量生效，下游已缓冲 PCM 排空后可闻（约 100–500ms）。
++     *
++     * @param audioDelayMs 音频延迟毫秒数
++     */
++    public void setAudioDelayMs(double audioDelayMs) {
++        this.audioDelayMs = audioDelayMs;
++        if (audioDelayProcessor != null) {
++            audioDelayProcessor.setDelayUs((long) (audioDelayMs * 1000));
++        }
++    }
++
++    /**
++     * M8 音画同步延时：字幕延迟 prop（毫秒，正=延后 负=提前），仅 sideloaded 外挂轨生效。
++     * 经 replaceMediaItem 热更新偏移（media3 1.12+ 仅偏移变化时不打断播放）；
++     * 已显示 cue 需重选字幕轨才重计时（media3 语义）。
++     *
++     * @param subtitleDelayMs 字幕延迟毫秒数
++     */
++    public void setSubtitleDelayMs(double subtitleDelayMs) {
++        long delayUs = (long) (subtitleDelayMs * 1000);
++        if (this.subtitleDelayUs == delayUs) {
++            return;
++        }
++        this.subtitleDelayUs = delayUs;
++        if (player == null) {
++            return;
++        }
++        MediaItem current = player.getCurrentMediaItem();
++        List<MediaItem.SubtitleConfiguration> configurations = buildSubtitleConfigurations();
++        if (current == null || configurations == null) {
++            return;
++        }
++        player.replaceMediaItem(0, current.buildUpon().setSubtitleConfigurations(configurations).build());
++    }
++
+     public void setShutterColor(Integer color) {
+         exoPlayerView.setShutterColor(color);
+     }
+diff --git a/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerViewManager.kt b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerViewManager.kt
+index b9e0656..3c62735 100644
+--- a/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerViewManager.kt
++++ b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerViewManager.kt
+@@ -54,6 +54,8 @@ class ReactExoplayerViewManager(private val config: ReactExoplayerConfig) : View
+         private const val PROP_SELECTED_VIDEO_TRACK_VALUE = "value"
+         private const val PROP_CONTROLS = "controls"
+         private const val PROP_SUBTITLE_STYLE = "subtitleStyle"
++        private const val PROP_AUDIO_DELAY_MS = "audioDelayMs"
++        private const val PROP_SUBTITLE_DELAY_MS = "subtitleDelayMs"
+         private const val PROP_SHUTTER_COLOR = "shutterColor"
+         private const val PROP_SHOW_NOTIFICATION_CONTROLS = "showNotificationControls"
+         private const val PROP_DEBUG = "debug"
+@@ -236,6 +238,16 @@ class ReactExoplayerViewManager(private val config: ReactExoplayerConfig) : View
+         videoView.setSubtitleStyle(SubtitleStyle.parse(src))
+     }
+ 
++    @ReactProp(name = PROP_AUDIO_DELAY_MS, defaultDouble = 0.0)
++    fun setAudioDelayMs(videoView: ReactExoplayerView, delayMs: Double) {
++        videoView.setAudioDelayMs(delayMs)
++    }
++
++    @ReactProp(name = PROP_SUBTITLE_DELAY_MS, defaultDouble = 0.0)
++    fun setSubtitleDelayMs(videoView: ReactExoplayerView, delayMs: Double) {
++        videoView.setSubtitleDelayMs(delayMs)
++    }
++
+     @ReactProp(name = PROP_SHUTTER_COLOR, defaultInt = Color.BLACK)
+     fun setShutterColor(videoView: ReactExoplayerView, color: Int) {
+         videoView.setShutterColor(color)
+diff --git a/node_modules/react-native-video/lib/specs/VideoNativeComponent.d.ts b/node_modules/react-native-video/lib/specs/VideoNativeComponent.d.ts
+index 1ea4edf..50227aa 100644
+--- a/node_modules/react-native-video/lib/specs/VideoNativeComponent.d.ts
++++ b/node_modules/react-native-video/lib/specs/VideoNativeComponent.d.ts
+@@ -320,6 +320,8 @@ export interface VideoNativeProps extends ViewProps {
+     hideShutterView?: boolean;
+     reportBandwidth?: boolean;
+     subtitleStyle?: SubtitleStyle;
++    audioDelayMs?: WithDefault<Double, 0.0>;
++    subtitleDelayMs?: WithDefault<Double, 0.0>;
+     viewType?: Int32;
+     bufferingStrategy?: BufferingStrategyType;
+     controlsStyles?: ControlsStyles;
+diff --git a/node_modules/react-native-video/lib/types/video.d.ts b/node_modules/react-native-video/lib/types/video.d.ts
+index 9796b23..83a7b9e 100644
+--- a/node_modules/react-native-video/lib/types/video.d.ts
++++ b/node_modules/react-native-video/lib/types/video.d.ts
+@@ -294,6 +294,10 @@ export interface ReactVideoProps extends ReactVideoEvents, ViewProps {
+     selectedTextTrack?: SelectedTrack;
+     selectedVideoTrack?: SelectedVideoTrack;
+     subtitleStyle?: SubtitleStyle;
++    /** 音频延迟毫秒数（android，M8 音画同步延时）：正=音频延后，负=音频提前；PCM 解码路径生效 */
++    audioDelayMs?: number;
++    /** 字幕延迟毫秒数（android，M8 音画同步延时）：正=字幕延后，负=提前；仅外挂文本轨生效 */
++    subtitleDelayMs?: number;
+     shutterColor?: string;
+     /** @deprecated Use source.textTracks */
+     textTracks?: TextTracks;
+diff --git a/node_modules/react-native-video/src/specs/VideoNativeComponent.ts b/node_modules/react-native-video/src/specs/VideoNativeComponent.ts
+index 705d86d..c833149 100644
+--- a/node_modules/react-native-video/src/specs/VideoNativeComponent.ts
++++ b/node_modules/react-native-video/src/specs/VideoNativeComponent.ts
+@@ -376,6 +376,8 @@ export interface VideoNativeProps extends ViewProps {
+   hideShutterView?: boolean; //	Android
+   reportBandwidth?: boolean; //Android
+   subtitleStyle?: SubtitleStyle; // android
++  audioDelayMs?: WithDefault<Double, 0.0>; // android
++  subtitleDelayMs?: WithDefault<Double, 0.0>; // android
+   viewType?: Int32; // Android
+   bufferingStrategy?: BufferingStrategyType; // Android
+   controlsStyles?: ControlsStyles; // Android
+diff --git a/node_modules/react-native-video/src/types/video.ts b/node_modules/react-native-video/src/types/video.ts
+index 7605bbc..6afe391 100644
+--- a/node_modules/react-native-video/src/types/video.ts
++++ b/node_modules/react-native-video/src/types/video.ts
+@@ -370,6 +370,10 @@ export interface ReactVideoProps extends ReactVideoEvents, ViewProps {
+   selectedTextTrack?: SelectedTrack;
+   selectedVideoTrack?: SelectedVideoTrack; // android
+   subtitleStyle?: SubtitleStyle; // android
++  /** 音频延迟毫秒数（android，M8 音画同步延时）：正=音频延后，负=音频提前；PCM 解码路径生效 */
++  audioDelayMs?: number; // android
++  /** 字幕延迟毫秒数（android，M8 音画同步延时）：正=字幕延后，负=提前；仅外挂文本轨生效 */
++  subtitleDelayMs?: number; // android
+   shutterColor?: string; // Android
+   /** @deprecated Use source.textTracks */
+   textTracks?: TextTracks;

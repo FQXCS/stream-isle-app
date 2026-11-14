@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
+import { DelayStepper } from '@/page/player/components/DelayStepper';
 import { useImmersiveAccent } from '@/component/useTheme';
 import type { AudioTrack, SubtitleTrack } from '@/adapter/model';
 import type { ResolutionTierKey } from '@/constant/resolution';
@@ -34,6 +35,14 @@ interface PlayerSettingsDrawerProps {
   subtitleTracks: SubtitleTrack[];
   activeSubtitleIndex: number | null;
   onSubtitleSelect: (track: SubtitleTrack | null) => void;
+  /** 音频延迟毫秒数（M8 音画同步延时） */
+  audioDelayMs: number;
+  onAudioDelay: (ms: number) => void;
+  /** 字幕延时毫秒数（M8 音画同步延时） */
+  subtitleDelayMs: number;
+  onSubtitleDelay: (ms: number) => void;
+  /** 字幕延时不可用（烧录/本地内嵌/未开字幕） */
+  subtitleDelayDisabled: boolean;
 }
 
 export function PlayerSettingsDrawer({
@@ -51,6 +60,11 @@ export function PlayerSettingsDrawer({
   subtitleTracks,
   activeSubtitleIndex,
   onSubtitleSelect,
+  audioDelayMs,
+  onAudioDelay,
+  subtitleDelayMs,
+  onSubtitleDelay,
+  subtitleDelayDisabled,
 }: PlayerSettingsDrawerProps) {
   const tr = useT();
   const { accent } = useImmersiveAccent();
@@ -164,6 +178,13 @@ export function PlayerSettingsDrawer({
                   );
                 })}
               </View>
+              <View style={styles.divider} />
+              <Text style={styles.label}>{tr('player.audioDelay')}</Text>
+              <DelayStepper
+                valueMs={audioDelayMs}
+                onChange={onAudioDelay}
+                label={tr('player.audioDelay')}
+              />
             </>
           )}
           {tab === 'subtitle' && (
@@ -213,6 +234,17 @@ export function PlayerSettingsDrawer({
                   );
                 })}
               </View>
+              <View style={styles.divider} />
+              <Text style={styles.label}>{tr('player.subtitleDelay')}</Text>
+              {subtitleDelayDisabled ? (
+                <Text style={styles.notice}>{tr('player.delayUnavailable')}</Text>
+              ) : null}
+              <DelayStepper
+                valueMs={subtitleDelayMs}
+                onChange={onSubtitleDelay}
+                disabled={subtitleDelayDisabled}
+                label={tr('player.subtitleDelay')}
+              />
             </>
           )}
         </ScrollView>

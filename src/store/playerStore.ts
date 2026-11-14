@@ -5,7 +5,7 @@
  * M3 增量：字幕/音轨选中态 + 会话重启状态（驱动 SessionRestartOverlay 与切换互斥）。
  * M5 增量：audio 切片（引擎/状态/当前曲/队列长度/循环模式/随机）——队列真源在 track-player
  * 原生侧，store 只镜像 UI 需要的少量状态；播放位置不进 store（迷你条与 NowPlaying 各自
- * useProgress 订阅，避免每秒 store 写入引发全局重渲染，05 文档 §4.7）。
+ * useProgress 订阅，避免每秒 store 写入引发全局重渲染，M5 文档 §4.7）。
  */
 import { create } from 'zustand';
 
@@ -13,10 +13,10 @@ import type { AudioItem, PlaybackSession, RepeatModeEnum } from '@/adapter/model
 import { DEFAULT_REPEAT_MODE } from '@/constant/audio';
 import type { VideoAspectKey } from '@/constant/playback';
 
-/** 播放器生命周期状态（02 §4.12 状态机） */
+/** 播放器生命周期状态（M2 §4.12 状态机） */
 export type PlayerStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'error';
 
-/** 音频引擎生命周期状态（05 文档 §4.7；idle=无队列，迷你条不显示） */
+/** 音频引擎生命周期状态（M5 文档 §4.7；idle=无队列，迷你条不显示） */
 export type AudioStatus = 'idle' | 'buffering' | 'playing' | 'paused' | 'error';
 
 /** audio 切片（不持久化，与 M2 视频字段同 store 分区） */
@@ -60,11 +60,15 @@ interface PlayerStore {
   controlsVisible: boolean;
   /** 播放倍速（react-native-video rate；出页 reset 归 1） */
   playbackSpeed: number;
+  /** 字幕延时（毫秒，M8 音画同步延时；正=延后 负=提前；出页 reset 归 0；仅在线外挂轨生效） */
+  subtitleDelayMs: number;
+  /** 音频延迟（毫秒，M8 音画同步延时；正=延后 负=提前；出页 reset 归 0） */
+  audioDelayMs: number;
   /** 屏幕宽高比（设置抽屉视频页；出页 reset 归 default） */
   videoAspect: VideoAspectKey;
   /**
    * 激活字幕轨 streamIndex；null=未开字幕。烧录轨激活时为其 streamIndex（切出判断依据）。
-   * selectedTextTrack 由播放页据此派生（03 §4.8.2）
+   * selectedTextTrack 由播放页据此派生（M3 §4.8.2）
    */
   activeSubtitleStreamIndex: number | null;
   /** 激活音轨 streamIndex；首次起播 setSession 时初始化为服务器默认轨（isDefault）或第一条 */
@@ -77,8 +81,8 @@ interface PlayerStore {
   audio: AudioPlayerState;
   /**
    * 设置会话。resetTrackSelection=true（仅首次起播——详情页 navigate 进入的那次）时重置
-   * 字幕/音轨选中态与重启状态（字幕按 03 §4.8.3 由页面自动选轨，音轨取服务器默认轨或第一条）；
-   * 会话重启走 03 §4.6.1 第 5 步选中态回填，不经此重置，防止丢用户选择
+   * 字幕/音轨选中态与重启状态（字幕按 M3 §4.8.3 由页面自动选轨，音轨取服务器默认轨或第一条）；
+   * 会话重启走 M3 §4.6.1 第 5 步选中态回填，不经此重置，防止丢用户选择
    */
   setSession(session: PlaybackSession | null, opts?: { resetTrackSelection?: boolean }): void;
   setStatus(status: PlayerStatus): void;
@@ -90,6 +94,10 @@ interface PlayerStore {
   setControlsVisible(visible: boolean): void;
   /** 设置播放倍速 */
   setPlaybackSpeed(speed: number): void;
+  /** 设置字幕延时（毫秒） */
+  setSubtitleDelay(ms: number): void;
+  /** 设置音频延迟（毫秒） */
+  setAudioDelay(ms: number): void;
   /** 设置屏幕宽高比 */
   setVideoAspect(aspect: VideoAspectKey): void;
   /** 设置激活字幕轨（null=关闭） */
@@ -100,7 +108,7 @@ interface PlayerStore {
   beginRestart(notice: string): void;
   /** 结束会话重启态 */
   endRestart(): void;
-  /** audio 切片整体替换（AudioService 镜像写入；05 文档 §4.7 actions） */
+  /** audio 切片整体替换（AudioService 镜像写入；M5 文档 §4.7 actions） */
   setAudioState(patch: Partial<AudioPlayerState>): void;
   /** audio 切片复位（stop() 后调用；引擎保持已初始化态） */
   resetAudio(): void;
@@ -108,7 +116,7 @@ interface PlayerStore {
   reset(): void;
 }
 
-/** 音轨初始选中：服务器默认轨（isDefault）优先，否则第一条（03 §4.7.1） */
+/** 音轨初始选中：服务器默认轨（isDefault）优先，否则第一条（M3 §4.7.1） */
 function initialAudioIndex(session: PlaybackSession | null): number | null {
   const audioList = session?.audioList ?? [];
   return audioList.find((track) => track.isDefault)?.streamIndex ?? audioList[0]?.streamIndex ?? null;
@@ -123,6 +131,8 @@ export const usePlayerStore = create<PlayerStore>()((set) => ({
   isLocked: false,
   controlsVisible: false,
   playbackSpeed: 1,
+  subtitleDelayMs: 0,
+  audioDelayMs: 0,
   videoAspect: 'default',
   activeSubtitleStreamIndex: null,
   activeAudioStreamIndex: null,
@@ -152,6 +162,8 @@ export const usePlayerStore = create<PlayerStore>()((set) => ({
   toggleControls: () => set((state) => ({ controlsVisible: !state.controlsVisible })),
   setControlsVisible: (controlsVisible) => set({ controlsVisible }),
   setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
+  setSubtitleDelay: (subtitleDelayMs) => set({ subtitleDelayMs }),
+  setAudioDelay: (audioDelayMs) => set({ audioDelayMs }),
   setVideoAspect: (videoAspect) => set({ videoAspect }),
   setActiveSubtitle: (activeSubtitleStreamIndex) => set({ activeSubtitleStreamIndex }),
   setActiveAudio: (activeAudioStreamIndex) => set({ activeAudioStreamIndex }),
@@ -169,6 +181,8 @@ export const usePlayerStore = create<PlayerStore>()((set) => ({
       isLocked: false,
       controlsVisible: false,
       playbackSpeed: 1,
+      subtitleDelayMs: 0,
+      audioDelayMs: 0,
       videoAspect: 'default',
       activeSubtitleStreamIndex: null,
       activeAudioStreamIndex: null,

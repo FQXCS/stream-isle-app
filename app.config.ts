@@ -9,6 +9,7 @@ import { withAndroidManifest } from '@expo/config-plugins';
 import withStreamIsleNetwork from './plugins/withStreamIsleNetwork.js';
 import withPdfAssets from './plugins/withPdfAssets.js';
 import withAliyunMaven from './plugins/withAliyunMaven.js';
+import withMedia3Version from './plugins/withMedia3Version.js';
 import withReleaseSigning from './plugins/withReleaseSigning.js';
 
 /**
@@ -69,9 +70,9 @@ export default {
       permissions: [
         "INTERNET",
         "ACCESS_NETWORK_STATE",
-        // M5（05 文档 §4.9）：Android 13+ 通知栏/锁屏媒体控制可见性
+        // M5（M5 文档 §4.9）：Android 13+ 通知栏/锁屏媒体控制可见性
         "POST_NOTIFICATIONS",
-        // M5（05 文档 §4.14）：电池优化白名单引导直达弹窗
+        // M5（M5 文档 §4.14）：电池优化白名单引导直达弹窗
         "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
       ],
       adaptiveIcon: {
@@ -89,12 +90,14 @@ export default {
       withCleartextTraffic, // 明文 http 支持（见函数注释）
       withFullSensorOrientation, // M2 播放页运行时锁横屏前提（见函数注释）
       // M1 classic module（TLS 白名单/probe）装配：拷 Kotlin 源 + MainApplication 幂等补丁
-      // （prebuild 整目录重建 android/，手写源必须由 plugin 驱动恢复，05 里程碑重放实测）
+      // （prebuild 整目录重建 android/，手写源必须由 plugin 驱动恢复，M5 里程碑重放实测）
       withStreamIsleNetwork,
       // M7 PDF 阅读器静态资产（pdf.js + reader.html）拷入 android assets（同款恢复机制）
       withPdfAssets,
       // 国内 Maven 镜像（阿里云优先、Central 兜底）：prebuild 重建 android/ 后自动恢复
       withAliyunMaven,
+      // M8 音画同步延时：media3 1.12.0-beta01 覆盖（timeOffsetUs 外挂字幕偏移；稳定版回切待办见 docs/todo/media3-稳定版回切.md）
+      withMedia3Version,
       // Release 正式签名：注入 release signingConfig 读 CI keystore 环境变量，
       // 构建期回退 debug（本地无 keystore 不影响调试），避免发出 debug 证书签名的分发包
       withReleaseSigning,
@@ -104,17 +107,17 @@ export default {
       ["react-native-video", { enableAndroidPictureInPicture: true }], // 播放页画中画（manifest supportsPictureInPicture）
       // M2：横屏锁定（Android 生效靠上方 screenOrientation: "all" → fullSensor；本 plugin 配置 iOS Info.plist）
       "expo-screen-orientation",
-      // M5：保存到系统相册的写权限声明（05 文档 §4.9/§4.14）
+      // M5：保存到系统相册的写权限声明（M5 文档 §4.9/§4.14）
       ["expo-media-library", { savePhotosPermission: "保存照片到相册" }],
-      // M6：离线下载 SQLite（下载快照 + 离线进度队列表，06 文档 §3.3/§4.4.1）
+      // M6：离线下载 SQLite（下载快照 + 离线进度队列表，M6 文档 §3.3/§4.4.1）
       "expo-sqlite",
       // 注意：M1 文档 §4.1 的 plugins 清单含 "react-native-track-player"（自动注入前台 Service），
       // 但 track-player v4 / @rntp/player v5 包内均不存在 Expo config plugin（无 app.plugin.js），
       // prebuild 无法解析该条目，故不写。
-      // M5 落地核实（05 §4.9）+ v5 迁移复核：@rntp/player 库自带 AndroidManifest 已声明
+      // M5 落地核实（M5 §4.9）+ v5 迁移复核：@rntp/player 库自带 AndroidManifest 已声明
       // TrackPlayerPlaybackService（foregroundServiceType="mediaPlayback"，Media3 MediaLibraryService）
       // + FOREGROUND_SERVICE(_MEDIA_PLAYBACK)/WAKE_LOCK 权限，gradle manifest merger 构建期合入
-      // app 清单，无需本地 plugin 重复声明（见 docs/07 M5 决策）。
+      // app 清单，无需本地 plugin 重复声明（见 docs/decision/实施决策记录.md M5 决策）。
     ],
   },
 } as const;

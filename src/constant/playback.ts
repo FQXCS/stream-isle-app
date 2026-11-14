@@ -7,7 +7,7 @@ import type { MessageKey } from '@/i18n/messages/zh';
 /** 视频进度上报节流间隔（毫秒），见设计文档 §7.3 */
 export const PROGRESS_REPORT_INTERVAL_MS = 10000;
 
-/** 续播弹窗最小起始位置（毫秒）：断点 ≤ 10 秒视为未开始，直接从头播，见设计文档 §7.3 */
+/** 续播弹窗最小起始位置（毫秒）：断点 ≤ 音画同步延时 秒视为未开始，直接从头播，见设计文档 §7.3 */
 export const RESUME_MIN_POSITION_MS = 10000;
 
 /** 已看完成阈值：播放位置/时长 ≥ 0.95 视为完成（续播不再弹窗 + Stopped 兜底标记），见设计文档 §7.3 */
@@ -28,6 +28,12 @@ export const VIDEO_ASPECT_LIST: readonly VideoAspectKey[] = ['default', 'stretch
 /** 水平 seek 灵敏度：全屏宽拖动对应的最大秒数 */
 export const SEEK_FULL_WIDTH_SECONDS = 90;
 
+/** 延时调节步长（毫秒，M8 音画同步延时步进器；对齐 mpv 默认 0.1s） */
+export const DELAY_STEP_MS = 100;
+
+/** 延时调节上下限（毫秒，±10s clamp；mpv 无硬上限，UI 侧收敛） */
+export const DELAY_LIMIT_MS = 10000;
+
 /** Stopped 上报失败重试延迟（毫秒） */
 export const STOPPED_RETRY_DELAY_MS = 2000;
 
@@ -43,13 +49,13 @@ export const BURN_IN_RESTART_NOTICE: MessageKey = 'playback.burnInRestart';
 /** 分辨率切换重启提示文案 */
 export const RESOLUTION_RESTART_NOTICE: MessageKey = 'playback.resolutionRestart';
 
-/** 音轨切换（转码重启路径）提示文案（03 §4.6.2 switchAudioTrack 走重启增强） */
+/** 音轨切换（转码重启路径）提示文案（M3 §4.6.2 switchAudioTrack 走重启增强） */
 export const AUDIO_TRACK_RESTART_NOTICE: MessageKey = 'playback.audioRestart';
 
-/** 自动连播下一集浮层提示文案（04 §4.4：natural_end 的 EPISODE 分支换源续播） */
+/** 自动连播下一集浮层提示文案（M4 §4.4：natural_end 的 EPISODE 分支换源续播） */
 export const AUTO_NEXT_RESTART_NOTICE: MessageKey = 'playback.autoNextRestart';
 
-/** 重启会话 resolve 失败自动重试前等待（毫秒），见 03 §4.11 */
+/** 重启会话 resolve 失败自动重试前等待（毫秒），见 M3 §4.11 */
 export const RESTART_RESOLVE_RETRY_DELAY_MS = 500;
 
 /**
