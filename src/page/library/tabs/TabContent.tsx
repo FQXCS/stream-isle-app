@@ -14,6 +14,7 @@ import { FolderTab } from '@/page/library/tabs/FolderTab';
 import { LiveListTab } from '@/page/library/tabs/LiveListTab';
 import { PhotoAlbumGridTab } from '@/page/library/tabs/PhotoAlbumGridTab';
 import { PhotoGridTab } from '@/page/library/tabs/PhotoGridTab';
+import { PlaylistGridTab } from '@/page/library/tabs/PlaylistGridTab';
 import { PosterWallTab } from '@/page/library/tabs/PosterWallTab';
 import { SongListTab } from '@/page/library/tabs/SongListTab';
 import { SuggestionTab } from '@/page/library/tabs/SuggestionTab';
@@ -64,6 +65,9 @@ export function TabContent({ tab, library, sort, onClearFilter }: TabContentProp
       );
     case 'albumGrid':
       return <AlbumGridTab libraryId={library.id} sort={sort} />;
+    case 'playlistGrid':
+      // 全局歌单查询（不带 ParentId），无需 libraryId（音乐个人歌单 §5.6.5）
+      return <PlaylistGridTab sort={sort} />;
     case 'entityList':
       return <EntityListTab tab={tab} libraryId={library.id} />;
     case 'channelList':

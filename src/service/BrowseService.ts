@@ -94,6 +94,18 @@ export function fetchAlbumPage(
   });
 }
 
+/**
+ * 歌单 Tab 分页（音乐个人歌单文档 §5.6.5）：全局歌单查询（getMusicPlaylists，
+ * **不带 ParentId**）——POST /Playlists 创建的歌单是服务端全局条目，不挂在音乐库树下，
+ * 沿用 ParentId 查询则新建歌单永远不出现在 Tab 里。排序由库页菜单传入，缺省 SortName 升序。
+ */
+export function fetchMusicPlaylistPage(
+  page: number,
+  sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+): Promise<Paged<MediaLibraryItem>> {
+  return getActiveAdapter().getMusicPlaylists(requireUserId(), page, sort);
+}
+
 /** 相册网格分页：IncludeItemTypes=PhotoAlbum，服务端分页（排序由库页菜单传入） */
 export function fetchPhotoAlbumPage(
   libraryId: string,

@@ -172,9 +172,15 @@ export interface ServerAdapter {
 
   /**
    * 歌单区：IncludeItemTypes=Playlist 全量查询，**不带 ParentId**——歌单常独立于音乐库
-   * 存在（服务端全局条目），四区内查全量歌单（M5 文档 §4.3）
+   * 存在（服务端全局条目），四区内查全量歌单（M5 文档 §4.3）。
+   * 音乐个人歌单（docs/doing/音乐个人歌单.md §5.6.5）：sort 缺省 SortName 升序，
+   * 由音乐库歌单 Tab 透传 sortSet: 'playlist' 的菜单状态。
    */
-  getMusicPlaylists(userId: string, page: number): Promise<Paged<MediaLibraryItem>>;
+  getMusicPlaylists(
+    userId: string,
+    page: number,
+    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+  ): Promise<Paged<MediaLibraryItem>>;
 
   /** 全部歌曲区：IncludeItemTypes=Audio，服务端分页；排序由音乐库菜单传入 */
   getAllSongs(
@@ -196,6 +202,34 @@ export interface ServerAdapter {
 
   /** 歌单曲目（GET /Playlists/{id}/Items 专用端点，保证歌单自定义顺序） */
   getPlaylistItems(userId: string, playlistId: string): Promise<AudioItem[]>;
+
+  // —— 音乐个人歌单（docs/doing/音乐个人歌单.md §5.4/§5.1；全部共享实现，双 Adapter 不新增覆写）——
+
+  /**
+   * 创建歌单（POST /Playlists，统一 query 形式）：归属当前账号（Jellyfin 生效 UserId，
+   * Emby 忽略该参数按 token 归属，两端结果一致）；itemIds 可空 = 空歌单；
+   * MediaType=Audio 固定声明音频类型。返回新歌单 id。
+   */
+  createPlaylist(userId: string, name: string, itemIds?: string[]): Promise<string>;
+
+  /** 加入曲目（POST /Playlists/{playlistId}/Items）：itemIds 可传单曲/专辑 id（服务器自动展开），追加至末尾 */
+  addToPlaylist(userId: string, playlistId: string, itemIds: string[]): Promise<void>;
+
+  /**
+   * 移除歌单条目（DELETE /Playlists/{playlistId}/Items）：entryIds 是歌单条目 id
+   * （AudioItem.playlistEntryId ← 服务器 PlaylistItemId），**不是歌曲 item id**。
+   * 双端均只消费 EntryIds，无 UserId 参数。
+   */
+  removeFromPlaylist(playlistId: string, entryIds: string[]): Promise<void>;
+
+  /** 移动歌单条目（POST /Playlists/{playlistId}/Items/{entryId}/Move/{newIndex}，双端同构路径参数；newIndex 0-based） */
+  movePlaylistItem(playlistId: string, entryId: string, newIndex: number): Promise<void>;
+
+  /**
+   * 重命名歌单：GET /Users/{uid}/Items/{itemId} 取原始 JSON → 仅改 Name →
+   * POST /Items/{itemId} 原对象提交（读-改-写收敛在 adapter 内，防字段覆盖）。
+   */
+  renamePlaylistItem(userId: string, itemId: string, name: string): Promise<void>;
 
   /** 相册网格（封面 = 相册 Primary 服务器自动取首图；Fields=ChildCount 供数量） */
   getPhotoAlbums(userId: string, libraryId: string, page: number): Promise<Paged<PhotoAlbumSummary>>;

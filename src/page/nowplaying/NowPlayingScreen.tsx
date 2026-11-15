@@ -20,6 +20,7 @@ import { AnchorMenu, type AnchorMenuItem, type AnchorRect } from '@/component/An
 import { AppIcon } from '@/component/AppIcon';
 import { EmptyView } from '@/component/EmptyView';
 import { FavoriteButton } from '@/component/FavoriteButton';
+import { PlaylistPickerSheet } from '@/component/PlaylistPickerSheet';
 import { showToast } from '@/component/Toast';
 import { useImmersiveAccent, useResolvedScheme, useTheme } from '@/component/useTheme';
 import { MODE_HINT_DURATION_MS } from '@/constant/audio';
@@ -78,6 +79,8 @@ export function NowPlayingScreen() {
   /** 播放模式切换提示文案（null = 不显示；2s 后自动清空） */
   const [modeHint, setModeHint] = useState<string | null>(null);
   const modeHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** 当前曲加入歌单（音乐个人歌单二改）：右上菜单项 → 选择器 */
+  const [pickerVisible, setPickerVisible] = useState(false);
   // 迷你条与 Now Playing 各自订阅进度（@rntp/player v5 的间隔单位为「秒」，1 = 每秒），
   // 避免 store 每秒写入（M5 文档 §4.7）
   const progress = useProgress(1);
@@ -193,6 +196,12 @@ export function NowPlayingScreen() {
             onPress: handleDownload,
           },
           {
+            key: 'addToPlaylist',
+            label: tr('playlist.addToPlaylist'),
+            icon: 'playlistPlus',
+            onPress: () => setPickerVisible(true),
+          },
+          {
             key: 'delete',
             label: tr('nowPlaying.delete'),
             icon: 'trash',
@@ -292,6 +301,14 @@ export function NowPlayingScreen() {
                 </Text>
               )}
             </View>
+            {/* 加入歌单：当前曲加入（音乐个人歌单四改），位于收藏左侧，纯加号图标 */}
+            <Pressable
+              hitSlop={8}
+              onPress={() => setPickerVisible(true)}
+              accessibilityLabel={tr('playlist.addToPlaylist')}
+            >
+              <AppIcon name="plus" size={24} color={textPrimary} />
+            </Pressable>
             {/* 收藏：紧贴曲名右侧；切歌后按 trackId 重新查询收藏态 */}
             <FavoriteButton
               key={currentTrack.id}
@@ -404,6 +421,13 @@ export function NowPlayingScreen() {
         itemList={moreMenu?.itemList ?? []}
         onClose={() => setMoreMenu(null)}
       />
+      {pickerVisible && currentTrack !== null && (
+        <PlaylistPickerSheet
+          visible
+          itemIdsToAdd={[currentTrack.id]}
+          onClose={() => setPickerVisible(false)}
+        />
+      )}
     </View>
   );
 }

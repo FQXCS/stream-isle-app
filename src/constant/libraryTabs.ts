@@ -23,6 +23,7 @@ export type TabRenderer =
   | 'songList'
   | 'artistList'
   | 'albumGrid'
+  | 'playlistGrid'
   | 'entityList'
   | 'channelList'
   | 'programList'
@@ -253,7 +254,9 @@ export const TAB_CATALOG: Record<LibraryTypeEnum, readonly TabSpec[]> = {
     itemsTab({ id: 'album', labelKey: 'tab.albums', kinds: ['MusicAlbum'], renderer: 'albumGrid', sortSet: 'album', tap: 'album' }),
     itemsTab({ id: 'albumArtist', labelKey: 'tab.albumArtists', kinds: ['MusicArtist'], renderer: 'artistList', sortSet: 'artist', tap: 'artist' }),
     specialTab({ id: 'recommend', labelKey: 'tab.recommended', special: 'suggestions', kinds: ['MusicAlbum'], renderer: 'posterWall', sortSet: 'none', tap: 'album' }),
-    itemsTab({ id: 'playlist', labelKey: 'tab.playlists', kinds: ['Playlist'], renderer: 'posterWall', sortSet: 'playlist', tap: 'audioPlaylist' }),
+    // 音乐个人歌单（docs/doing/音乐个人歌单.md §5.6.5）：专辑同款网格、默认启用；
+    // 文案用「歌单」（tab.songlists，仅音乐库段更换，其余库类型保留「播放列表」）
+    itemsTab({ id: 'playlist', labelKey: 'tab.songlists', kinds: ['Playlist'], renderer: 'playlistGrid', sortSet: 'playlist', tap: 'audioPlaylist', defaultEnabled: true }),
     specialTab({ id: 'genre', labelKey: 'tab.genres', special: 'genres', kinds: ['MusicAlbum', 'Audio'], renderer: 'entityList', sortSet: 'none', tap: 'filteredList' }),
     specialTab({ id: 'tag', labelKey: 'tab.tags', special: 'tags', kinds: ['MusicAlbum', 'Audio'], renderer: 'entityList', sortSet: 'none', tap: 'filteredList' }),
     songsTab({ id: 'played', labelKey: 'tab.played', filters: ['IsPlayed'], renderer: 'songList', sortSet: 'audio', flavors: EMBY_ONLY }),

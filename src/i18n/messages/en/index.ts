@@ -8,9 +8,13 @@ import type { MessageKey } from '@/i18n/messages/zh';
 import { enBase } from './base';
 import { enLibrary } from './library';
 import { enPlayer } from './player';
+import { enPlaylist } from './playlist';
 import { enServer } from './server';
 
-export const en = { ...enBase, ...enServer, ...enLibrary, ...enPlayer } satisfies Record<
-  MessageKey,
-  Message
->;
+export const en = {
+  ...enBase,
+  ...enServer,
+  ...enLibrary,
+  ...enPlaylist,
+  ...enPlayer,
+} satisfies Record<MessageKey, Message>;

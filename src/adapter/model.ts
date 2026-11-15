@@ -254,6 +254,11 @@ export interface AudioItem {
   coverImageUrl?: string;
   /** 收藏态（列表接口带 Fields=UserData；列表行收藏按钮初始值） */
   favorite?: boolean;
+  /**
+   * 歌单条目 id（服务器 PlaylistItemId，音乐个人歌单文档 §5.1）：
+   * 仅当作为歌单曲目获取时填充——移除/移动歌单内曲目用它，不是歌曲 item id。
+   */
+  playlistEntryId?: string;
 }
 
 /** 相册条目（相册网格行） */

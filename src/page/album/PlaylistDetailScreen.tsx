@@ -19,6 +19,10 @@ import { SPACING, type ThemeTokens } from '@/constant/theme';
 import { AppError } from '@/infra/error';
 import { useT } from '@/i18n';
 import { usePagedLoad } from '@/page/library/components/usePagedLoad';
+import {
+  useMultiSelectAddToPlaylist,
+  useSongMultiSelect,
+} from '@/page/library/components/useSongMultiSelect';
 import { SongFlashList } from '@/page/library/components/SongFlashList';
 import { navigateMediaItem } from '@/page/library/tabs/navigation';
 import type { RootStackParamList } from '@/page/navigation/types';
@@ -64,10 +68,21 @@ export function PlaylistDetailScreen() {
   );
   const allAudio = state.itemList.length > 0 && audioList.length === state.itemList.length;
 
-  const handlePressSong = useCallback((song: AudioItem) => {
-    // 点单曲仅该曲入队，不把整个歌单带入队列
-    void audioService.playQueue([song], 0).catch(() => undefined);
-  }, []);
+  // 音频歌单多选批量加入歌单（音乐个人歌单二改）
+  const multiSelect = useSongMultiSelect();
+  const multiAdd = useMultiSelectAddToPlaylist(multiSelect, () => audioList.map((song) => song.id));
+
+  const handlePressSong = useCallback(
+    (song: AudioItem) => {
+      if (multiSelect.selecting) {
+        multiAdd.toggle(song.id);
+        return;
+      }
+      // 点单曲仅该曲入队，不把整个歌单带入队列
+      void audioService.playQueue([song], 0).catch(() => undefined);
+    },
+    [multiSelect.selecting, multiAdd]
+  );
 
   if (state.errorCode !== null && state.itemList.length === 0) {
     return <ErrorView error={new AppError(state.errorCode)} onRetry={state.retry} />;
@@ -83,7 +98,18 @@ export function PlaylistDetailScreen() {
     return <EmptyView title={tr('playlist.empty')} />;
   }
   if (allAudio) {
-    return <SongFlashList songList={audioList} onPressSong={handlePressSong} />;
+    return (
+      <View style={styles.fill}>
+        <SongFlashList
+          songList={audioList}
+          onPressSong={handlePressSong}
+          onLongPressSong={(song) => multiAdd.enter(song.id)}
+          selecting={multiSelect.selecting}
+          isSongSelected={(song) => multiAdd.isSelected(song.id)}
+        />
+        {multiAdd.block}
+      </View>
+    );
   }
   return (
     <FlashList
@@ -105,6 +131,7 @@ export function PlaylistDetailScreen() {
 
 const createStyles = (t: ThemeTokens) =>
   StyleSheet.create({
+    fill: { flex: 1, backgroundColor: t.bg },
     loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: t.bg },
     gridContent: { paddingHorizontal: SPACING.s, paddingBottom: SPACING.xl },
     gridCell: { flex: 1, paddingHorizontal: SPACING.xs, paddingBottom: SPACING.m },

@@ -174,6 +174,8 @@ interface ServerItemResponse {
   Album?: string;
   /** Fields=ChildCount（相册/专辑「数量」） */
   ChildCount?: number;
+  /** 歌单条目 id（GET /Playlists/{id}/Items 响应携带；音乐个人歌单 §5.1） */
+  PlaylistItemId?: string;
   /** Fields=Path（照片 fileName 取 basename；不透传完整路径） */
   Path?: string;
   Width?: number;
@@ -1494,16 +1496,22 @@ export abstract class BaseAdapter implements ServerAdapter {
   /**
    * 歌单区：IncludeItemTypes=Playlist 全量查询，**不带 ParentId**——歌单常独立于
    * 音乐库存在（服务端全局条目），四区内查全量歌单（M5 文档 §4.3）。
+   * 音乐个人歌单（docs/doing/音乐个人歌单.md §5.6.5）：sort 缺省 SortName 升序，
+   * 由音乐库歌单 Tab 透传 sortSet: 'playlist' 的菜单状态。
    */
-  async getMusicPlaylists(userId: string, page: number): Promise<Paged<MediaLibraryItem>> {
+  async getMusicPlaylists(
+    userId: string,
+    page: number,
+    sort?: { sortBy: SortByEnum; sortOrder: 'ASC' | 'DESC' }
+  ): Promise<Paged<MediaLibraryItem>> {
     const data = await this.api.request<ItemsResponse>({
       method: 'GET',
       url: this.urlOf(
         `/Users/${userId}/Items?${this.buildQuery({
           IncludeItemTypes: 'Playlist',
           Recursive: 'true',
-          SortBy: 'SortName',
-          SortOrder: 'Ascending',
+          SortBy: sortParamOf(this.flavor, sort?.sortBy ?? 'SORT_NAME'),
+          SortOrder: SORT_ORDER_PARAM_MAP[sort?.sortOrder ?? 'ASC'],
           Fields: 'PrimaryImageAspectRatio,ChildCount',
           StartIndex: String(this.startIndexOfPage(page)),
           Limit: String(PAGE_SIZE),
@@ -1657,6 +1665,7 @@ export abstract class BaseAdapter implements ServerAdapter {
   /**
    * 歌单曲目：GET /Playlists/{playlistId}/Items?UserId={uid} 专用端点——
    * 保证歌单自定义顺序（而非 ParentId 查询的服务端默认排序，M5 文档 §4.3）。
+   * PlaylistItemId → playlistEntryId：移除/移动歌单条目的钥匙（音乐个人歌单 §5.1）。
    */
   async getPlaylistItems(userId: string, playlistId: string): Promise<AudioItem[]> {
     const data = await this.api.request<ItemsResponse>({
@@ -1670,7 +1679,97 @@ export abstract class BaseAdapter implements ServerAdapter {
       ),
       headers: this.buildHeaders(this.token),
     });
-    return (data.Items ?? []).map((item) => this.translateAudioItem(item));
+    return (data.Items ?? []).map((item) => {
+      const audio = this.translateAudioItem(item);
+      // 空串视为缺失（个别服务器版本不返回该字段 → 行级降级只读，音乐个人歌单 §5.6.4）
+      return item.PlaylistItemId ? { ...audio, playlistEntryId: item.PlaylistItemId } : audio;
+    });
+  }
+
+  // —— 音乐个人歌单（docs/doing/音乐个人歌单.md §5.1/§5.4；全部共享实现，双 Adapter 不新增覆写）——
+
+  /**
+   * 创建歌单：POST /Playlists（统一 query 形式）。
+   * Jellyfin 10.8 的 query 参数标 ParameterObsolete 但源码仍优先读取（10.8–10.10 兼容），
+   * Emby 4.10 仅有 query 形式；UserId 缺省在 Jellyfin 侧归属空 GUID，必须显式传当前用户；
+   * MediaType=Audio 保证空歌单也声明音频类型。响应 { Id } 取新歌单 id。
+   */
+  async createPlaylist(userId: string, name: string, itemIds?: string[]): Promise<string> {
+    const data = await this.api.request<{ Id?: string }>({
+      method: 'POST',
+      url: this.urlOf(
+        `/Playlists?${this.buildQuery({
+          Name: name,
+          Ids: itemIds && itemIds.length > 0 ? itemIds.join(',') : undefined,
+          UserId: userId,
+          MediaType: 'Audio',
+        })}`
+      ),
+      headers: this.buildHeaders(this.token),
+    });
+    const id = data.Id ?? '';
+    if (id === '') {
+      // 创建成功但响应缺 Id 属异常响应形态（调用方依赖 id 打开详情），按未知错误归一
+      throw new AppError('UNKNOWN');
+    }
+    return id;
+  }
+
+  /** 加入曲目：POST /Playlists/{playlistId}/Items，Ids 逗号分隔（专辑/艺术家 id 由服务器自动展开） */
+  async addToPlaylist(userId: string, playlistId: string, itemIds: string[]): Promise<void> {
+    await this.api.request({
+      method: 'POST',
+      url: this.urlOf(
+        `/Playlists/${playlistId}/Items?${this.buildQuery({
+          Ids: itemIds.join(','),
+          UserId: userId,
+        })}`
+      ),
+      headers: this.buildHeaders(this.token),
+    });
+  }
+
+  /**
+   * 移除歌单条目：DELETE /Playlists/{playlistId}/Items，EntryIds 逗号分隔。
+   * 传歌单条目 id（AudioItem.playlistEntryId），非歌曲 item id——语义错传会删错行（音乐个人歌单 §5.1）。
+   */
+  async removeFromPlaylist(playlistId: string, entryIds: string[]): Promise<void> {
+    await this.api.request({
+      method: 'DELETE',
+      url: this.urlOf(
+        `/Playlists/${playlistId}/Items?${this.buildQuery({
+          EntryIds: entryIds.join(','),
+        })}`
+      ),
+      headers: this.buildHeaders(this.token),
+    });
+  }
+
+  /** 移动歌单条目：POST /Playlists/{playlistId}/Items/{entryId}/Move/{newIndex}（Emby 4.10 / Jellyfin 10.8 同构路径参数；newIndex 0-based） */
+  async movePlaylistItem(playlistId: string, entryId: string, newIndex: number): Promise<void> {
+    await this.api.request({
+      method: 'POST',
+      url: this.urlOf(`/Playlists/${playlistId}/Items/${entryId}/Move/${newIndex}`),
+      headers: this.buildHeaders(this.token),
+    });
+  }
+
+  /**
+   * 重命名歌单：读-改-写收敛在 adapter 内——GET /Users/{uid}/Items/{itemId} 取原始 JSON，
+   * 仅改 Name 后 POST /Items/{itemId} 原对象提交，其余字段原样回传避免整包覆盖丢字段（§5.4）。
+   */
+  async renamePlaylistItem(userId: string, itemId: string, name: string): Promise<void> {
+    const raw = await this.api.request<Record<string, unknown>>({
+      method: 'GET',
+      url: this.urlOf(`/Users/${userId}/Items/${itemId}`),
+      headers: this.buildHeaders(this.token),
+    });
+    await this.api.request({
+      method: 'POST',
+      url: this.urlOf(`/Items/${itemId}`),
+      headers: this.buildHeaders(this.token),
+      body: { ...raw, Name: name },
+    });
   }
 
   /**

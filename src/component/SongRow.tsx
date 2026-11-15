@@ -1,14 +1,19 @@
 /**
  * 曲目行（M5 文档 §4.1；音乐列表参考稿口径）：
  * 左侧两位序号 + 曲名/艺人两行，艺人行尾为时长徽标（替代 VIP/杜比标签位）；
- * 无封面缩略图；行尾为收藏与加入队列按钮；行间发丝分割线。
+ * 无封面缩略图；行尾为收藏、加入歌单、加入队列按钮；行间发丝分割线。
  * 当前曲标题/序号高亮；trailing 供调用方追加行尾操作。
+ * 多选态（音乐个人歌单二改，2026-11-15）：selecting 时序号位显示勾选框、
+ * 行尾按钮隐藏防误触，点行由调用方切换选中；长按行为完全由调用方决定
+ * （多选进入 / 编辑态拖动）。
+ * 加入歌单按钮（四改）：单曲直达弹选择器，与加入队列图标区分（纯加号）。
  */
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AudioItem } from '@/adapter/model';
 import { AppIcon } from '@/component/AppIcon';
+import { PlaylistPickerSheet } from '@/component/PlaylistPickerSheet';
 import { showToast } from '@/component/Toast';
 import { useTheme } from '@/component/useTheme';
 import { FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/theme';
@@ -33,9 +38,13 @@ interface SongRowProps {
   indexNumber?: number;
   /** 是否显示行底发丝分割线（列表最后一行传 false） */
   showDivider?: boolean;
-  /** 点击行为（列表点歌 / 队列跳曲） */
+  /** 多选态：序号位显示勾选框、行尾按钮隐藏 */
+  selecting?: boolean;
+  /** 多选态下本行是否选中 */
+  selected?: boolean;
+  /** 点击行为（列表点歌 / 队列跳曲 / 多选切换选中） */
   onPress: () => void;
-  /** 长按行为（队列页拖动启动） */
+  /** 长按行为（多选进入 / 编辑态拖动启动） */
   onLongPress?: () => void;
   /** 行尾扩展（删除按钮等） */
   trailing?: React.ReactNode;
@@ -46,6 +55,8 @@ export function SongRow({
   active = false,
   indexNumber,
   showDivider = false,
+  selecting = false,
+  selected = false,
   onPress,
   onLongPress,
   trailing,
@@ -58,6 +69,8 @@ export function SongRow({
   const setFavoriteOverride = useFavoriteStore((state) => state.setOverride);
   const favorite = favoriteOverride ?? song.favorite ?? false;
   const favoritePendingRef = useRef(false);
+  // 加入歌单选择器（行尾按钮单曲直达；重复加入由 service 查重拦截）
+  const [pickerVisible, setPickerVisible] = useState(false);
 
   const toggleFavorite = () => {
     if (favoritePendingRef.current) {
@@ -89,10 +102,20 @@ export function SongRow({
         onPress={onPress}
         onLongPress={onLongPress}
       >
-        {indexNumber !== undefined && (
-          <Text style={[styles.indexNumber, active && styles.activeText]}>
-            {String(indexNumber).padStart(2, '0')}
-          </Text>
+        {selecting ? (
+          <View style={styles.checkboxSlot}>
+            <AppIcon
+              name={selected ? 'checkboxChecked' : 'checkboxUnchecked'}
+              size={22}
+              color={selected ? t.accent : t.textTertiary}
+            />
+          </View>
+        ) : (
+          indexNumber !== undefined && (
+            <Text style={[styles.indexNumber, active && styles.activeText]}>
+              {String(indexNumber).padStart(2, '0')}
+            </Text>
+          )
         )}
         <View style={styles.center}>
           <Text style={[styles.name, active && styles.activeText]} numberOfLines={1}>
@@ -111,31 +134,47 @@ export function SongRow({
             )}
           </View>
         </View>
-        <View style={styles.actions}>
-          <Pressable
-            hitSlop={8}
-            onPress={toggleFavorite}
-            accessibilityLabel={
-              favorite ? tr('action.unfavorite') : tr('action.favorite')
-            }
-          >
-            <AppIcon
-              name={favorite ? 'heart' : 'heartOutline'}
-              size={22}
-              color={favorite ? t.danger : t.textTertiary}
-            />
-          </Pressable>
-          <Pressable
-            hitSlop={8}
-            onPress={addToQueue}
-            accessibilityLabel={tr('songRow.addToQueue', { name: song.name })}
-          >
-            <AppIcon name="playlistPlus" size={22} color={t.textTertiary} />
-          </Pressable>
-        </View>
+        {!selecting && (
+          <View style={styles.actions}>
+            <Pressable
+              hitSlop={8}
+              onPress={toggleFavorite}
+              accessibilityLabel={
+                favorite ? tr('action.unfavorite') : tr('action.favorite')
+              }
+            >
+              <AppIcon
+                name={favorite ? 'heart' : 'heartOutline'}
+                size={22}
+                color={favorite ? t.danger : t.textTertiary}
+              />
+            </Pressable>
+            <Pressable
+              hitSlop={8}
+              onPress={() => setPickerVisible(true)}
+              accessibilityLabel={tr('playlist.addToPlaylist')}
+            >
+              <AppIcon name="plus" size={22} color={t.textTertiary} />
+            </Pressable>
+            <Pressable
+              hitSlop={8}
+              onPress={addToQueue}
+              accessibilityLabel={tr('songRow.addToQueue', { name: song.name })}
+            >
+              <AppIcon name="playlistPlus" size={22} color={t.textTertiary} />
+            </Pressable>
+          </View>
+        )}
         {trailing}
       </Pressable>
       {showDivider && <View style={styles.divider} />}
+      {pickerVisible && (
+        <PlaylistPickerSheet
+          visible={pickerVisible}
+          itemIdsToAdd={[song.id]}
+          onClose={() => setPickerVisible(false)}
+        />
+      )}
     </View>
   );
 }
@@ -158,6 +197,8 @@ const createStyles = (t: ThemeTokens) =>
       width: 32,
       textAlign: 'center',
     },
+    /** 多选勾选框槽位（与序号同宽，切换不跳动） */
+    checkboxSlot: { width: 32, alignItems: 'center' },
     center: { flex: 1, gap: SPACING.xs },
     name: { color: t.textPrimary, fontSize: FONT_SIZE.title, fontWeight: '600' },
     activeText: { color: t.accent },

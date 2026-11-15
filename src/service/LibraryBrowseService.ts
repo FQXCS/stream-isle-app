@@ -168,3 +168,16 @@ export function loadPlaylistEntries(playlistId: string): Promise<MediaLibraryIte
     adapter.getPlaylistEntries(userId, playlistId)
   );
 }
+
+/**
+ * 歌单条目缓存失效（音乐个人歌单文档 §5.5）：歌单的移除/排序/重命名/删除等
+ * 变更操作成功后必须调用，否则详情页 TTL 内回显脏数据。键含 userId，
+ * 无活跃账号时无键可失效（静默返回）。
+ */
+export function invalidatePlaylistCache(playlistId: string): void {
+  const active = useAccountStore.getState().active;
+  if (!active) {
+    return;
+  }
+  cache.delete(`playlist:${active.userId}:${playlistId}`);
+}

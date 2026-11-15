@@ -116,11 +116,15 @@ describe('ERROR_MESSAGE_KEYS（§4.3 唯一出处）', () => {
     'DOWNLOAD_NO_SPACE',
     'DOWNLOAD_DUPLICATE',
     'DOWNLOAD_CREDENTIAL_MISSING',
+    // 音乐个人歌单增量：403 无权限（docs/doing/音乐个人歌单.md §5.8）
+    'FORBIDDEN',
+    // 音乐个人歌单四改：加入查重全部命中（docs/done/09-音乐个人歌单.md §11）
+    'PLAYLIST_DUPLICATE',
     'NOT_IMPLEMENTED',
     'UNKNOWN',
   ] as const;
 
-  it('覆盖全部 23 个 AppErrorCode 且无多余键', () => {
+  it('覆盖全部 25 个 AppErrorCode 且无多余键', () => {
     expect(Object.keys(ERROR_MESSAGE_KEYS).sort()).toEqual([...ALL_CODES].sort());
   });
 

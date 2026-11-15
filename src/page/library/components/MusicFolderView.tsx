@@ -27,6 +27,10 @@ import { audioService } from '@/service/AudioService';
 import { fetchFolderPage } from '@/service/BrowseService';
 import { FolderCard } from '@/page/library/components/FolderCard';
 import { usePagedLoad } from '@/page/library/components/usePagedLoad';
+import {
+  useMultiSelectAddToPlaylist,
+  useSongMultiSelect,
+} from '@/page/library/components/useSongMultiSelect';
 import { visibleFolderItems } from '@/util/library';
 import type { RootStackParamList } from '@/page/navigation/types';
 
@@ -94,12 +98,32 @@ export function MusicFolderView({ folderId, onOpenFolder, sortBy, sortOrder }: M
   // 纯目录层用三列网格（与视频库一致）；含歌曲的目录用行列表
   const gridMode = folderLikeList.length > 0 && songList.length === 0;
 
-  const handlePressSong = useCallback((song: AudioItem) => {
-    // 点单曲仅该曲入队，不把整个已加载片段带入队列
-    void audioService.playQueue([song], 0).catch(() => {
-      showToast(errorMessageOf('UNKNOWN'), 'error');
-    });
-  }, []);
+  // 多选批量加入歌单（音乐个人歌单二改）：长按歌曲行进入多选，全选范围 = 目录内歌曲
+  const multiSelect = useSongMultiSelect();
+  const multiAdd = useMultiSelectAddToPlaylist(multiSelect, () => songList.map((song) => song.id));
+
+  const handlePressSong = useCallback(
+    (song: AudioItem) => {
+      if (multiSelect.selecting) {
+        multiAdd.toggle(song.id);
+        return;
+      }
+      // 点单曲仅该曲入队，不把整个已加载片段带入队列
+      void audioService.playQueue([song], 0).catch(() => {
+        showToast(errorMessageOf('UNKNOWN'), 'error');
+      });
+    },
+    [multiSelect.selecting, multiAdd]
+  );
+
+  const handleLongPressSong = useCallback(
+    (song: AudioItem) => {
+      if (!multiSelect.selecting) {
+        multiAdd.enter(song.id);
+      }
+    },
+    [multiSelect.selecting, multiAdd]
+  );
 
   /** 子文件夹 / 专辑 / 歌单的点击 */
   const handlePressEntry = useCallback(
@@ -160,6 +184,7 @@ export function MusicFolderView({ folderId, onOpenFolder, sortBy, sortOrder }: M
   }
 
   return (
+    <View style={styles.fill}>
     <FlashList
       // 与网格模式区分实例（同见上方 key 注释）
       key="song-rows"
@@ -174,7 +199,10 @@ export function MusicFolderView({ folderId, onOpenFolder, sortBy, sortOrder }: M
               song={song}
               indexNumber={number}
               showDivider={number !== undefined && number < songList.length}
+              selecting={multiSelect.selecting}
+              selected={multiAdd.isSelected(song.id)}
               onPress={() => handlePressSong(song)}
+              onLongPress={() => handleLongPressSong(song)}
             />
           );
         }
@@ -216,11 +244,14 @@ export function MusicFolderView({ folderId, onOpenFolder, sortBy, sortOrder }: M
       }
       contentContainerStyle={[styles.content, { paddingBottom: SPACING.xl + miniPlayerPadding }]}
     />
+    {multiAdd.block}
+    </View>
   );
 }
 
 const createStyles = (t: ThemeTokens) =>
   StyleSheet.create({
+    fill: { flex: 1, backgroundColor: t.bg },
     loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: t.bg },
     gridContent: { paddingHorizontal: SPACING.s },
     gridCell: { flex: 1, paddingHorizontal: SPACING.xs, paddingBottom: SPACING.m },

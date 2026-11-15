@@ -7,6 +7,7 @@ import { zh } from '@/i18n/messages/zh';
 import { zhBase } from '@/i18n/messages/zh/base';
 import { zhLibrary } from '@/i18n/messages/zh/library';
 import { zhPlayer } from '@/i18n/messages/zh/player';
+import { zhPlaylist } from '@/i18n/messages/zh/playlist';
 import { zhServer } from '@/i18n/messages/zh/server';
 
 describe('i18n messages', () => {
@@ -32,7 +33,7 @@ describe('i18n messages', () => {
   });
 
   it('领域字典之间无重复 key（spread 合并不会静默覆盖）', () => {
-    const domainList = [zhBase, zhServer, zhLibrary, zhPlayer];
+    const domainList = [zhBase, zhServer, zhLibrary, zhPlaylist, zhPlayer];
     const allKeys = domainList.flatMap((domain) => Object.keys(domain));
     expect(new Set(allKeys).size).toBe(allKeys.length);
     expect(allKeys.sort()).toEqual(Object.keys(zh).sort());

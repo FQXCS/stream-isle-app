@@ -142,6 +142,8 @@ export const zhBase = {
   'error.DOWNLOAD_NO_SPACE': '剩余空间不足',
   'error.DOWNLOAD_DUPLICATE': '该条目已在下载列表',
   'error.DOWNLOAD_CREDENTIAL_MISSING': '下载凭据缺失，请重新登录该服务器后重试',
+  'error.FORBIDDEN': '无权限：服务器拒绝了该操作',
+  'error.PLAYLIST_DUPLICATE': '所选歌曲均已在该歌单中',
   'error.NOT_IMPLEMENTED': '功能开发中',
   'error.UNKNOWN': '出错了，请稍后重试',
 } as const satisfies Record<string, Message>;

@@ -1,22 +1,26 @@
 /**
  * 专辑/歌单/艺术家详情三态页（M5 文档 §4.12，kind 路由参数区分；设计文档 §10.2 AlbumDetail）。
  * - album：封面 + 「艺人 · 年份 · N 首 · 总时长」+ 三按钮 + 曲目列表；
- * - playlist：同布局、按服务端顺序（无艺人行）；
+ * - playlist：同布局、按服务端顺序（无艺人行）；音乐个人歌单（§5.6.2/§5.6.4）：
+ *   第 4 按钮「加入歌单」（仅 album 态）、编辑开关（拖动排序/移除）、⋮ 菜单（重命名/删除歌单）；
  * - artist：与专辑同款头部（封面 + 名称 + 统计）+ 三按钮（热门歌曲）+ 简介 + 专辑网格 + 热门歌曲。
  * 三按钮语义（设计文档 §7.5 / M5 §4.12 入队语义表）：
  * 播放全部 = 整单入队从第 1 首起播；随机播放 = 整单打乱入队从随机第 1 首起播；加入队列 = 追加队尾。
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { Image } from 'expo-image';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import DraggableFlatList, { type DragEndParams } from 'react-native-draggable-flatlist';
 
 import type { AlbumDetailModel, ArtistDetailModel, AudioItem } from '@/adapter/model';
+import { AnchorMenu, type AnchorRect } from '@/component/AnchorMenu';
 import { AppIcon } from '@/component/AppIcon';
 import { EmptyView } from '@/component/EmptyView';
 import { ErrorView } from '@/component/ErrorView';
 import { LoadingView } from '@/component/LoadingView';
+import { NewPlaylistDialog } from '@/component/NewPlaylistDialog';
 import { SongRow } from '@/component/SongRow';
 import { useMiniPlayerPadding } from '@/component/MiniPlayer';
 import { HOT_SONGS_LIMIT } from '@/constant/audio';
@@ -25,11 +29,16 @@ import { POSTER_RADIUS, FONT_SIZE, SPACING, type ThemeTokens } from '@/constant/
 import { useTheme } from '@/component/useTheme';
 import { useT } from '@/i18n';
 import { AppError, type AppErrorCode } from '@/infra/error';
+import {
+  useMultiSelectAddToPlaylist,
+  useSongMultiSelect,
+} from '@/page/library/components/useSongMultiSelect';
 import { audioService } from '@/service/AudioService';
 import { detailService } from '@/service/DetailService';
 import { usePlayerStore } from '@/store/playerStore';
 import { formatClock } from '@/util/format';
 import type { RootStackParamList } from '@/page/navigation/types';
+import { usePlaylistEditor } from '@/page/album/usePlaylistEditor';
 
 type DetailNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -98,7 +107,7 @@ function ActionRow({
   );
 }
 
-/** 专辑/歌单态主体 */
+/** 专辑/歌单态主体（歌单态接入编辑模式：音乐个人歌单 §5.6.4） */
 function AlbumPlaylistBody({ kind, itemId }: { kind: 'album' | 'playlist'; itemId: string }) {
   const t = useTheme();
   const tr = useT();
@@ -109,6 +118,20 @@ function AlbumPlaylistBody({ kind, itemId }: { kind: 'album' | 'playlist'; itemI
   const currentTrackId = usePlayerStore((state) => state.audio.currentTrack?.id ?? null);
   // 迷你条让位（M5 §4.10）：音频活跃时曲目列表底部 padding 叠加迷你条高度
   const miniPlayerPadding = useMiniPlayerPadding();
+
+  // 编辑模式（仅歌单态消费；排序/移除直接乐观写回 detail.trackList，hook 无本地副本）
+  const updateTrackList = useCallback((next: AudioItem[]) => {
+    setDetail((prev) => (prev !== null ? { ...prev, trackList: next } : prev));
+  }, []);
+  const editor = usePlaylistEditor({
+    playlistId: itemId,
+    trackList: detail?.trackList ?? [],
+    updateTrackList,
+  });
+  // 歌单态 ⋮ 菜单（重命名/删除歌单；重命名/删除不依赖条目 id，不可编辑歌单仍可用）
+  const [menuAnchor, setMenuAnchor] = useState<AnchorRect | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const moreButtonRef = useRef<ComponentRef<typeof View> | null>(null);
 
   // 聚焦加载（与 M2 详情页同口径；加载函数内 setState 位于异步续体）
   useFocusEffect(
@@ -141,10 +164,74 @@ function AlbumPlaylistBody({ kind, itemId }: { kind: 'album' | 'playlist'; itemI
     [detail]
   );
 
-  const handlePressSong = useCallback((song: AudioItem) => {
-    // 点单曲仅该曲入队（整单播放走上方「播放全部」）
-    void audioService.playQueue([song], 0).catch(() => undefined);
+  // 多选批量加入歌单（音乐个人歌单二改）：长按进入多选态，点行切换选中；
+  // 编辑态长按被 DraggableFlatList 拖动占用，多选仅在浏览态进入
+  const multiSelect = useSongMultiSelect();
+  const multiAdd = useMultiSelectAddToPlaylist(multiSelect, () =>
+    (detail?.trackList ?? []).map((track) => track.id)
+  );
+
+  const handlePressSong = useCallback(
+    (song: AudioItem) => {
+      if (multiSelect.selecting) {
+        multiAdd.toggle(song.id);
+        return;
+      }
+      // 点单曲仅该曲入队（整单播放走上方「播放全部」）
+      void audioService.playQueue([song], 0).catch(() => undefined);
+    },
+    [multiSelect.selecting, multiAdd]
+  );
+
+  const handleLongPressSong = useCallback(
+    (song: AudioItem) => {
+      if (!editor.editing && !multiSelect.selecting) {
+        multiAdd.enter(song.id);
+      }
+    },
+    [editor.editing, multiSelect.selecting, multiAdd]
+  );
+
+  /** 多选操作栏 + 选择器（浏览态；编辑态不渲染） */
+  const multiSelectBlock = editor.editing ? null : multiAdd.block;
+
+  /** ⋮ 打开锚点菜单（重命名/删除歌单） */
+  const openMoreMenu = useCallback(() => {
+    moreButtonRef.current?.measureInWindow((x, y, width, height) => {
+      setMenuAnchor({ x, y, width, height });
+    });
   }, []);
+
+  /** 重命名提交：成功更新导航栏标题与详情名（列表页重新聚焦时取服务器最新） */
+  const handleRename = useCallback(
+    async (name: string) => {
+      const renamed = await editor.rename(name);
+      setRenaming(false);
+      navigation.setOptions({ title: renamed });
+      setDetail((prev) => (prev !== null ? { ...prev, name: renamed } : prev));
+    },
+    [editor, navigation]
+  );
+
+  /** 删除歌单：Alert 二次确认（不可逆），成功后返回上一页 */
+  const confirmDeletePlaylist = useCallback(() => {
+    setMenuAnchor(null);
+    Alert.alert(tr('playlist.delete'), tr('playlist.deleteConfirmMessage'), [
+      { text: tr('common.cancel'), style: 'cancel' },
+      {
+        text: tr('common.delete'),
+        style: 'destructive',
+        onPress: () => {
+          editor.removePlaylist().then(
+            () => {
+              navigation.goBack();
+            },
+            () => undefined
+          );
+        },
+      },
+    ]);
+  }, [editor, navigation, tr]);
 
   if (errorCode !== null) {
     return <ErrorView error={new AppError(errorCode)} />;
@@ -163,42 +250,166 @@ function AlbumPlaylistBody({ kind, itemId }: { kind: 'album' | 'playlist'; itemI
           .join(' · ') || undefined
       : undefined;
 
-  return (
-    <ScrollView
-      style={styles.fill}
-      contentContainerStyle={[styles.content, { paddingBottom: SPACING.xl + miniPlayerPadding }]}
-    >
-      <View style={styles.header}>
-        {detail.coverImageUrl !== undefined ? (
-          <Image source={{ uri: detail.coverImageUrl }} style={styles.cover} contentFit="cover" transition={200} />
-        ) : (
-          <View style={[styles.cover, styles.coverFallback]}>
-            <AppIcon name="audio" size={32} color={t.textSecondary} />
-          </View>
-        )}
-        <View style={styles.headerText}>
-          <Text style={styles.title}>{detail.name}</Text>
-          {metaLine !== undefined && <Text style={styles.meta}>{metaLine}</Text>}
-          <Text style={styles.meta}>
-            {tr('album.trackSummary', {
-              count: detail.trackList.length,
-              duration: formatClock(totalDurationMs),
-            })}
-          </Text>
+  /** 头部块（封面 + 标题/统计）——浏览/编辑两种布局共用 */
+  const headerBlock = (
+    <View style={styles.header}>
+      {detail.coverImageUrl !== undefined ? (
+        <Image source={{ uri: detail.coverImageUrl }} style={styles.cover} contentFit="cover" transition={200} />
+      ) : (
+        <View style={[styles.cover, styles.coverFallback]}>
+          <AppIcon name="audio" size={32} color={t.textSecondary} />
         </View>
+      )}
+      <View style={styles.headerText}>
+        <Text style={styles.title}>{detail.name}</Text>
+        {metaLine !== undefined && <Text style={styles.meta}>{metaLine}</Text>}
+        <Text style={styles.meta}>
+          {tr('album.trackSummary', {
+            count: detail.trackList.length,
+            duration: formatClock(totalDurationMs),
+          })}
+        </Text>
       </View>
-      <ActionRow trackList={detail.trackList} />
-      {detail.trackList.map((track, index) => (
-        <SongRow
-          key={track.id}
-          song={track}
-          indexNumber={track.indexNumber ?? index + 1}
-          showDivider={index < detail.trackList.length - 1}
-          active={track.id === currentTrackId}
-          onPress={() => handlePressSong(track)}
+    </View>
+  );
+
+  /** 歌单态管理条：编辑开关（可编辑判定降级只读）+ ⋮（重命名/删除，不受编辑态限制） */
+  const playlistActions =
+    kind === 'playlist' ? (
+      <View style={styles.playlistActions}>
+        {editor.editable ? (
+          <Pressable
+            style={styles.editToggle}
+            onPress={() => editor.setEditing(!editor.editing)}
+            accessibilityLabel={editor.editing ? tr('playlist.editDone') : tr('playlist.edit')}
+          >
+            <Text style={[styles.editToggleText, editor.editing && { color: t.accent }]}>
+              {editor.editing ? tr('playlist.editDone') : tr('playlist.edit')}
+            </Text>
+          </Pressable>
+        ) : null}
+        <Pressable
+          ref={moreButtonRef}
+          hitSlop={8}
+          onPress={openMoreMenu}
+          accessibilityLabel={tr('action.more')}
+        >
+          <AppIcon name="more" size={20} color={t.textSecondary} />
+        </Pressable>
+      </View>
+    ) : null;
+
+  /** ⋮ 菜单 + 重命名弹窗（浏览/编辑两种布局共用；弹窗条件挂载，卸载即清态） */
+  const menuBlock =
+    kind === 'playlist' ? (
+      <>
+        <AnchorMenu
+          anchor={menuAnchor}
+          itemList={[
+            {
+              key: 'rename',
+              label: tr('playlist.rename'),
+              icon: 'edit',
+              onPress: () => {
+                setMenuAnchor(null);
+                setRenaming(true);
+              },
+            },
+            {
+              key: 'delete',
+              label: tr('playlist.delete'),
+              icon: 'trash',
+              tone: 'danger',
+              onPress: confirmDeletePlaylist,
+            },
+          ]}
+          onClose={() => setMenuAnchor(null)}
         />
-      ))}
-    </ScrollView>
+        {renaming && (
+          <NewPlaylistDialog
+            visible
+            title={tr('playlist.rename')}
+            initialName={detail.name}
+            onConfirm={handleRename}
+            onCancel={() => setRenaming(false)}
+          />
+        )}
+      </>
+    ) : null;
+
+  // 编辑态：整个页面切换为 DraggableFlatList（长按行拖动；列表不能嵌在 ScrollView 内）
+  if (kind === 'playlist' && editor.editing) {
+    return (
+      <View style={styles.fill}>
+        <DraggableFlatList
+          data={detail.trackList}
+          keyExtractor={(item) => item.playlistEntryId ?? item.id}
+          onDragEnd={({ from, to }: DragEndParams<AudioItem>) => editor.moveItem(from, to)}
+          ListHeaderComponent={
+            <View>
+              {headerBlock}
+              {playlistActions}
+            </View>
+          }
+          ListEmptyComponent={<EmptyView title={tr('playlist.empty')} />}
+          renderItem={({ item, drag, getIndex }) => {
+            const index = getIndex() ?? 0;
+            return (
+              <SongRow
+                song={item}
+                indexNumber={index + 1}
+                showDivider={index < detail.trackList.length - 1}
+                active={item.id === currentTrackId}
+                onPress={() => undefined}
+                onLongPress={drag}
+                trailing={
+                  <Pressable
+                    hitSlop={8}
+                    onPress={() => editor.removeItem(index)}
+                    accessibilityLabel={tr('playlist.remove')}
+                  >
+                    <AppIcon name="trash" size={20} color={t.textTertiary} />
+                  </Pressable>
+                }
+              />
+            );
+          }}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: SPACING.xl + miniPlayerPadding },
+          ]}
+        />
+        {menuBlock}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.fill}>
+      <ScrollView
+        style={styles.fill}
+        contentContainerStyle={[styles.content, { paddingBottom: SPACING.xl + miniPlayerPadding }]}
+      >
+        {headerBlock}
+        <ActionRow trackList={detail.trackList} />
+        {playlistActions}
+        {detail.trackList.map((track, index) => (
+          <SongRow
+            key={track.playlistEntryId ?? track.id}
+            song={track}
+            indexNumber={track.indexNumber ?? index + 1}
+            showDivider={index < detail.trackList.length - 1}
+            active={track.id === currentTrackId}
+            selecting={multiSelect.selecting}
+            selected={multiAdd.isSelected(track.id)}
+            onPress={() => handlePressSong(track)}
+            onLongPress={() => handleLongPressSong(track)}
+          />
+        ))}
+      </ScrollView>
+      {multiSelectBlock}
+      {menuBlock}
+    </View>
   );
 }
 
@@ -214,6 +425,11 @@ function ArtistDetailBody({ artistId }: { artistId: string }) {
   const currentTrackId = usePlayerStore((state) => state.audio.currentTrack?.id ?? null);
   // 迷你条让位（同上）
   const miniPlayerPadding = useMiniPlayerPadding();
+  // 热门歌曲多选批量加入歌单（音乐个人歌单二改）
+  const multiSelect = useSongMultiSelect();
+  const multiAdd = useMultiSelectAddToPlaylist(multiSelect, () =>
+    (detail?.hotSongList ?? []).map((song) => song.id)
+  );
 
   // 聚焦加载（同上）
   useFocusEffect(
@@ -240,10 +456,26 @@ function ArtistDetailBody({ artistId }: { artistId: string }) {
     }, [artistId, navigation])
   );
 
-  const handlePressSong = useCallback((song: AudioItem) => {
-    // 点单曲仅该曲入队，不把热门歌曲整列带入队列
-    void audioService.playQueue([song], 0).catch(() => undefined);
-  }, []);
+  const handlePressSong = useCallback(
+    (song: AudioItem) => {
+      if (multiSelect.selecting) {
+        multiAdd.toggle(song.id);
+        return;
+      }
+      // 点单曲仅该曲入队，不把热门歌曲整列带入队列
+      void audioService.playQueue([song], 0).catch(() => undefined);
+    },
+    [multiSelect.selecting, multiAdd]
+  );
+
+  const handleLongPressSong = useCallback(
+    (song: AudioItem) => {
+      if (!multiSelect.selecting) {
+        multiAdd.enter(song.id);
+      }
+    },
+    [multiSelect.selecting, multiAdd]
+  );
 
   if (errorCode !== null) {
     return <ErrorView error={new AppError(errorCode)} />;
@@ -267,6 +499,7 @@ function ArtistDetailBody({ artistId }: { artistId: string }) {
       .join(' · ') || undefined;
 
   return (
+    <View style={styles.fill}>
     <ScrollView
       style={styles.fill}
       contentContainerStyle={[styles.content, { paddingBottom: SPACING.xl + miniPlayerPadding }]}
@@ -342,12 +575,17 @@ function ArtistDetailBody({ artistId }: { artistId: string }) {
               indexNumber={index + 1}
               showDivider={index < detail.hotSongList.length - 1}
               active={song.id === currentTrackId}
+              selecting={multiSelect.selecting}
+              selected={multiAdd.isSelected(song.id)}
               onPress={() => handlePressSong(song)}
+              onLongPress={() => handleLongPressSong(song)}
             />
           ))}
         </>
       )}
     </ScrollView>
+    {multiAdd.block}
+    </View>
   );
 }
 
@@ -393,6 +631,17 @@ const createStyles = (t: ThemeTokens) =>
     paddingVertical: SPACING.s,
   },
   secondaryButtonText: { color: t.textPrimary, fontSize: FONT_SIZE.body },
+  /** 歌单态管理条：编辑开关 + ⋮（音乐个人歌单 §5.6.4） */
+  playlistActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: SPACING.m,
+    paddingHorizontal: SPACING.m,
+    paddingVertical: SPACING.xs,
+  },
+  editToggle: { paddingHorizontal: SPACING.s, paddingVertical: SPACING.xs },
+  editToggleText: { color: t.textSecondary, fontSize: FONT_SIZE.body },
   overview: { color: t.textSecondary, fontSize: FONT_SIZE.body, paddingHorizontal: SPACING.m },
   sectionTitle: {
     color: t.textPrimary,

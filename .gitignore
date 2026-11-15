@@ -69,3 +69,9 @@ android/keystores/
 release.keystore
 /.dsh*
 /.qoder
+
+# ===== 本地打包 JS bundle 调试产物（不入库；真机联调时临时打入）=====
+android/app/src/main/assets/index.android.bundle
+android/app/src/main/res/drawable*/assets_icon.png
+android/app/src/main/res/drawable*/node_modules_*
+android/app/src/main/res/raw/

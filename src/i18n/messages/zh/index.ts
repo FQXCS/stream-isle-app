@@ -5,12 +5,14 @@
 import { zhBase } from './base';
 import { zhLibrary } from './library';
 import { zhPlayer } from './player';
+import { zhPlaylist } from './playlist';
 import { zhServer } from './server';
 
-export const zh = { ...zhBase, ...zhServer, ...zhLibrary, ...zhPlayer };
+export const zh = { ...zhBase, ...zhServer, ...zhLibrary, ...zhPlaylist, ...zhPlayer };
 
 export type MessageKey =
   | keyof typeof zhBase
   | keyof typeof zhServer
   | keyof typeof zhLibrary
+  | keyof typeof zhPlaylist
   | keyof typeof zhPlayer;

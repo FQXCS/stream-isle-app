@@ -151,5 +151,7 @@ export const enBase: Record<keyof typeof zhBase, Message> = {
   'error.DOWNLOAD_CREDENTIAL_MISSING':
     'Download credentials are missing. Please sign in to this server again and retry',
   'error.NOT_IMPLEMENTED': 'Feature under development',
+  'error.FORBIDDEN': 'Not allowed: the server rejected this operation',
+  'error.PLAYLIST_DUPLICATE': 'The selected songs are already in this playlist',
   'error.UNKNOWN': 'Something went wrong. Please try again later',
 };

@@ -35,8 +35,10 @@ export type AppErrorCode =
   | 'DOWNLOAD_NO_SPACE' // 【M6 增补】剩余空间不足（M6 文档 §4.8）
   | 'DOWNLOAD_DUPLICATE' // 【M6 增补】该条目已在下载列表（M6 文档 §4.8）
   | 'DOWNLOAD_CREDENTIAL_MISSING' // 下载凭据缺失（账号/Token 被清理，需重新登录）
+  | 'FORBIDDEN' // 【音乐个人歌单增量】403：账号无该操作权限（歌单写入/条目删除等）
+  | 'PLAYLIST_DUPLICATE' // 【音乐个人歌单四改】加入歌单查重全部命中：所选歌曲均已在目标歌单中
   | 'NOT_IMPLEMENTED' // 【M1 增补】adapter 未实现的接口方法（M1 占位保护）
-  | 'UNKNOWN'; // 其余（含 400/403 等未列举状态码，httpStatus 留痕）
+  | 'UNKNOWN'; // 其余（含 400 等未列举状态码，httpStatus 留痕）
 
 /** 归一化业务错误：页面只消费 code，文案经 errorMessageOf 查询 */
 export class AppError extends Error {
@@ -105,6 +107,10 @@ export function normalizeHttpError(
     }
     if (status === 404) {
       return new AppError('NOT_FOUND', { httpStatus: status, cause: err });
+    }
+    if (status === 403) {
+      // 403：账号无权限（原归 UNKNOWN 文案含糊；歌单写入/删除等场景需明确「无权限」提示）
+      return new AppError('FORBIDDEN', { httpStatus: status, cause: err });
     }
     if (status === 429 || status === 503) {
       return new AppError('RATE_LIMITED', { httpStatus: status, cause: err });
