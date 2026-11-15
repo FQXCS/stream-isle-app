@@ -112,6 +112,7 @@ export const enPlayer: Record<PlayerMessageKey, Message> = {
   'photo.infoResolution': 'Resolution',
   'photo.infoDateAdded': 'Date added',
   'photo.infoReleaseDate': 'Release date',
+  'photo.infoPath': 'Path',
   'photo.pageLoaded': '{index} / {loaded} loaded',
   'photo.loadingMore': ' · Loading…',
   'photo.empty': 'No photos',

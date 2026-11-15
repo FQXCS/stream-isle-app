@@ -111,6 +111,7 @@ export const zhPlayer = {
   'photo.infoResolution': '分辨率',
   'photo.infoDateAdded': '添加日期',
   'photo.infoReleaseDate': '发行时间',
+  'photo.infoPath': '路径',
   'photo.pageLoaded': '{index} / 已加载 {loaded}',
   'photo.loadingMore': ' · 加载中…',
   'photo.empty': '暂无照片',

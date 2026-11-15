@@ -227,11 +227,12 @@ describe('照片查询', () => {
     expect(photo.width).toBe(8000);
     expect(photo.height).toBe(6000);
     expect(photo.fileName).toBe('IMG_0001.jpg');
+    expect(photo.path).toBe('/media/photos/IMG_0001.jpg');
     expect(photo.takenAtMs).toBe(Date.parse('2026-01-02T03:04:05Z'));
     expect(photo.premiereDateMs).toBe(Date.parse('2025-12-31T00:00:00Z'));
   });
 
-  it('getPhotos：Path 缺失时 fileName 回退 name；不透传完整服务器路径', async () => {
+  it('getPhotos：Path 缺失时 fileName 回退 name 且 path 不下发', async () => {
     const { adapter } = makeAdapter('EMBY', {
       Items: [item({ Type: 'Photo', Name: '照片名' })],
       TotalRecordCount: 1,

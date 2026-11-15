@@ -1,7 +1,7 @@
 /**
  * 照片查看器底部弹层（沉浸深色，不随主题；视觉语言对齐 RadioOptionSheet）：
  * - PhotoActionSheet：长按动作面板（查看原图/保存到本地相册/图片信息），替代系统 Alert；
- * - PhotoInfoSheet：图片信息面板（文件名/分辨率/添加日期/发行时间，缺失字段不展示）。
+ * - PhotoInfoSheet：图片信息面板（文件名/分辨率/添加日期/发行时间/路径，缺失字段不展示）。
  * 两者均为 Modal + 半透明遮罩点击关闭 + 24 圆角面板 + 顶部抓手 + 安全区底距。
  */
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -69,7 +69,7 @@ interface PhotoInfoSheetProps {
   onClose: () => void;
 }
 
-/** 图片信息面板：文件名 / 分辨率 / 添加日期 / 发行时间（缺失字段整行不展示） */
+/** 图片信息面板：文件名 / 分辨率 / 添加日期 / 发行时间 / 路径（缺失字段整行不展示） */
 export function PhotoInfoSheet({ photo, onClose }: PhotoInfoSheetProps) {
   const tr = useT();
   const insets = useSafeAreaInsets();
@@ -77,6 +77,7 @@ export function PhotoInfoSheet({ photo, onClose }: PhotoInfoSheetProps) {
   const hasResolution = photo?.width !== undefined && photo?.height !== undefined;
   const takenAt = photo?.takenAtMs !== undefined ? formatDate(photo.takenAtMs) : '';
   const releaseDate = photo?.premiereDateMs !== undefined ? formatDate(photo.premiereDateMs) : '';
+  const path = photo?.path ?? '';
   return (
     <Modal visible={photo !== null} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.mask} onPress={onClose}>
@@ -92,6 +93,7 @@ export function PhotoInfoSheet({ photo, onClose }: PhotoInfoSheetProps) {
           )}
           {takenAt !== '' && <InfoRow label={tr('photo.infoDateAdded')} value={takenAt} />}
           {releaseDate !== '' && <InfoRow label={tr('photo.infoReleaseDate')} value={releaseDate} />}
+          {path !== '' && <InfoRow label={tr('photo.infoPath')} value={path} />}
           <Pressable style={({ pressed }) => [styles.cancelRow, pressed && styles.pressed]} onPress={onClose}>
             <Text style={styles.cancelText}>{tr('common.close')}</Text>
           </Pressable>

@@ -1815,7 +1815,7 @@ export abstract class BaseAdapter implements ServerAdapter {
   /**
    * 照片分页：IncludeItemTypes=Photo，三个 URL 按 widths 预拼
    * （grid/viewer/original，UI 拿到即用不感知拼接）；fileName 取 Path 的 basename
-   * （缺失回退 name），只透传文件名、不透传完整服务器路径（M5 文档 §4.2/§4.3）。
+   * （缺失回退 name）；path 透传完整服务器路径，供信息面板「路径」行消费。
    * parentId 可传相册 id 或库 id（库 id + Recursive=true 即「全部图片」）；
    * sort 缺省按名称升序（库页排序菜单选择后由调用方传入）。
    */
@@ -1862,6 +1862,7 @@ export abstract class BaseAdapter implements ServerAdapter {
           width: item.Width,
           height: item.Height,
           fileName: fileName ?? translated.name,
+          path: item.Path,
           takenAtMs,
           premiereDateMs: isoToMs(item.PremiereDate),
           gridImageUrl,
