@@ -703,13 +703,12 @@ export function PlayerScreen() {
     })();
   }, [finishOnce, initialSession.itemId]);
 
-  // 退出（控制层返回按钮）：先收尾再 goBack（unmount 清理兜底幂等）
+  // 退出（控制层返回按钮）：立即 goBack，收尾交 unmount 清理兜底（与系统返回同路径）。
+  // 不 await finishOnce——Stopped/markPlayed 是网络请求，先收尾再返回会阻塞 UI 造成卡顿；
+  // unmount 清理已带 endReasonRef 幂等兜底，返回后后台收尾即可
   const exitPlayer = useCallback(() => {
-    void (async () => {
-      await finishOnce('user_exit');
-      navigation.goBack();
-    })();
-  }, [finishOnce, navigation]);
+    navigation.goBack();
+  }, [navigation]);
 
   // 锁屏/解锁（M2 §4.12：上锁屏蔽全部手势与控制层，单击仅呼出解锁按钮）
   const toggleLock = useCallback(() => {
