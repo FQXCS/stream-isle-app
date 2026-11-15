@@ -1,6 +1,6 @@
 /**
  * 手势层（M2 文档 §4.12 手势表）：reanimated + gesture-handler。
- * 单击切换控制层（锁屏时仅呼出解锁）；左半屏垂直拖亮度、右半屏垂直拖音量
+ * 单击切换控制层（锁屏时仅呼出解锁）、双击切换播放/暂停；左半屏垂直拖亮度、右半屏垂直拖音量
  * （onBegin 按 x 分流）；水平拖 seek（拖动中仅更新预览气泡、松手才 seek）。
  * 手势回调为 worklet：数值经组件内 shared value 传递、UI 动作经 runOnJS 回主线程。
  */
@@ -31,6 +31,8 @@ interface GestureLayerProps {
   /** 全屏宽拖动对应的最大秒数（常量穿透 worklet） */
   seekFullWidthSeconds: number;
   onTap: () => void;
+  /** 双击切换播放/暂停（锁屏态不挂载双击） */
+  onDoubleTap: () => void;
   /** 亮度/音量变化（JS 侧：set 原生 + HUD 更新） */
   onGestureValueChange: (side: 'left' | 'right', value: number) => void;
   /** 亮度/音量手势结束（HUD 延迟隐藏） */
@@ -55,6 +57,7 @@ export function GestureLayer(props: GestureLayerProps) {
     durationMs,
     seekFullWidthSeconds,
     onTap,
+    onDoubleTap,
     onGestureValueChange,
     onGestureEnd,
     onSeekBegin,
@@ -76,6 +79,17 @@ export function GestureLayer(props: GestureLayerProps) {
       'worklet';
       if (success) {
         runOnJS(onTap)();
+      }
+    });
+
+  // 双击切换播放/暂停：numberOfTaps(2)，位移阈值同单击（拖动不误判为双击）
+  const doubleTap = Gesture.Tap()
+    .numberOfTaps(2)
+    .maxDistance(AXIS_FAIL_OFFSET)
+    .onEnd((_event, success) => {
+      'worklet';
+      if (success) {
+        runOnJS(onDoubleTap)();
       }
     });
 
@@ -136,8 +150,12 @@ export function GestureLayer(props: GestureLayerProps) {
   // 互斥激活：activeOffset/failOffset 保证垂直与水平手势不同时命中（M2 §7 手势误触对策）；
   // Race 让单击与拖动互斥——拖动激活即取消单击，单击成立即取消拖动（避免一次触摸双动作）；
   // 控制层可见时拖动依然可用（SeekBar/按钮等实际控件在自己范围内命中，不会落到本层）；
-  // 锁屏时仅保留单击
-  const gesture = isLocked ? tap : Gesture.Race(tap, Gesture.Exclusive(horizontalPan, verticalPan));
+  // 单击/双击 Exclusive（双击优先：单击须等双击判定失败后才触发，约 300ms 延迟换取无歧义共存），
+  // 再与拖动 Race；锁屏时仅保留单击（不挂双击，防误触解锁）
+  const tapGroup = Gesture.Exclusive(doubleTap, tap);
+  const gesture = isLocked
+    ? tap
+    : Gesture.Race(tapGroup, Gesture.Exclusive(horizontalPan, verticalPan));
 
   return (
     <GestureDetector gesture={gesture}>

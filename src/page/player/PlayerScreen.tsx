@@ -519,6 +519,23 @@ export function PlayerScreen() {
     store.toggleControls();
   }, []);
 
+  // 双击手势：切换播放/暂停（复用 togglePlay 的进度上报）+ 闪现状态图标反馈。
+  // 锁屏态手势层已不挂双击，此处再兜底屏蔽；加载/错误态不响应（togglePlay 本就只处理 playing/paused）
+  const handleDoubleTap = useCallback(() => {
+    const store = usePlayerStore.getState();
+    if (store.isLocked) {
+      return;
+    }
+    const status = store.status;
+    if (status !== 'playing' && status !== 'paused') {
+      return;
+    }
+    togglePlay();
+    // 图标取切换后状态：原 playing→暂停（pause 图标）、原 paused→播放（play 图标）
+    showHud({ kind: 'playPause', value: status === 'playing' ? 0 : 1 });
+    hideHudLater();
+  }, [togglePlay, showHud, hideHudLater]);
+
   // —— 会话切换统一编排（M3 §4.8.2/§4.11）：service 内完成 Stopped→DELETE→resolve→
   // setSession→回填；endRestart 在新会话 onLoad（SessionRestartOverlay 覆盖加载全程）。
   // 重启中互斥（重复点击/蜂窝事件忽略）；resolve 失败（重试后仍败）→ finish 收尾退出播放 ——
@@ -937,6 +954,7 @@ export function PlayerScreen() {
             durationMs={durationMs}
             seekFullWidthSeconds={SEEK_FULL_WIDTH_SECONDS}
             onTap={handleTap}
+            onDoubleTap={handleDoubleTap}
             onGestureValueChange={handleGestureValueChange}
             onGestureEnd={hideHudLater}
             onSeekBegin={handleSeekBegin}

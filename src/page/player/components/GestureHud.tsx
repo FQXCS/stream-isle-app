@@ -1,5 +1,5 @@
 /**
- * 手势浮层（M2 文档 §4.1 GestureHud）：亮度/音量百分比气泡、seek 预览时间气泡。
+ * 手势浮层（M2 文档 §4.1 GestureHud）：亮度/音量百分比气泡、seek 预览时间气泡、双击播放/暂停图标闪现。
  * 拖动中显示、手势结束后由页面延迟隐藏。
  */
 import { StyleSheet, Text, View } from 'react-native';
@@ -11,8 +11,8 @@ import { formatClock } from '@/util/format';
 
 /** HUD 状态（页面在手势回调中维护） */
 export interface HudState {
-  kind: 'brightness' | 'volume' | 'seek';
-  /** brightness/volume：0..1；seek：目标位置毫秒 */
+  kind: 'brightness' | 'volume' | 'seek' | 'playPause';
+  /** brightness/volume：0..1；seek：目标位置毫秒；playPause：1=播放 0=暂停 */
   value: number;
   /** seek 专用：相对拖动起点的增量毫秒（正负号显示） */
   deltaMs?: number;
@@ -27,7 +27,7 @@ export function GestureHud({ hud }: GestureHudProps) {
   if (hud === null) {
     return null;
   }
-  let text: string;
+  let text = '';
   let icon: AppIconName | null = null;
   if (hud.kind === 'seek') {
     const deltaMs = hud.deltaMs ?? 0;
@@ -39,14 +39,17 @@ export function GestureHud({ hud }: GestureHudProps) {
   } else if (hud.kind === 'brightness') {
     icon = 'brightness';
     text = `${Math.round(hud.value * 100)}%`;
-  } else {
+  } else if (hud.kind === 'volume') {
     icon = 'volume';
     text = `${Math.round(hud.value * 100)}%`;
   }
   return (
     <View style={styles.container} pointerEvents="none">
       <View style={styles.bubble}>
-        {icon !== null ? (
+        {hud.kind === 'playPause' ? (
+          // 双击反馈：仅大号状态图标（1=播放 0=暂停），无文本
+          <AppIcon name={hud.value === 1 ? 'play' : 'pause'} size={40} color={COLORS.textPrimary} />
+        ) : icon !== null ? (
           <View style={styles.row}>
             <AppIcon name={icon} size={16} color={COLORS.textPrimary} />
             <Text style={styles.text}>{text}</Text>
