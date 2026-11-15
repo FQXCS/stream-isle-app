@@ -32,6 +32,7 @@ const mockAdapter = {
   resolvePlayback: jest.fn(),
   getNextUp: jest.fn().mockResolvedValue([]),
   reportPlaying: jest.fn().mockResolvedValue(undefined),
+  reportProgress: jest.fn().mockResolvedValue(undefined),
   reportStopped: jest.fn().mockResolvedValue(undefined),
   markPlayed: jest.fn().mockResolvedValue(undefined),
   stopTranscodingSession: jest.fn().mockResolvedValue(undefined),
@@ -93,6 +94,26 @@ describe('PlaybackService', () => {
   });
 
   describe('finish（兜底标记）', () => {
+    it('退出即时补最终 Progress（isPaused=true，精确退出位置），且先于 Stopped', async () => {
+      const service = new PlaybackService();
+      await service.finish(session(), 42_000, 'user_exit');
+      expect(mockAdapter.reportProgress).toHaveBeenCalledWith(
+        expect.objectContaining({ itemId: 'item1', positionMs: 42_000, isPaused: true })
+      );
+      // 顺序：最终 Progress 先于 Stopped（退出点不被节流滞后覆盖）
+      expect(mockAdapter.reportProgress.mock.invocationCallOrder[0]).toBeLessThan(
+        mockAdapter.reportStopped.mock.invocationCallOrder[0]
+      );
+    });
+
+    it('最终 Progress 失败不阻塞 Stopped 与兜底标记', async () => {
+      mockAdapter.reportProgress.mockRejectedValueOnce(new Error('network'));
+      const service = new PlaybackService();
+      await service.finish(session(), 42_000, 'natural_end');
+      expect(mockAdapter.reportStopped).toHaveBeenCalledTimes(1);
+      expect(mockAdapter.markPlayed).toHaveBeenCalledWith('u1', 'item1');
+    });
+
     it('natural_end：runtimeMs 缺失也标记已看（reason 短路）', async () => {
       const service = new PlaybackService();
       await service.finish(session({ runTimeMs: undefined }), 0, 'natural_end');

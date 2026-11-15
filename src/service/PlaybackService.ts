@@ -189,9 +189,10 @@ export class PlaybackService {
   }
 
   /**
-   * 收尾：报 Stopped（失败重试 1 次，延迟 STOPPED_RETRY_DELAY_MS）+ 兜底标记已看
-   * （shouldForceMarkPlayed：natural_end 必兜底，user_exit/error 需 ≥95%）+
-   * M3 会话治理（M3 §4.6.3）：转码会话追加 DELETE ActiveEncodings（幂等吞错）。
+   * 收尾：先即时补一条最终 Progress（绕过节流，best-effort）→ 报 Stopped（失败重试 1 次，
+   * 延迟 STOPPED_RETRY_DELAY_MS）+ 兜底标记已看（shouldForceMarkPlayed：natural_end 必兜底，
+   * user_exit/error 需 ≥95%）+ M3 会话治理（M3 §4.6.3）：转码会话追加 DELETE ActiveEncodings（幂等吞错）。
+   * 最终 Progress 保证服务器续播位置=精确退出点（不依赖 Stopped 是否回写位置，消除节流最大 ~10s 滞后）；
    * 上报/标记失败均不弹 UI（M2 §4.5 上报失败策略）。
    */
   async finish(
@@ -208,6 +209,13 @@ export class PlaybackService {
       positionMs,
       playMethod: session.playMethod,
     };
+    // 即时补最终 Progress（绕过 ProgressService 节流）：续播位置以 Progress 通道回写为准，
+    // 先于 Stopped 发送，避免仅靠 10s 节流 Progress 导致退出点滞后/Stopped 失败时丢失精确位置
+    try {
+      await adapter.reportProgress({ ...reportArgs, isPaused: true });
+    } catch {
+      // 静默：Stopped 仍携带最终位置兜底
+    }
     try {
       await adapter.reportStopped(reportArgs);
     } catch (firstError) {
