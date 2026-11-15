@@ -1230,8 +1230,8 @@ export abstract class BaseAdapter implements ServerAdapter {
    * ?ParentId=…&IncludeItemTypes=…&Filters=…&SortBy=DateCreated&SortOrder=Descending&Limit=…
    * 类型与筛选来自库的默认 Tab（resolveLibraryLatestQuery）；类型决定卡片图幅：
    * 单集/家庭视频为 16:9 剧照、电影/剧集为 2:3 海报、专辑为 1:1 封面。
-   * sinceIso 传入时只收录该时间之后入库的条目。时间窗用 MinDateLastSavedForUser：
-   * Emby/Jellyfin 均支持，且避开 Jellyfin 10.8/10.9 对 MinDateLastSaved 的参数绑定缺陷。
+   * sinceIso 传入时只收录该时间之后入库的条目。时间窗用 MinDateCreated（条目入库时间语义）：
+   * 不能用 MinDateLastSavedForUser——那是用户数据（播放/收藏）最后保存时间，播放老条目会误收录。
    */
   async getLatestByTypes(
     userId: string,
@@ -1252,7 +1252,7 @@ export abstract class BaseAdapter implements ServerAdapter {
           SortBy: 'DateCreated',
           SortOrder: 'Descending',
           Limit: String(limit),
-          MinDateLastSavedForUser: sinceIso,
+          MinDateCreated: sinceIso,
           Fields: 'PrimaryImageAspectRatio',
           ImageTypeLimit: '1',
         })}`

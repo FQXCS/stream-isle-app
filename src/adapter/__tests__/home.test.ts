@@ -31,7 +31,7 @@ describe('adapter 首页三区（M4 §3 认领补齐）', () => {
     expect(req.url).toContain(`Limit=${HOME_ROW_LIMIT}`);
   });
 
-  it('getLatest：MinDateLastSavedForUser 限定最近 7 天 + DateCreated 降序 + Movie,Series（parentId 透传）', async () => {
+  it('getLatest：MinDateCreated 限定最近 7 天 + DateCreated 降序 + Movie,Series（parentId 透传）', async () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2026-11-06T12:00:00Z'));
     try {
@@ -45,8 +45,8 @@ describe('adapter 首页三区（M4 §3 认领补齐）', () => {
       expect(url.searchParams.get('SortBy')).toBe('DateCreated');
       expect(url.searchParams.get('SortOrder')).toBe('Descending');
       expect(url.searchParams.get('Limit')).toBe(String(HOME_ROW_LIMIT));
-      // 时间窗 = 当前时间 - 7 天（排序字段保持 DateCreated，不受时间窗影响）
-      expect(url.searchParams.get('MinDateLastSavedForUser')).toBe('2026-10-30T12:00:00.000Z');
+      // 时间窗 = 当前时间 - 7 天（入库时间语义；排序字段保持 DateCreated，不受时间窗影响）
+      expect(url.searchParams.get('MinDateCreated')).toBe('2026-10-30T12:00:00.000Z');
     } finally {
       jest.useRealTimers();
     }
@@ -68,7 +68,7 @@ describe('adapter 首页三区（M4 §3 认领补齐）', () => {
     expect(req.url).toContain('IncludeItemTypes=Episode');
     expect(req.url).toContain('SortBy=DateCreated');
     expect(req.url).toContain(`Limit=${LIBRARY_ROW_LIMIT}`);
-    expect(req.url).not.toContain('MinDateLastSavedForUser');
+    expect(req.url).not.toContain('MinDateCreated');
   });
 
   it('getLatestByTypes：Filters 透传（默认 Tab 带收藏/未看筛选时）', async () => {
