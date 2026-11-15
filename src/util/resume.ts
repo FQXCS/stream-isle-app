@@ -10,20 +10,18 @@ export type PlaybackEndReason = 'user_exit' | 'natural_end' | 'error';
 
 /**
  * 断点/时长最小输入（getResumePositionMs 的结构依赖，M6 文档 §4.7）：
- * played / playbackPositionMs / runtimeMs 三字段结构子集。
+ * playbackPositionMs / runtimeMs 两字段结构子集（played 不再参与续播判定）。
  */
 export interface ResumeSource {
-  played: boolean;
   playbackPositionMs: number;
   runtimeMs?: number;
 }
 
 /** M2 既有形态适配（MediaDetail/EpisodeItem 的 userData + runtimeMs → ResumeSource） */
 export function toResumeSource(
-  item: { userData: { played: boolean; playbackPositionMs: number }; runtimeMs?: number }
+  item: { userData: { playbackPositionMs: number }; runtimeMs?: number }
 ): ResumeSource {
   return {
-    played: item.userData.played,
     playbackPositionMs: item.userData.playbackPositionMs,
     runtimeMs: item.runtimeMs,
   };
@@ -31,16 +29,13 @@ export function toResumeSource(
 
 /**
  * 详情页/集卡片点播放/离线续播时算续播起点：返回 null 表示从头播且不弹窗。
- * 规则（M2 §4.9，M6 §4.7 真值表不变）：
- * - 已看完（played === true）→ null；
+ * 规则（M2 §4.9 修订）：纯按断点位置判定，played 不再短路——
  * - 断点 > RESUME_MIN_POSITION_MS（10s）且 < runtimeMs × WATCHED_COMPLETION_RATIO（95%）→ 断点；
  * - 其余（≤10s、无时长、≥95%）→ null。
+ * 已看但断点仍在有效区间（如中途手动标记已看）仍可续播；自然看完（≥95%）从头播。
  */
 export function getResumePositionMs(source: ResumeSource): number | null {
   const positionMs = source.playbackPositionMs;
-  if (source.played) {
-    return null;
-  }
   if (positionMs <= RESUME_MIN_POSITION_MS) {
     return null;
   }

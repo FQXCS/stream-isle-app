@@ -293,7 +293,6 @@ export class DownloadService {
     // 断点续播关闭时本地播放同样从头（与在线播放入口共用同一设置）
     const resumeMs = useSettingsStore.getState().resumePlaybackEnabled
       ? getResumePositionMs({
-          played: row.userPlayed,
           playbackPositionMs: row.userPositionMs,
           runtimeMs: row.runtimeMs ?? undefined,
         })

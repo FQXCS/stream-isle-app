@@ -1,7 +1,7 @@
 /**
  * 续播/兜底判定真值表单测（M2 文档 §6.1 util/resume 行；§4.9 规则）。
- * M6（M6 文档 §4.7/§6.1）：入参放宽为 ResumeSource 后，原真值表经 toResumeSource
- * 适配回归，断言值全部保持不变；新增下载快照行直接构造 ResumeSource 的离线续播用例。
+ * M6（M6 文档 §4.7/§6.1）：入参放宽为 ResumeSource，下载快照行可直接构造离线续播用例。
+ * 修订：played 不再参与续播判定（纯按断点位置），原「已看 → null」用例改为「已看但断点有效仍续播」。
  */
 import type { UserItemData } from '@/adapter/model';
 import {
@@ -30,7 +30,7 @@ function sourceFrom(
   return toResumeSource({ userData: userData(overrides), runtimeMs });
 }
 
-describe('getResumePositionMs 真值表（M6 入参放宽后回归不变）', () => {
+describe('getResumePositionMs 真值表（纯按断点位置，played 不再短路）', () => {
   const runtimeMs = 120 * 60 * 1000; // 120 分钟
 
   it('≤10s 断点 → null（直接从头播，不弹窗）', () => {
@@ -38,10 +38,10 @@ describe('getResumePositionMs 真值表（M6 入参放宽后回归不变）', ()
     expect(getResumePositionMs(sourceFrom({ playbackPositionMs: 5_000 }, runtimeMs))).toBeNull();
   });
 
-  it('已看完（played）→ null，即使断点在有效区间', () => {
+  it('已看（played=true）但断点在有效区间 → 仍续播（played 不再短路）', () => {
     expect(
       getResumePositionMs(sourceFrom({ played: true, playbackPositionMs: 30 * 60 * 1000 }, runtimeMs))
-    ).toBeNull();
+    ).toBe(30 * 60 * 1000);
   });
 
   it('≥95% 断点 → null（视为已完成）', () => {
@@ -67,15 +67,13 @@ describe('getResumePositionMs 真值表（M6 入参放宽后回归不变）', ()
     ).toBe(Math.round(runtimeMs * 0.95) - 1);
   });
 
-  it('M6 离线续播：下载快照行直接构造 ResumeSource（played → 不弹续播；断点 → 弹）', () => {
-    // 下载快照行映射（DownloadService.buildLocalSession 同款）：user_played/user_position_ms/runtime_ms
+  it('M6 离线续播：下载快照行直接构造 ResumeSource（断点有效 → 弹续播）', () => {
+    // 下载快照行映射（DownloadService.buildLocalSession 同款）：user_position_ms/runtime_ms
     const snapshotSource: ResumeSource = {
-      played: false,
       playbackPositionMs: 20 * 60 * 1000,
       runtimeMs,
     };
     expect(getResumePositionMs(snapshotSource)).toBe(20 * 60 * 1000);
-    expect(getResumePositionMs({ ...snapshotSource, played: true })).toBeNull();
   });
 });
 

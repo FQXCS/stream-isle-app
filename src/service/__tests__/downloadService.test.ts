@@ -438,10 +438,12 @@ describe('DownloadService（M6 §6.1 DownloadService 行）', () => {
     expect(session.playSessionId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
     );
-    // 已看（user_played=1）→ 不弹续播（positionMsAtStart=0）
-    await dao.upsertDownload(makeRow({ status: 'completed', userPlayed: true, userPositionMs: 60 * 60 * 1000 }));
+    // 已看（user_played=1）但断点有效（50% < 95%）→ 仍续播（played 不再短路，与在线口径一致）
+    await dao.upsertDownload(
+      makeRow({ status: 'completed', userPlayed: true, userPositionMs: 60 * 60 * 1000, runtimeMs: 120 * 60 * 1000 })
+    );
     const playedSession = await service.buildLocalSession('m1');
-    expect(playedSession.positionMsAtStart).toBe(0);
+    expect(playedSession.positionMsAtStart).toBe(60 * 60 * 1000);
   });
 
   it('rehydrate：downloading 一律降为 paused（冷启动无活动连接）', async () => {
