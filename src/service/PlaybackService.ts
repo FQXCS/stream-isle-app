@@ -426,7 +426,7 @@ export class PlaybackService {
 
   /**
    * 自动连播下一集（M4 文档 §4.4；设计文档 §7.2）：natural_end 收尾完成后的集数场景分支——
-   * adapter.getNextUp 取下一集（按当前会话 seriesId 匹配，集数场景）→ 复用 resolveInternal
+   * adapter.getNextUp 取下一集（按当前会话 seriesId 匹配并排除当前集，集数场景）→ 复用 resolveInternal
    * 决策换源（进度从 0 起）。调用前提：finish() 已对旧会话完成
    * Stopped/兜底标记/转码 DELETE（页面时序保证）；无下一集或 resolve 失败返回 null，
    * 页面按正常播完退出处理。不做「自动连播」开关（设计文档未定义，M4 §4.4）。
@@ -439,9 +439,14 @@ export class PlaybackService {
     }
     const adapter = getActiveAdapter();
     const upNextList = await adapter.getNextUp(requireUserId());
-    // NextUp 返回各剧的下一集：按当前剧集 seriesId 匹配（服务器未过滤时防跨剧跳集）
+    // NextUp 返回各剧的下一集：按当前剧集 seriesId 匹配（服务器未过滤时防跨剧跳集）；
+    // 排除刚播完的当前集——已看态滞后（如 markPlayed 失败离线入队）时 NextUp 可能仍返回
+    // 当前集，不排除会把它当下一集从 0 重播（表现为「播完从头开始」）
     const nextItem = upNextList.find(
-      (item) => item.type === 'Episode' && item.seriesId === session.seriesId
+      (item) =>
+        item.type === 'Episode' &&
+        item.seriesId === session.seriesId &&
+        item.id !== session.itemId
     );
     if (nextItem === undefined) {
       return null;

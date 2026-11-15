@@ -209,6 +209,30 @@ describe('PlaybackService', () => {
         service.playNextEpisode(session({ itemType: 'Episode', seriesId: 'seriesA' }))
       ).resolves.toBeNull();
     });
+
+    it('NextUp 仅返回刚播完的当前集：返回 null，不从 0 重播（已看态滞后兜底）', async () => {
+      mockAdapter.getNextUp.mockResolvedValue([{ ...upNext, id: 'ep8' }]);
+      const service = new PlaybackService();
+      await expect(
+        service.playNextEpisode(session({ itemId: 'ep8', itemType: 'Episode', seriesId: 'seriesA' }))
+      ).resolves.toBeNull();
+      expect(mockAdapter.resolvePlayback).not.toHaveBeenCalled();
+    });
+
+    it('NextUp 同剧混有当前集与下一集：跳过当前集，resolve 下一集', async () => {
+      mockAdapter.getNextUp.mockResolvedValue([{ ...upNext, id: 'ep8' }, upNext]);
+      mockAdapter.resolvePlayback.mockResolvedValue(SOURCE);
+      const service = new PlaybackService();
+      const result = await service.playNextEpisode(
+        session({ itemId: 'ep8', itemType: 'Episode', seriesId: 'seriesA' })
+      );
+      expect(mockAdapter.resolvePlayback).toHaveBeenCalledWith(
+        'u1',
+        'ep9',
+        expect.objectContaining({ startPositionMs: 0 })
+      );
+      expect(result).toMatchObject({ itemType: 'Episode', seriesId: 'seriesA' });
+    });
   });
 
   describe('finish（M3 会话治理，M3 §4.6.3）', () => {
