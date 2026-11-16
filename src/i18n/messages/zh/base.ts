@@ -69,6 +69,17 @@ export const zhBase = {
   'settings.cellularDowngradeDesc': '蜂窝网络默认降至 480p，可手动更改',
   'settings.resumePlayback': '断点续播',
   'settings.resumePlaybackDesc': '从上次停止位置继续；关闭后每次从头播放',
+  'settings.buffer': '缓冲',
+  'settings.bufferTier': '缓冲档位',
+  'settings.bufferTierDesc': '预加载策略；切换后下次播放生效',
+  'settings.bufferCustomTime': '缓冲时长',
+  'settings.bufferCustomTimeDesc': '按秒或片长百分比预加载（二选一）',
+  'settings.bufferTimeSeconds': '秒',
+  'settings.bufferTimePercent': '片长 %',
+  'settings.bufferCustomMb': '内存上限',
+  'settings.bufferCustomMbDesc': '0 = 不限；填写后时长或字节任一先到即停',
+  'settings.bufferCustomBack': '回拖缓冲',
+  'settings.bufferCustomBackDesc': '保留当前点之前的媒体，回拖进度秒回；0 = 不保留',
 
   // —— 软件更新页 ——
   'update.title': '软件更新',
@@ -91,6 +102,18 @@ export const zhBase = {
   'resolution.fhd': '1080p',
   'resolution.hd': '720p',
   'resolution.sd': '480p',
+
+  // —— 视频缓冲档位 ——
+  'buffer.dataSaver': '省流',
+  'buffer.dataSaverDesc': '15 秒小缓冲 + 50MB 封顶，省流量省内存',
+  'buffer.balanced': '平衡',
+  'buffer.balancedDesc': '30 秒缓冲，兼顾顺滑与占用',
+  'buffer.smooth': '顺滑',
+  'buffer.smoothDesc': '50 秒缓冲 + 15 秒回退，回拖进度秒回',
+  'buffer.unlimited': '不设限',
+  'buffer.unlimitedDesc': '最多 10 分钟大缓冲 + 内存安全阀',
+  'buffer.custom': '自定义',
+  'buffer.customDesc': '自行设置时长（秒/片长%）与内存上限',
 
   // —— 播放器重启浮层 ——
   'playback.burnInRestart': '该字幕需服务器转码渲染，正在切换…',

@@ -8,6 +8,8 @@ import { SETTINGS_STORE_KEY } from '@/constant/storage';
 import { mmkv } from '@/infra/storage';
 import { DEFAULT_ACCENT_SCHEME, ACCENT_SCHEME_LIST } from '@/constant/theme';
 import { translateFor } from '@/i18n/translate';
+import { DEFAULT_BUFFER_TIER } from '@/constant/buffer';
+import { DEFAULT_CUSTOM_BUFFER } from '@/util/buffer';
 import { useSettingsStore } from '@/store/settingsStore';
 
 const mockSyncTlsBypassHosts = jest.fn();
@@ -244,5 +246,63 @@ describe('settingsStore（界面语言）', () => {
     );
     await useSettingsStore.persist.rehydrate();
     expect(useSettingsStore.getState().language).toBe('system');
+  });
+});
+
+describe('settingsStore（视频缓冲档位 + 自定义）', () => {
+  beforeEach(() => {
+    mmkv.clearAll();
+    useSettingsStore.setState({
+      bufferTier: DEFAULT_BUFFER_TIER,
+      customBuffer: DEFAULT_CUSTOM_BUFFER,
+    });
+  });
+
+  it('默认值：bufferTier=SMOOTH，customBuffer 默认（秒模式 50s / 10% / 0MB）', () => {
+    expect(useSettingsStore.getState().bufferTier).toBe('SMOOTH');
+    expect(useSettingsStore.getState().customBuffer).toEqual(DEFAULT_CUSTOM_BUFFER);
+  });
+
+  it('setBufferTier：写入档位', () => {
+    useSettingsStore.getState().actions.setBufferTier('DATA_SAVER');
+    expect(useSettingsStore.getState().bufferTier).toBe('DATA_SAVER');
+    useSettingsStore.getState().actions.setBufferTier('CUSTOM');
+    expect(useSettingsStore.getState().bufferTier).toBe('CUSTOM');
+  });
+
+  it('setCustomBuffer：合并写入并 clamp 到边界', () => {
+    useSettingsStore.getState().actions.setCustomBuffer({ timeMode: 'percent', percent: 25, mb: 100 });
+    expect(useSettingsStore.getState().customBuffer).toEqual({
+      timeMode: 'percent',
+      seconds: 50,
+      percent: 25,
+      mb: 100,
+      backTimeMode: 'seconds',
+      backSeconds: 15,
+      backPercent: 5,
+    });
+    // 越界 clamp：秒>600→600、percent>100→100、MB>2048→2048
+    useSettingsStore.getState().actions.setCustomBuffer({ seconds: 9999, percent: 500, mb: 99999 });
+    expect(useSettingsStore.getState().customBuffer).toMatchObject({ seconds: 600, percent: 100, mb: 2048 });
+  });
+
+  it('persist 快照含 bufferTier 与 customBuffer', () => {
+    useSettingsStore.getState().actions.setBufferTier('UNLIMITED');
+    useSettingsStore.getState().actions.setCustomBuffer({ mb: 80 });
+    const snapshot = mmkv.getString(SETTINGS_STORE_KEY) ?? '';
+    expect(snapshot).toContain('"bufferTier":"UNLIMITED"');
+    expect(snapshot).toContain('"customBuffer"');
+    expect(snapshot).toContain('"mb":80');
+  });
+
+  it('旧快照缺缓冲字段 → 回灌默认；非法档位 → 回退默认', async () => {
+    mmkv.set(SETTINGS_STORE_KEY, JSON.stringify({ state: { themeMode: 'dark' }, version: 1 }));
+    await useSettingsStore.persist.rehydrate();
+    expect(useSettingsStore.getState().bufferTier).toBe(DEFAULT_BUFFER_TIER);
+    expect(useSettingsStore.getState().customBuffer).toEqual(DEFAULT_CUSTOM_BUFFER);
+
+    mmkv.set(SETTINGS_STORE_KEY, JSON.stringify({ state: { bufferTier: 'BOGUS' }, version: 1 }));
+    await useSettingsStore.persist.rehydrate();
+    expect(useSettingsStore.getState().bufferTier).toBe(DEFAULT_BUFFER_TIER);
   });
 });

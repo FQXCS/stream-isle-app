@@ -47,6 +47,7 @@ import { LibrarySortTabsScreen } from '@/page/settings/LibrarySortTabsScreen';
 import { LibraryTabEditorScreen } from '@/page/settings/LibraryTabEditorScreen';
 import { LibraryTabSettingsScreen } from '@/page/settings/LibraryTabSettingsScreen';
 import { MediaTypeSettingsScreen } from '@/page/settings/MediaTypeSettingsScreen';
+import { BufferSettingsScreen } from '@/page/settings/BufferSettingsScreen';
 import { navigationRef } from '@/page/navigation/navigationRef';
 import type { RootStackParamList, TabsParamList } from '@/page/navigation/types';
 import { NowPlayingScreen } from '@/page/nowplaying/NowPlayingScreen';
@@ -309,6 +310,12 @@ export function RootNavigator() {
               name={ROUTES.MEDIA_TYPE_SETTINGS}
               component={MediaTypeSettingsScreen}
               options={{ title: tr('settings.includedTypes'), headerBackTitle: tr('nav.back') }}
+            />
+            {/* 缓冲设置二级页：档位 + 自定义（秒/片长%/MB） */}
+            <RootStack.Screen
+              name={ROUTES.BUFFER_SETTINGS}
+              component={BufferSettingsScreen}
+              options={{ title: tr('settings.buffer'), headerBackTitle: tr('nav.back') }}
             />
             {/* 软件更新：检查 GitHub Releases 最新版本（设置 → 关于 → 版本号进入） */}
             <RootStack.Screen

@@ -1,3 +1,51 @@
+diff --git a/node_modules/react-native-video/android/src/main/java/com/brentvatne/common/api/BufferConfig.kt b/node_modules/react-native-video/android/src/main/java/com/brentvatne/common/api/BufferConfig.kt
+index 17f54c6..807c172 100644
+--- a/node_modules/react-native-video/android/src/main/java/com/brentvatne/common/api/BufferConfig.kt
++++ b/node_modules/react-native-video/android/src/main/java/com/brentvatne/common/api/BufferConfig.kt
+@@ -1,5 +1,6 @@
+ package com.brentvatne.common.api
+ 
++import com.brentvatne.common.toolbox.ReactBridgeUtils.safeGetBool
+ import com.brentvatne.common.toolbox.ReactBridgeUtils.safeGetDouble
+ import com.brentvatne.common.toolbox.ReactBridgeUtils.safeGetFloat
+ import com.brentvatne.common.toolbox.ReactBridgeUtils.safeGetInt
+@@ -21,6 +22,8 @@ class BufferConfig {
+     var minBackBufferMemoryReservePercent = BufferConfigPropUnsetDouble
+     var minBufferMemoryReservePercent = BufferConfigPropUnsetDouble
+     var initialBitrate = BufferConfigPropUnsetInt
++    var targetBufferBytes = BufferConfigPropUnsetInt
++    var prioritizeTimeOverSizeThresholds = true
+ 
+     var live: Live = Live()
+ 
+@@ -38,6 +41,8 @@ class BufferConfig {
+                 minBackBufferMemoryReservePercent == other.minBackBufferMemoryReservePercent &&
+                 minBufferMemoryReservePercent == other.minBufferMemoryReservePercent &&
+                 initialBitrate == other.initialBitrate &&
++                targetBufferBytes == other.targetBufferBytes &&
++                prioritizeTimeOverSizeThresholds == other.prioritizeTimeOverSizeThresholds &&
+                 live == other.live
+             )
+     }
+@@ -94,6 +99,8 @@ class BufferConfig {
+         private const val PROP_BUFFER_CONFIG_MIN_BUFFER_MEMORY_RESERVE_PERCENT = "minBufferMemoryReservePercent"
+         private const val PROP_BUFFER_CONFIG_BACK_BUFFER_DURATION_MS = "backBufferDurationMs"
+         private const val PROP_BUFFER_CONFIG_INITIAL_BITRATE = "initialBitrate"
++        private const val PROP_BUFFER_CONFIG_TARGET_BUFFER_BYTES = "targetBufferBytes"
++        private const val PROP_BUFFER_CONFIG_PRIORITIZE_TIME_OVER_SIZE_THRESHOLDS = "prioritizeTimeOverSizeThresholds"
+         private const val PROP_BUFFER_CONFIG_LIVE = "live"
+ 
+         @JvmStatic
+@@ -122,6 +129,9 @@ class BufferConfig {
+                     )
+                 bufferConfig.backBufferDurationMs = safeGetInt(src, PROP_BUFFER_CONFIG_BACK_BUFFER_DURATION_MS, BufferConfigPropUnsetInt)
+                 bufferConfig.initialBitrate = safeGetInt(src, PROP_BUFFER_CONFIG_INITIAL_BITRATE, BufferConfigPropUnsetInt)
++                bufferConfig.targetBufferBytes = safeGetInt(src, PROP_BUFFER_CONFIG_TARGET_BUFFER_BYTES, BufferConfigPropUnsetInt)
++                bufferConfig.prioritizeTimeOverSizeThresholds =
++                    safeGetBool(src, PROP_BUFFER_CONFIG_PRIORITIZE_TIME_OVER_SIZE_THRESHOLDS, true)
+                 bufferConfig.live = Live.parse(src.getMap(PROP_BUFFER_CONFIG_LIVE))
+             }
+             return bufferConfig
 diff --git a/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/AudioDelayProcessor.java b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/AudioDelayProcessor.java
 new file mode 100644
 index 0000000..8465450
@@ -218,10 +266,20 @@ index 0000000..4acb093
 +}
 \ No newline at end of file
 diff --git a/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerView.java b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerView.java
-index 623d90c..f8c5492 100644
+index 623d90c..36f0c62 100644
 --- a/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerView.java
 +++ b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerView.java
-@@ -805,6 +805,13 @@ public class ReactExoplayerView extends FrameLayout implements
+@@ -572,7 +572,8 @@ public class ReactExoplayerView extends FrameLayout implements
+                         valueOrDefault(config.getMaxBufferMs(), DefaultLoadControl.DEFAULT_MAX_BUFFER_MS),
+                         valueOrDefault(config.getBufferForPlaybackMs(), DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS),
+                         valueOrDefault(config.getBufferForPlaybackAfterRebufferMs(), DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS))
+-                .setPrioritizeTimeOverSizeThresholds(true)
++                .setTargetBufferBytes(valueOrDefault(config.getTargetBufferBytes(), C.LENGTH_UNSET))
++                .setPrioritizeTimeOverSizeThresholds(config.getPrioritizeTimeOverSizeThresholds())
+                 .setBackBuffer(
+                         valueOrDefault(config.getBackBufferDurationMs(), DefaultLoadControl.DEFAULT_BACK_BUFFER_DURATION_MS),
+                         DefaultLoadControl.DEFAULT_RETAIN_BACK_BUFFER_FROM_KEYFRAME)
+@@ -805,6 +806,13 @@ public class ReactExoplayerView extends FrameLayout implements
          }
      }
  
@@ -235,7 +293,7 @@ index 623d90c..f8c5492 100644
      private void initializePlayerCore(ReactExoplayerView self) {
          ExoTrackSelection.Factory videoTrackSelectionFactory = new AdaptiveTrackSelection.Factory();
          self.trackSelector = new DefaultTrackSelector(getContext(), videoTrackSelectionFactory);
-@@ -819,11 +826,14 @@ public class ReactExoplayerView extends FrameLayout implements
+@@ -819,11 +827,14 @@ public class ReactExoplayerView extends FrameLayout implements
              this.bandwidthMeter = config.getBandwidthMeter();
          }
  
@@ -255,7 +313,7 @@ index 623d90c..f8c5492 100644
  
          DefaultMediaSourceFactory mediaSourceFactory;
          
-@@ -1276,7 +1286,9 @@ public class ReactExoplayerView extends FrameLayout implements
+@@ -1276,7 +1287,9 @@ public class ReactExoplayerView extends FrameLayout implements
                          .setId(trackId)
                          .setMimeType(track.getType())
                          .setLabel(label)
@@ -266,7 +324,7 @@ index 623d90c..f8c5492 100644
                  
                  // Set language if available
                  if (track.getLanguage() != null && !track.getLanguage().isEmpty()) {
-@@ -2828,6 +2840,43 @@ public class ReactExoplayerView extends FrameLayout implements
+@@ -2828,6 +2841,43 @@ public class ReactExoplayerView extends FrameLayout implements
          exoPlayerView.setSubtitleStyle(style);
      }
  
@@ -354,10 +412,19 @@ index 1ea4edf..50227aa 100644
      bufferingStrategy?: BufferingStrategyType;
      controlsStyles?: ControlsStyles;
 diff --git a/node_modules/react-native-video/lib/types/video.d.ts b/node_modules/react-native-video/lib/types/video.d.ts
-index 9796b23..83a7b9e 100644
+index 9796b23..107789f 100644
 --- a/node_modules/react-native-video/lib/types/video.d.ts
 +++ b/node_modules/react-native-video/lib/types/video.d.ts
-@@ -294,6 +294,10 @@ export interface ReactVideoProps extends ReactVideoEvents, ViewProps {
+@@ -134,6 +134,8 @@ export type BufferConfig = {
+     minBackBufferMemoryReservePercent?: number;
+     minBufferMemoryReservePercent?: number;
+     initialBitrate?: number;
++    targetBufferBytes?: number;
++    prioritizeTimeOverSizeThresholds?: boolean;
+     cacheSizeMB?: number;
+     live?: BufferConfigLive;
+ };
+@@ -294,6 +296,10 @@ export interface ReactVideoProps extends ReactVideoEvents, ViewProps {
      selectedTextTrack?: SelectedTrack;
      selectedVideoTrack?: SelectedVideoTrack;
      subtitleStyle?: SubtitleStyle;
@@ -382,10 +449,19 @@ index 705d86d..c833149 100644
    bufferingStrategy?: BufferingStrategyType; // Android
    controlsStyles?: ControlsStyles; // Android
 diff --git a/node_modules/react-native-video/src/types/video.ts b/node_modules/react-native-video/src/types/video.ts
-index 7605bbc..6afe391 100644
+index 7605bbc..3f2a92d 100644
 --- a/node_modules/react-native-video/src/types/video.ts
 +++ b/node_modules/react-native-video/src/types/video.ts
-@@ -370,6 +370,10 @@ export interface ReactVideoProps extends ReactVideoEvents, ViewProps {
+@@ -180,6 +180,8 @@ export type BufferConfig = {
+   minBackBufferMemoryReservePercent?: number;
+   minBufferMemoryReservePercent?: number;
+   initialBitrate?: number; // Android
++  targetBufferBytes?: number; // Android
++  prioritizeTimeOverSizeThresholds?: boolean; // Android
+   cacheSizeMB?: number;
+   live?: BufferConfigLive;
+ };
+@@ -370,6 +372,10 @@ export interface ReactVideoProps extends ReactVideoEvents, ViewProps {
    selectedTextTrack?: SelectedTrack;
    selectedVideoTrack?: SelectedVideoTrack; // android
    subtitleStyle?: SubtitleStyle; // android

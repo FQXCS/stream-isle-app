@@ -13,6 +13,9 @@ import type { MediaItemTypeEnum } from '@/adapter/model';
 import type { LanguagePreference } from '@/i18n/types';
 import type { ResolutionTierKey } from '@/constant/resolution';
 import { DEFAULT_RESOLUTION_TIER } from '@/constant/resolution';
+import type { BufferTierKey } from '@/constant/buffer';
+import { BUFFER_TIER_MAP, DEFAULT_BUFFER_TIER } from '@/constant/buffer';
+import { clampCustomBuffer, DEFAULT_CUSTOM_BUFFER, type CustomBufferSettings } from '@/util/buffer';
 import { DEFAULT_FEED_TYPES, HISTORY_TYPE_OPTIONS, RESUME_TYPE_OPTIONS } from '@/constant/browse';
 import type { AccentSchemeEnum, ThemeModeEnum } from '@/constant/theme';
 import { DEFAULT_ACCENT_SCHEME } from '@/constant/theme';
@@ -30,6 +33,10 @@ interface SettingsActions {
   removeServerScopedData(baseUrl: string): void;
   /** 转码分辨率档位落盘（ResolutionMenu 与设置页共用同一 action，杜绝两处语义分叉，M3 §4.13） */
   setMaxResolutionTier(tier: ResolutionTierKey): void;
+  /** 视频缓冲档位落盘（设置页 BufferSettingsSection 消费） */
+  setBufferTier(tier: BufferTierKey): void;
+  /** 自定义缓冲参数（秒/片长%/MB；clamp 到边界后落盘，与派生共用 clampCustomBuffer） */
+  setCustomBuffer(patch: Partial<CustomBufferSettings>): void;
   /** 「允许 HEVC 直连」开关（默认 true；关闭后 HEVC 片全量转码兜底） */
   setAllowHevcDirectPlay(value: boolean): void;
   /** 「蜂窝自动降档」开关（默认 true；仅控制自动降档，不影响手动切换） */
@@ -57,6 +64,10 @@ interface SettingsState {
   allowInsecureTls: string[];
   /** 最大转码分辨率档位（默认无限制；直连不受影响） */
   maxResolutionTier: ResolutionTierKey;
+  /** 视频缓冲档位（默认顺滑；CUSTOM 时消费 customBuffer） */
+  bufferTier: BufferTierKey;
+  /** 自定义缓冲参数（bufferTier=CUSTOM 时生效） */
+  customBuffer: CustomBufferSettings;
   /** 允许 HEVC 直连（默认 true，设计文档 §8.2；探测仍要求 Main10 才声明 hevc，M3 §4.4.2） */
   allowHevcDirectPlay: boolean;
   /** 蜂窝自动降档（默认 true，设计文档 §11「可关」） */
@@ -89,6 +100,11 @@ function normalizeLanguagePreference(value: unknown): LanguagePreference {
   return value === 'zh' || value === 'en' || value === 'system' ? value : 'system';
 }
 
+/** 持久化缓冲档位归一：非法/缺失值回退默认档位 */
+function normalizeBufferTier(value: unknown): BufferTierKey {
+  return typeof value === 'string' && value in BUFFER_TIER_MAP ? (value as BufferTierKey) : DEFAULT_BUFFER_TIER;
+}
+
 function toggleTypeInList(
   currentList: readonly MediaItemTypeEnum[],
   type: MediaItemTypeEnum,
@@ -109,6 +125,8 @@ export const useSettingsStore = create<SettingsState>()(
     (set, get) => ({
       allowInsecureTls: [],
       maxResolutionTier: DEFAULT_RESOLUTION_TIER,
+      bufferTier: DEFAULT_BUFFER_TIER,
+      customBuffer: DEFAULT_CUSTOM_BUFFER,
       allowHevcDirectPlay: true,
       autoDowngradeOnCellular: true,
       resumePlaybackEnabled: true,
@@ -146,6 +164,14 @@ export const useSettingsStore = create<SettingsState>()(
 
         setMaxResolutionTier: (tier: ResolutionTierKey) => {
           set({ maxResolutionTier: tier });
+        },
+
+        setBufferTier: (tier: BufferTierKey) => {
+          set({ bufferTier: tier });
+        },
+
+        setCustomBuffer: (patch: Partial<CustomBufferSettings>) => {
+          set((state) => ({ customBuffer: clampCustomBuffer({ ...state.customBuffer, ...patch }) }));
         },
 
         setAllowHevcDirectPlay: (value: boolean) => {
@@ -211,6 +237,8 @@ export const useSettingsStore = create<SettingsState>()(
       partialize: (state) => ({
         allowInsecureTls: state.allowInsecureTls,
         maxResolutionTier: state.maxResolutionTier,
+        bufferTier: state.bufferTier,
+        customBuffer: state.customBuffer,
         allowHevcDirectPlay: state.allowHevcDirectPlay,
         autoDowngradeOnCellular: state.autoDowngradeOnCellular,
         resumePlaybackEnabled: state.resumePlaybackEnabled,
@@ -230,6 +258,8 @@ export const useSettingsStore = create<SettingsState>()(
           ...currentState,
           ...persisted,
           language: normalizeLanguagePreference(persisted.language),
+          bufferTier: normalizeBufferTier(persisted.bufferTier),
+          customBuffer: clampCustomBuffer({ ...DEFAULT_CUSTOM_BUFFER, ...persisted.customBuffer }),
           actions: currentState.actions,
         };
       },

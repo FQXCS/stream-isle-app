@@ -34,6 +34,8 @@ export const ROUTES = {
   HISTORY: 'History',
   DOWNLOADS: 'Downloads',
   MEDIA_TYPE_SETTINGS: 'MediaTypeSettings',
+  /** 缓冲设置二级页（设置 → 缓冲进入） */
+  BUFFER_SETTINGS: 'BufferSettings',
   /** 软件更新（设置 → 关于 → 版本号进入） */
   SOFTWARE_UPDATE: 'SoftwareUpdate',
   LIBRARY_DISPLAY_SETTINGS: 'LibraryDisplaySettings',

@@ -27,6 +27,7 @@ import type { LanguagePreference, MessageKey } from '@/i18n';
 import type { ThemeModeEnum } from '@/constant/theme';
 import { ROUTES } from '@/constant/navigation';
 import { PlaybackSettingsSection } from '@/page/tabs/components/PlaybackSettingsSection';
+import { BUFFER_TIER_MAP } from '@/constant/buffer';
 import type { RootStackParamList } from '@/page/navigation/types';
 import { useSettingsStore } from '@/store/settingsStore';
 
@@ -59,6 +60,7 @@ export function SettingsScreen() {
   const themeMode = useSettingsStore((state) => state.themeMode);
   const accentScheme = useSettingsStore((state) => state.accentScheme);
   const language = useSettingsStore((state) => state.language);
+  const bufferTier = useSettingsStore((state) => state.bufferTier);
   const [subtitleSheetOpen, setSubtitleSheetOpen] = useState(false);
   const [themeSheetOpen, setThemeSheetOpen] = useState(false);
   const [accentSheetOpen, setAccentSheetOpen] = useState(false);
@@ -90,6 +92,14 @@ export function SettingsScreen() {
       {/* 播放分区：M3 PlaybackSettingsSection 原样收编（行为零改动，M4 §4.5）+ M4 字幕语言行 */}
       <View style={styles.playGroup}>
         <PlaybackSettingsSection />
+        <View style={[styles.card, { backgroundColor: t.surface }]}>
+          <SettingRow
+            label={tr('settings.buffer')}
+            description={tr('settings.bufferTierDesc')}
+            value={tr(BUFFER_TIER_MAP[bufferTier].labelKey)}
+            onPress={() => navigation.navigate(ROUTES.BUFFER_SETTINGS)}
+          />
+        </View>
         <View style={[styles.card, { backgroundColor: t.surface }]}>
           <SettingRow
             label={tr('settings.defaultSubtitle')}

@@ -73,6 +73,17 @@ export const enBase: Record<keyof typeof zhBase, Message> = {
   'settings.resumePlayback': 'Resume playback',
   'settings.resumePlaybackDesc':
     'Continue from where you stopped; when off, always start from the beginning',
+  'settings.buffer': 'Buffering',
+  'settings.bufferTier': 'Buffer preset',
+  'settings.bufferTierDesc': 'Preload strategy; applies on next playback',
+  'settings.bufferCustomTime': 'Buffer duration',
+  'settings.bufferCustomTimeDesc': 'Preload by seconds or percentage of runtime (pick one)',
+  'settings.bufferTimeSeconds': 'Seconds',
+  'settings.bufferTimePercent': 'Runtime %',
+  'settings.bufferCustomMb': 'Memory cap',
+  'settings.bufferCustomMbDesc': '0 = unlimited; otherwise stops at whichever of duration/bytes comes first',
+  'settings.bufferCustomBack': 'Rewind buffer',
+  'settings.bufferCustomBackDesc': 'Media kept before the current position for instant rewind; 0 = off',
 
   // —— Software update ——
   'update.title': 'Software update',
@@ -95,6 +106,18 @@ export const enBase: Record<keyof typeof zhBase, Message> = {
   'resolution.fhd': '1080p',
   'resolution.hd': '720p',
   'resolution.sd': '480p',
+
+  // —— Video buffer presets ——
+  'buffer.dataSaver': 'Data saver',
+  'buffer.dataSaverDesc': '15s buffer + 50MB cap; saves data and memory',
+  'buffer.balanced': 'Balanced',
+  'buffer.balancedDesc': '30s buffer; balances smoothness and memory',
+  'buffer.smooth': 'Smooth',
+  'buffer.smoothDesc': '50s buffer + 15s back-buffer; instant rewind',
+  'buffer.unlimited': 'Unlimited',
+  'buffer.unlimitedDesc': 'Up to 10min buffer + memory safety valve',
+  'buffer.custom': 'Custom',
+  'buffer.customDesc': 'Set duration (s / runtime %) and memory cap yourself',
 
   // —— Player restart overlay ——
   'playback.burnInRestart': 'This subtitle requires server transcoding. Switching…',

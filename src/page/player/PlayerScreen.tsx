@@ -21,6 +21,7 @@ import {
   View,
 } from 'react-native';
 import Video, {
+  BufferingStrategyType,
   type OnLoadData,
   type OnProgressData,
   type OnVideoErrorData,
@@ -70,6 +71,7 @@ import { resolveResolutionTierForNetwork } from '@/util/resolution';
 import { selectAutoSubtitleStreamIndex } from '@/util/subtitleSelect';
 import { sanitizedForLog } from '@/util/sanitize';
 import type { PlaybackEndReason } from '@/util/resume';
+import { buildBufferSettings } from '@/util/buffer';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -117,6 +119,8 @@ export function PlayerScreen() {
   // 会话重启中（SessionRestartOverlay 自行订阅渲染；本页用于重启结束后的网络补判）
   const isRestartingSession = usePlayerStore((state) => state.isRestartingSession);
   const settingsMaxResolutionTier = useSettingsStore((state) => state.maxResolutionTier);
+  const settingsBufferTier = useSettingsStore((state) => state.bufferTier);
+  const settingsCustomBuffer = useSettingsStore((state) => state.customBuffer);
 
   const videoRef = useRef<VideoRef>(null);
   const progressRef = useRef<ProgressService>(new ProgressService());
@@ -823,12 +827,20 @@ export function PlayerScreen() {
         language: track.language,
       }))
     : session.audioList;
+  // 缓冲配置派生（档位/自定义 → bufferConfig + 策略）：百分比模式按会话时长算（起播前可得）；
+  // bufferConfig 挂 source 内，切档使 source 不等→下次起播重建生效（与分辨率切换同机制）
+  const bufferSettings = useMemo(
+    () => buildBufferSettings(settingsBufferTier, settingsCustomBuffer, session.runTimeMs),
+    [settingsBufferTier, settingsCustomBuffer, session.runTimeMs]
+  );
+
   const source = useMemo(
     () => ({
       uri: session.url,
       // 直连 URL 不带起点，起点由播放器 startPosition 承载（毫秒：Android 直接传给
       // ExoPlayer setMediaSource、iOS 内部 /1000 转秒；M2 §4.3）；转码 HLS 同机制恢复
       startPosition: session.positionMsAtStart,
+      bufferConfig: bufferSettings.bufferConfig,
       // 外挂文本轨注入（M3 §4.8.2）：只注入非烧录轨；uri 用 adapter 已拼好的完整 URL
       textTracks: session.subtitleList
         .filter((track) => !track.burnIn && track.vttUrl !== undefined)
@@ -841,7 +853,7 @@ export function PlayerScreen() {
           uri: track.vttUrl as string,
         })),
     }),
-    [session.url, session.positionMsAtStart, session.subtitleList, tr]
+    [session.url, session.positionMsAtStart, session.subtitleList, bufferSettings.bufferConfig, tr]
   );
 
   // selectedTextTrack 派生（M3 §4.8.2；streamIndex → 本地数组序号的映射只在此处发生）：
@@ -922,6 +934,7 @@ export function PlayerScreen() {
         <Video
           ref={videoRef}
           source={source}
+          bufferingStrategy={bufferSettings.bufferingStrategy as BufferingStrategyType}
           style={videoBox ?? StyleSheet.absoluteFill}
           resizeMode={videoResizeMode}
           paused={status !== 'playing'}

@@ -16,8 +16,8 @@ interface RadioOptionSheetProps<K extends string> {
   visible: boolean;
   /** 当前选中 key */
   selectedKey: K;
-  /** 选项（key 互斥；swatchColor 可选，用于配色方案色点） */
-  optionList: readonly { key: K; label: string; swatchColor?: string }[];
+  /** 选项（key 互斥；swatchColor 可选色点；description 可选策略说明，标签下方小字） */
+  optionList: readonly { key: K; label: string; swatchColor?: string; description?: string }[];
   onSelect: (key: K) => void;
   onClose: () => void;
 }
@@ -50,6 +50,7 @@ export function RadioOptionSheet<K extends string>({
                 key={option.key}
                 style={({ pressed }) => [
                   styles.optionRow,
+                  option.description !== undefined && styles.optionRowTall,
                   index > 0 && styles.optionDivider,
                   pressed && styles.pressed,
                 ]}
@@ -62,9 +63,14 @@ export function RadioOptionSheet<K extends string>({
                   {option.swatchColor !== undefined && (
                     <View style={[styles.optionSwatch, { backgroundColor: option.swatchColor }]} />
                   )}
-                  <Text style={[styles.optionText, active && styles.optionTextActive]}>
-                    {option.label}
-                  </Text>
+                  <View style={styles.optionTextWrap}>
+                    <Text style={[styles.optionText, active && styles.optionTextActive]}>
+                      {option.label}
+                    </Text>
+                    {option.description !== undefined && (
+                      <Text style={styles.optionDesc}>{option.description}</Text>
+                    )}
+                  </View>
                 </View>
                 {active && (
                   <View style={styles.checkCircle}>
@@ -117,6 +123,9 @@ const createStyles = (t: ThemeTokens) =>
     },
     pressed: { opacity: 0.6 },
     optionLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
+    optionTextWrap: { flexShrink: 1, gap: 2 },
+    optionDesc: { color: t.textTertiary, fontSize: FONT_SIZE.caption, lineHeight: 16 },
+    optionRowTall: { paddingVertical: SPACING.s },
     optionSwatch: {
       width: 18,
       height: 18,
