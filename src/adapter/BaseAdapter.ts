@@ -2405,11 +2405,11 @@ export abstract class BaseAdapter implements ServerAdapter {
     });
   }
 
-  /** Stopped 事件：POST /Sessions/Stopped（退出/播完调，body 同 Playing，M2 §4.3） */
+  /** Stopped 事件：POST /Sessions/Playing/Stopped（退出/播完调，body 同 Playing，M2 §4.3） */
   async reportStopped(args: ReportArgs): Promise<void> {
     await this.api.request({
       method: 'POST',
-      url: this.urlOf('/Sessions/Stopped'),
+      url: this.urlOf('/Sessions/Playing/Stopped'),
       headers: this.buildHeaders(this.token),
       body: this.reportBody(args),
     });

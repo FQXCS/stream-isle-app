@@ -323,7 +323,7 @@ describe('report 三方法（Playing/Progress/Stopped）', () => {
     playMethod: 'DirectPlay',
   };
 
-  it('双实例路径：/Sessions/Playing 与 /Sessions/Playing/Progress、/Sessions/Stopped', async () => {
+  it('双实例路径：/Sessions/Playing 与 /Sessions/Playing/Progress、/Sessions/Playing/Stopped', async () => {
     for (const flavor of ['JELLYFIN', 'EMBY'] as const) {
       const { adapter, api } = makeAdapter(flavor);
       await adapter.reportPlaying(BASE_ARGS);
@@ -332,7 +332,7 @@ describe('report 三方法（Playing/Progress/Stopped）', () => {
       const urls = api.request.mock.calls.map((call) => call[0].url as string);
       expect(urls[0]).toBe('http://srv/Sessions/Playing');
       expect(urls[1]).toBe('http://srv/Sessions/Playing/Progress');
-      expect(urls[2]).toBe('http://srv/Sessions/Stopped');
+      expect(urls[2]).toBe('http://srv/Sessions/Playing/Stopped');
       expect(api.request.mock.calls.every((call) => call[0].method === 'POST')).toBe(true);
     }
   });
