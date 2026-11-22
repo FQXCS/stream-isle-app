@@ -61,7 +61,8 @@ jobs:
 
       - name: Android debug 构建（android/ 已入库；prebuild 后断言产物无 diff，防 app.config 与 android/ 漂移）
         # git pathspec 相对 cwd 解析：working-directory 为 mobile 时 `-- android/` 会解析到
-        # mobile/android/android，漂移断言步骤单独覆盖 working-directory 回仓库根
+        # mobile/android/android，漂移断言步骤单独覆盖 working-directory 回仓库根；
+        # gradle 步骤从仓库根 cd 回 mobile/android
         run: |
           npx expo prebuild -p android --no-install
           cd .. && git diff --exit-code -- mobile/android/ || {
@@ -70,7 +71,7 @@ jobs:
           }
           # CI 仅构建 arm64-v8a：4 ABI 原生构建会耗尽 runner 磁盘且耗时 40+ 分钟；
           # debug 构建只作编译门禁，发布包仍由 mobile-release 构建全 ABI
-          cd android && ./gradlew assembleDebug -PreactNativeArchitectures=arm64-v8a
+          cd mobile/android && ./gradlew assembleDebug -PreactNativeArchitectures=arm64-v8a
 
   tv:
     runs-on: ubuntu-latest
@@ -122,4 +123,4 @@ jobs:
             exit 1
           }
           # CI 仅构建 arm64-v8a（TV 设备主 ABI），与 mobile job 同口径省磁盘
-          cd android && ./gradlew assembleDebug -PreactNativeArchitectures=arm64-v8a
+          cd tv/android && ./gradlew assembleDebug -PreactNativeArchitectures=arm64-v8a
