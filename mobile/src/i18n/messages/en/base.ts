@@ -36,6 +36,13 @@ export const enBase: Record<keyof typeof zhBase, Message> = {
   'nav.sortTabsTitle': 'Sort options · {type}',
   'nav.sortEditorTitle': 'Sort options · {type} · {tab}',
 
+  // —— TV-specific (TV-m1; sidebar / placeholder copy, mirrored from zh source) ——
+  'tv.tabHome': 'Home',
+  'tv.savedServers': 'Saved servers',
+  'tv.usePasswordLogin': 'Use password sign-in',
+  'tv.searchPlaceholder': 'Search is in development and coming soon',
+  'tv.settingsPlaceholder': 'Settings are in development and coming soon',
+
   // —— Settings ——
   'settings.title': 'Settings',
   'settings.playback': 'Playback',
