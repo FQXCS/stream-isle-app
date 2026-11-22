@@ -9,7 +9,8 @@ const { withDangerousMod } = require('@expo/config-plugins');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const SOURCE_DIR = path.join(__dirname, '..', 'assets', 'pdf');
+// TV-m0 工程平移：手机 assets/ 已随工程移入 mobile/，插件留仓库根，源目录指回 mobile/
+const SOURCE_DIR = path.join(__dirname, '..', 'mobile', 'assets', 'pdf');
 const TARGET_DIR = ['app', 'src', 'main', 'assets', 'pdf'];
 
 const withPdfAssets = (config) =>

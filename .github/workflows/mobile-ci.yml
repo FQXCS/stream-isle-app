@@ -1,5 +1,6 @@
 # Stream Isle Mobile CI（M1 文档 §6.4；设计文档 §12）
 # 四关全绿为合并条件：lint + tsc + jest + Android debug 构建
+# TV-m0 工程平移：手机工程在 mobile/，TV 工程在 tv/（tv job 三关门禁）
 name: mobile-ci
 
 on:
@@ -10,6 +11,9 @@ on:
 jobs:
   mobile:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
     steps:
       - uses: actions/checkout@v4
 
@@ -18,7 +22,8 @@ jobs:
           # Expo SDK 58 要求 Node >= 22.13（Node 20 下 expo CLI 会告警）
           node-version: 22
           cache: npm
-          cache-dependency-path: package-lock.json
+          # setup-node 无 working-directory 概念，写相对仓库根路径
+          cache-dependency-path: mobile/package-lock.json
 
       - uses: actions/setup-java@v4
         with:
@@ -34,6 +39,7 @@ jobs:
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost \
             /opt/hostedtoolcache/CodeQL /usr/local/lib/android/sdk/system-images
           df -h /
+        working-directory: .
 
       - name: 安装依赖
         run: npm ci
@@ -48,14 +54,61 @@ jobs:
         run: npx jest
 
       - name: Android debug 构建（android/ 已入库；prebuild 后断言产物无 diff，防 app.config 与 android/ 漂移）
+        # git pathspec 相对 cwd 解析：working-directory 为 mobile 时 `-- android/` 会解析到
+        # mobile/android/android，漂移断言步骤单独覆盖 working-directory 回仓库根
         run: |
           npx expo prebuild -p android --no-install
-          # M6 §4.9.2「prebuild 校验产物无 diff」可执行断言：prebuild 重放后 android/ 入库文件
-          # 必须与提交一致（构建产物已被 .gitignore 排除，不参与 diff）；漂移即失败并列出差异
-          if ! git diff --exit-code -- android/; then
-            echo "::error::expo prebuild 产物与入库 android/ 存在漂移——请本地跑 npx expo prebuild -p android 后提交更新（勿手改 android/ 内由 plugin 驱动的文件）"
+          cd .. && git diff --exit-code -- mobile/android/ || {
+            echo "::error::expo prebuild 产物与入库 mobile/android/ 存在漂移——请本地跑 cd mobile && npx expo prebuild -p android 后提交更新（勿手改 android/ 内由 plugin 驱动的文件）"
             exit 1
-          fi
+          }
           # CI 仅构建 arm64-v8a：4 ABI 原生构建会耗尽 runner 磁盘且耗时 40+ 分钟；
           # debug 构建只作编译门禁，发布包仍由 mobile-release 构建全 ABI
+          cd android && ./gradlew assembleDebug -PreactNativeArchitectures=arm64-v8a
+
+  tv:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tv
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tv/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # JDK 21：与 mobile job 同口径（compileSdk 37 需要，见决策记录）
+          java-version: 21
+
+      - name: 释放 Runner 磁盘空间
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost \
+            /opt/hostedtoolcache/CodeQL /usr/local/lib/android/sdk/system-images
+          df -h /
+        working-directory: .
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 质量门禁 1/2 lint（含 @tv/ 边界规则）
+        run: npm run lint
+
+      - name: 质量门禁 2/2 tsc（fork 类型检查共享层）
+        run: npm run typecheck
+
+      - name: Android TV debug 构建（android/ 已入库；prebuild 后断言产物无 diff）
+        # jest 不设：共享层单测归 mobile job（与 TV 形态无关，TV 设计 §4.2）
+        run: |
+          npx expo prebuild -p android --no-install
+          cd .. && git diff --exit-code -- tv/android/ || {
+            echo "::error::tv prebuild 漂移——请本地跑 cd tv && npx expo prebuild -p android 后提交更新"
+            exit 1
+          }
+          # CI 仅构建 arm64-v8a（TV 设备主 ABI），与 mobile job 同口径省磁盘
           cd android && ./gradlew assembleDebug -PreactNativeArchitectures=arm64-v8a

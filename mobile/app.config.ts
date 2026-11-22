@@ -5,12 +5,13 @@
 import type { ConfigPlugin } from '@expo/config-plugins';
 import { withAndroidManifest } from '@expo/config-plugins';
 
-// CJS .js 插件（expo 配置加载器只转译 app.config.ts 入口本身，require 的模块须为 js）
-import withStreamIsleNetwork from './plugins/withStreamIsleNetwork.js';
-import withPdfAssets from './plugins/withPdfAssets.js';
-import withAliyunMaven from './plugins/withAliyunMaven.js';
-import withMedia3Version from './plugins/withMedia3Version.js';
-import withReleaseSigning from './plugins/withReleaseSigning.js';
+// CJS .js 插件（expo 配置加载器只转译 app.config.ts 入口本身，require 的模块须为 js）。
+// TV-m0 工程平移：plugins/ 留仓库根共享，import 路径指回上级目录
+import withStreamIsleNetwork from '../plugins/withStreamIsleNetwork.js';
+import withPdfAssets from '../plugins/withPdfAssets.js';
+import withAliyunMaven from '../plugins/withAliyunMaven.js';
+import withMedia3Version from '../plugins/withMedia3Version.js';
+import withReleaseSigning from '../plugins/withReleaseSigning.js';
 
 /**
  * 为 AndroidManifest 的 <application> 补 android:usesCleartextTraffic="true"。

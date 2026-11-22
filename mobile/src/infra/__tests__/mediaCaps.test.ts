@@ -7,7 +7,7 @@ import type { DecoderCapabilities } from '@/adapter/DeviceProfileBuilder';
 
 const mockGet = jest.fn();
 
-jest.mock('../../../modules/expo-media-caps', () => ({
+jest.mock('../../../../modules/expo-media-caps', () => ({
   getDecoderCapabilities: mockGet,
 }));
 

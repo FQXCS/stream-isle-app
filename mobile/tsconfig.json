@@ -11,7 +11,11 @@
       "phosphor-react-native/src/icons/*": ["./node_modules/phosphor-react-native/lib/typescript/icons/*"],
       // @rntp/player 深引用 RN 内部类型；RN 0.88 exports 不再为该路径提供类型（types: null），
       // 指向 types_generated 声明（"." 主入口的 types 分支同源）
-      "react-native/Libraries/Types/CodegenTypes": ["./node_modules/react-native/types_generated/Libraries/Types/CodegenTypes.d.ts"]
+      "react-native/Libraries/Types/CodegenTypes": ["./node_modules/react-native/types_generated/Libraries/Types/CodegenTypes.d.ts"],
+      // TV-m0 平移：modules/ 本地模块（无 package.json，经目录/index.ts 解析）源码内 import
+      // expo-modules-core，此前靠仓库根 node_modules 层级查找解析；工程移入 mobile/ 后根上
+      // 不再有 node_modules，显式映射到本工程依赖（路径相对声明本文件的 tsconfig 解析）
+      "expo-modules-core": ["./node_modules/expo-modules-core"]
     }
   }
 }

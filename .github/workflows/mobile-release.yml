@@ -11,6 +11,10 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # TV-m0 工程平移：手机工程移至 mobile/，全部 run 步骤统一 working-directory
+    defaults:
+      run:
+        working-directory: mobile
     # GITHUB_TOKEN 默认只读，创建 Release 需显式授予 contents 写权限（否则 403）
     permissions:
       contents: write
@@ -23,9 +27,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           # Expo SDK 58 要求 Node >= 22.13，与 mobile-ci.yml 保持一致
+          # setup-node 无 working-directory 概念，写相对仓库根路径
           node-version: 22
           cache: npm
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: mobile/package-lock.json
 
       - uses: actions/setup-java@v4
         with:
@@ -61,13 +66,15 @@ jobs:
         run: cd android && ./gradlew assembleRelease
 
       - name: 重命名 APK（StreamIsle-{versionName}({versionCode}).apk）
+        # APK 与 notes 文件均落在 mobile/（本步 working-directory）；APK_TARGET/NOTES_PATH
+        # 供 uses 步（upload-artifact / gh-release，无 working-directory 概念）以仓库根相对路径消费
         run: |
           VERSION_NAME=$(node -e "console.log(require('./app.config.json')?.expo?.version ?? '')" 2>/dev/null || node -e "const c=require('fs').readFileSync('app.config.ts','utf8');const m=c.match(/version:\s*\"([^\"]+)\"/);console.log(m?m[1]:'unknown')")
           VERSION_CODE=$(grep -o 'versionCode [0-9]*' android/app/build.gradle | grep -o '[0-9]*')
           APK=$(ls android/app/build/outputs/apk/release/app-release.apk)
           TARGET="StreamIsle-${VERSION_NAME}(${VERSION_CODE}).apk"
           cp "$APK" "$TARGET"
-          echo "APK_TARGET=$TARGET" >> "$GITHUB_ENV"
+          echo "APK_TARGET=mobile/$TARGET" >> "$GITHUB_ENV"
 
       - name: 上传 artifact（保留 30 天）
         uses: actions/upload-artifact@v4
@@ -97,7 +104,7 @@ jobs:
           echo "" >> release-notes.md
           # 排除 merge 提交，避免「Merge remote-tracking branch」等噪音进入简介
           git log "$RANGE" --no-merges --format='- %s' >> release-notes.md
-          echo "NOTES_PATH=release-notes.md" >> "$GITHUB_ENV"
+          echo "NOTES_PATH=mobile/release-notes.md" >> "$GITHUB_ENV"
 
       - name: 附加 APK 到 GitHub Release（notes = tag message 引言 + 提交清单，中文）
         uses: softprops/action-gh-release@v2

@@ -36,8 +36,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import type { AudioTrack, PlaybackSession, SubtitleTrack } from '@/adapter/model';
 import { AppIcon } from '@/component/AppIcon';
 import { showToast } from '@/component/Toast';
-import PlaybackGestures from '../../../modules/expo-playback-gestures';
-import PlayerSnapshot from '../../../modules/expo-player-snapshot';
+import PlaybackGestures from '../../../../modules/expo-playback-gestures';
+import PlayerSnapshot from '../../../../modules/expo-player-snapshot';
 import type { ResolutionTierKey } from '@/constant/resolution';
 import {
   CELLULAR_RESOLUTION_TIER,

@@ -5,7 +5,7 @@
  * （对齐设计文档 §8.2「异常机型关掉即全量转码兜底」；代价仅服务器 CPU，不影响可看性）。
  */
 import type { DecoderCapabilities } from '@/adapter/DeviceProfileBuilder';
-import { getDecoderCapabilities } from '../../modules/expo-media-caps';
+import { getDecoderCapabilities } from '../../../modules/expo-media-caps';
 
 /** 探测失败回退值：全 false（全转码兜底） */
 const FALLBACK_CAPS: DecoderCapabilities = {
