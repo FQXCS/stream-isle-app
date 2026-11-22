@@ -6,8 +6,8 @@ import Constants from 'expo-constants';
 /** 客户端名：MediaBrowser 认证头 Client/Device 字段取值（§4.6.3 buildHeaders） */
 export const CLIENT_NAME = 'Stream Isle';
 
-/** 认证头 Version 字段取值：运行时取 expo-constants，fallback 1.1.2 */
-export const APP_VERSION: string = Constants.expoConfig?.version ?? '1.1.2';
+/** 认证头 Version 字段取值：运行时取 expo-constants，fallback 1.1.3 */
+export const APP_VERSION: string = Constants.expoConfig?.version ?? '1.1.3';
 
 /**
  * Android 应用包名（M5：电池优化引导 IntentLauncher data 的 package: 参数同源消费）。
