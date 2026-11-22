@@ -1,0 +1,19 @@
+{
+  "extends": "../mobile/tsconfig.json",
+  "compilerOptions": {
+    // types 不继承 mobile 的 ["jest"]：tv 侧不装 jest（共享层单测归 mobile job，TV-m0 §4.8）；
+    // node 供 metro.config.ts 的 CJS 全局（__dirname/require/module）类型
+    "types": ["node"],
+    // paths 整体覆盖（extends 不合并，须显式重声明）：@/ 指共享层（相对本文件解析，等价 mobile
+    // 语义）、@tv/ 指 TV 层；深引用映射同 mobile 口径（fork 的 types_generated 路径实测确认存在）。
+    // 相对路径按声明本文件的 tv/ 解析（TS 5+ paths 不随 extends 改基）
+    "paths": {
+      "@/*": ["../mobile/src/*"],
+      "@tv/*": ["./src/*"],
+      "phosphor-react-native/src/icons/*": ["./node_modules/phosphor-react-native/lib/typescript/icons/*"],
+      "react-native/Libraries/Types/CodegenTypes": ["./node_modules/react-native/types_generated/Libraries/Types/CodegenTypes.d.ts"],
+      // modules/ 本地模块源码内 import expo-modules-core（TV-m0 平移定案，同 mobile/tsconfig 条目）
+      "expo-modules-core": ["./node_modules/expo-modules-core"]
+    }
+  }
+}
