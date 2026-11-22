@@ -9,12 +9,42 @@
     // types 不继承 mobile 的 ["jest"]：tv 侧不装 jest（共享层单测归 mobile job，TV-m0 §4.8）；
     // node 供 metro.config.ts 的 CJS 全局（__dirname/require/module）类型
     "types": ["node"],
-    // paths 显式声明（extends 不合并）：@/ 指共享层（相对本文件解析，等价 mobile 语义）、
-    // @tv/ 指 TV 层；深引用映射同 mobile 口径（fork 的 types_generated 路径实测确认存在）。
-    // 相对路径按声明本文件的 tv/ 解析（TS 5+ paths 不随 extends 改基）
+    // paths 显式声明（extends 不合并）。除别名外，bare 依赖全部显式映射进 tv/node_modules：
+    // 共享层文件位于 mobile/src，tsc 类型解析跟随文件位置向上找 node_modules——CI tv job 无
+    // mobile/node_modules，缺映射即 TS2307。语义与 Metro 的 nodeModulesPaths 收敛一致
+    // （依赖闭包=决策记录 TV-m0-S6 清单；TV 未携带的依赖出现在共享可达路径即构建失败，
+    // 是闭包核对 §4.7 的机械化兜底）。
     "paths": {
       "@/*": ["../mobile/src/*"],
       "@tv/*": ["./src/*"],
+      // react 自身无类型声明，映射到 @types（jsx-runtime 同源，TS2875）
+      "react": ["./node_modules/@types/react"],
+      "react/jsx-runtime": ["./node_modules/@types/react/jsx-runtime"],
+      // fork 包 package.json 无 types 字段、类型经 exports map 的 types 分支提供
+      // （./types_generated/index.d.ts）——paths 直指目录不应用 exports map（TS7016），须直指类型入口
+      "react-native": ["./node_modules/react-native/types_generated/index.d.ts"],
+      "@react-native-community/netinfo": ["./node_modules/@react-native-community/netinfo"],
+      "@react-navigation/native": ["./node_modules/@react-navigation/native"],
+      "@react-navigation/native-stack": ["./node_modules/@react-navigation/native-stack"],
+      "axios": ["./node_modules/axios"],
+      "expo": ["./node_modules/expo"],
+      "expo-application": ["./node_modules/expo-application"],
+      "expo-constants": ["./node_modules/expo-constants"],
+      "expo-device": ["./node_modules/expo-device"],
+      "expo-localization": ["./node_modules/expo-localization"],
+      "expo-secure-store": ["./node_modules/expo-secure-store"],
+      "expo-status-bar": ["./node_modules/expo-status-bar"],
+      "expo-system-ui": ["./node_modules/expo-system-ui"],
+      "phosphor-react-native": ["./node_modules/phosphor-react-native"],
+      "react-native-mmkv": ["./node_modules/react-native-mmkv"],
+      "react-native-reanimated": ["./node_modules/react-native-reanimated"],
+      "react-native-safe-area-context": ["./node_modules/react-native-safe-area-context"],
+      "react-native-screens": ["./node_modules/react-native-screens"],
+      "react-native-svg": ["./node_modules/react-native-svg"],
+      "react-native-video": ["./node_modules/react-native-video"],
+      "zustand": ["./node_modules/zustand"],
+      "zustand/middleware": ["./node_modules/zustand/middleware"],
+      // 深引用映射（同 mobile 口径）
       "phosphor-react-native/src/icons/*": ["./node_modules/phosphor-react-native/lib/typescript/icons/*"],
       "react-native/Libraries/Types/CodegenTypes": ["./node_modules/react-native/types_generated/Libraries/Types/CodegenTypes.d.ts"],
       // modules/ 本地模块源码内 import expo-modules-core（TV-m0 平移定案，同 mobile/tsconfig 条目）
