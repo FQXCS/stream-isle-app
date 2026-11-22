@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/icon.png" width="120" height="120" alt="Stream Isle" />
+  <img src="mobile/assets/icon.png" width="120" height="120" alt="Stream Isle" />
   <h1>Stream Isle Mobile</h1>
   <p>仅 Android 的 <strong>Emby / Jellyfin 通用客户端</strong></p>
   <p>大图沉浸式浏览 · 直连优先 / 自动转码 · 差异化补齐音乐、照片与图书阅读</p>
@@ -111,21 +111,23 @@ Jellyfin / Emby Server
 
 ```
 .
-├── src/
-│   ├── adapter/          # ServerAdapter、Jellyfin/Emby 实现、DeviceProfileBuilder、统一模型
-│   ├── infra/            # ApiClient、MMKV/SQLite、Token 存储、TLS、错误归一化、原生桥
-│   ├── service/          # 业务服务（认证/浏览/详情/播放/进度/下载/音频/照片/图书）
-│   ├── store/            # zustand 状态与持久化
-│   ├── page/             # 页面（Onboarding / Tabs / 库 / 详情 / 播放器 / 设置等）
-│   ├── component/        # 复用 UI 组件（海报卡、列表、弹层、迷你播放条、AppIcon 等）
-│   ├── i18n/             # 多语言（中文 / English 文案、系统语言解析、useT/t）
-│   ├── constant/         # 路由、主题、库 Tab / 排序目录、播放等常量
-│   └── util/             # 纯函数工具
+├── mobile/               # 手机工程（TV-m0 平移）
+│   ├── src/
+│   │   ├── adapter/      # ServerAdapter、Jellyfin/Emby 实现、DeviceProfileBuilder、统一模型
+│   │   ├── infra/        # ApiClient、MMKV/SQLite、Token 存储、TLS、错误归一化、原生桥
+│   │   ├── service/      # 业务服务（认证/浏览/详情/播放/进度/下载/音频/照片/图书）
+│   │   ├── store/        # zustand 状态与持久化
+│   │   ├── page/         # 页面（Onboarding / Tabs / 库 / 详情 / 播放器 / 设置等）
+│   │   ├── component/    # 复用 UI 组件（海报卡、列表、弹层、迷你播放条、AppIcon 等）
+│   │   ├── i18n/         # 多语言（中文 / English 文案、系统语言解析、useT/t）
+│   │   ├── constant/     # 路由、主题、库 Tab / 排序目录、播放等常量
+│   │   └── util/         # 纯函数工具
+│   ├── android/          # prebuild 产物（入库，勿手改插件驱动的文件）
+│   ├── assets/pdf/       # pdf.js 构建产物 + reader.html
+│   └── app.config.ts     # 手机 Expo 应用配置
+├── tv/                   # Android TV 工程（react-native-tvos fork，Metro 共享 mobile/src 业务层）
 ├── modules/              # 本地 Expo 原生模块（解码能力探测 / 播放手势 / 播放截图）
-├── plugins/              # Expo config plugin（prebuild 装配原生源、PDF 资产、Maven 镜像、release 签名）
-├── android/              # prebuild 产物（入库，勿手改插件驱动的文件）
-├── assets/pdf/           # pdf.js 构建产物 + reader.html
-├── app.config.ts         # Expo 应用配置
+├── plugins/              # 共享 Expo config plugin（prebuild 装配原生源、PDF 资产、Maven 镜像、release 签名、TV launcher）
 ├── AGENTS.md             # 开发约束（编码前必读）
 └── .rules/commit.md      # Git 提交规范
 ```
@@ -140,7 +142,8 @@ Jellyfin / Emby Server
 ## 快速开始
 
 ```bash
-# 1. 安装依赖
+# 1. 安装依赖（手机工程在 mobile/）
+cd mobile
 npm install
 
 # 2. 生成原生工程（android/ 已入库，但配置变更后需重放；同时装配本地原生模块与 PDF 资产）
@@ -159,7 +162,7 @@ npx expo run:android
 
 ## 常用命令
 
-| 命令 | 说明 |
+| 命令（`cd mobile` 后） | 说明 |
 | --- | --- |
 | `npm run start` | 启动 Expo / Metro 开发服务器 |
 | `npm run android` | 构建并安装 Android 应用（等同 `npx expo run:android`） |
@@ -170,24 +173,27 @@ npx expo run:android
 | `cd android && ./gradlew assembleDebug` | 构建 debug APK |
 | `cd android && ./gradlew assembleRelease` | 构建签名 release APK（需配置 keystore） |
 
+TV 工程（`cd tv` 后）：`npm run lint` / `npm run typecheck` / `npx expo run:android`（TV 模拟器），RN 为 react-native-tvos fork，Metro 共享编译 `mobile/src` 业务层。
+
 ## 质量门禁与 CI/CD
 
 合并前必须通过四项检查：
 
 ```bash
+cd mobile
 npm run lint
 npx tsc --noEmit
 npx jest
 cd android && ./gradlew assembleDebug
 ```
 
-- **CI**（`.github/workflows/mobile-ci.yml`）：push `main` / PR 触发；执行 lint、tsc、jest、`expo prebuild` 零漂移校验与 Android debug 构建（仅 arm64-v8a，作编译门禁）。
+- **CI**（`.github/workflows/mobile-ci.yml`）：push `main` / PR 触发；mobile job 执行 lint、tsc、jest、`expo prebuild` 零漂移校验与 Android debug 构建（仅 arm64-v8a，作编译门禁）；tv job 对 TV 工程执行 lint、tsc 与 Android TV debug 构建。
 - **Release**（`.github/workflows/mobile-release.yml`）：推送 `v*` tag 触发；复跑质量门禁后，用仓库 Secrets 中的 keystore 构建全 ABI 签名 APK，重命名为 `StreamIsle-{version}({versionCode}).apk` 并附加到 GitHub Release。
 - 提交信息遵循 [.rules/commit.md](.rules/commit.md)：`feat: ` / `fix: ` / `refactor: ` 等关键词格式（英文冒号后一个空格）。
 
 ## 已知边界
 
-- 仅 Android；iOS 与 Android TV / TV 端未支持
+- 仅 Android；iOS 未支持（Android TV 适配进行中，见 `docs/design/TV 适配设计.md`）
 - 不支持 DRM 内容；不提供服务端管理功能
 - 离线下载仅支持可直连（无需转码）的视频条目；下载需 App 进程存活（支持断点续传），未实现系统级后台下载
 - 投屏、音乐离线缓存、Live TV / EPG、漫画 / EPUB 等能力未纳入当前版本
@@ -199,7 +205,7 @@ cd android && ./gradlew assembleDebug
 1. **编码前必读 [AGENTS.md](AGENTS.md)**：架构约束、UI 图标规范（统一经 `AppIcon` 使用 Phosphor）、专项规则均在其中。
 2. **分支习惯**：每个里程碑一个 `feature/m<N>-xxx` 分支（如 `feature/m1-skeleton`）。
 3. **提交规范**：遵循 [.rules/commit.md](.rules/commit.md)，格式 `关键词: 说明`（`feat` / `fix` / `refactor` / `build` / `ci` 等）。
-4. **四关全绿**：合并前 `lint` + `tsc` + `jest` + Android debug 构建必须全部通过；输出中的警告一并处理，保持零警告。
+4. **四关全绿**：合并前 mobile 侧 `lint` + `tsc` + `jest` + Android debug 构建必须全部通过（TV 侧 tv job 三关同步）；输出中的警告一并处理，保持零警告。
 5. **原生改动可重放**：改 `app.config.ts` / `plugins/` 后重新 `npx expo prebuild -p android` 并提交 `android/` 更新，勿手改插件驱动的文件（CI 会断言零漂移）。
 
 ## 许可证

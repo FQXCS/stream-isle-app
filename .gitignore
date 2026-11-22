@@ -38,7 +38,9 @@ android/.idea/
 *.pem
 
 # ===== iOS（当前仅 Android，后置阶段使用；prebuild ios 后按需放开）=====
-/ios
+# TV-m0 双工程：/mobile/ios（手机）、/tv/ios（TV），其余 android/ 等无前导斜杠模式自动匹配任意层级
+/mobile/ios
+/tv/ios
 
 # ===== 环境变量 / 密钥 =====
 .env
