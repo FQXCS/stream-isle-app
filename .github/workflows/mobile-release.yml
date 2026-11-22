@@ -41,6 +41,11 @@ jobs:
       - name: 安装依赖
         run: npm ci
 
+      # TV-m0：仓库根共享插件依赖（prebuild 经 plugins/ 装配需要）
+      - name: 安装仓库根共享插件依赖
+        run: npm ci
+        working-directory: .
+
       # —— 与 CI 同序的质量门禁（release 前置复跑，M6 §4.9.2「node 环境与 ci 同序的 lint/test 门禁」）——
       - name: 质量门禁 1/3 lint
         run: npm run lint
