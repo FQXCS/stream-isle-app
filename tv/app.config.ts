@@ -31,7 +31,7 @@ export default {
     name: 'Stream Isle TV',
     slug: 'stream-isle-tv',
     // 版本名两端同步策略（TV 设计 §4.2）：bump 时一次 commit 同改两端 app.config
-    version: '1.1.2',
+    version: '1.1.3',
     orientation: 'landscape', // TV 恒横屏（替代手机的 fullSensor 体系）
     userInterfaceStyle: 'dark', // TV 强制深色
     android: {
