@@ -17,9 +17,10 @@
     "paths": {
       "@/*": ["../mobile/src/*"],
       "@tv/*": ["./src/*"],
-      // react 自身无类型声明，映射到 @types（jsx-runtime 同源，TS2875）
-      "react": ["./node_modules/@types/react"],
-      "react/jsx-runtime": ["./node_modules/@types/react/jsx-runtime"],
+      // 注意：react / react/jsx-runtime 不做 paths 映射——Metro 的 tsconfigPaths
+      // resolver 对 bare 精确匹配别名解析失败（@types/react 的 "main": "" 不可运行时解析）
+      // 会抛 InvalidPackageError 且不回退正常解析（TV-m1 实测）。移除后 tsc 经标准
+      // @types 自动查找获得类型、Metro 直取 node_modules/react 真包，双端皆绿。
       // fork 包 package.json 无 types 字段、类型经 exports map 的 types 分支提供
       // （./types_generated/index.d.ts）——paths 直指目录不应用 exports map（TS7016），须直指类型入口
       "react-native": ["./node_modules/react-native/types_generated/index.d.ts"],
@@ -35,6 +36,9 @@
       "expo-secure-store": ["./node_modules/expo-secure-store"],
       "expo-status-bar": ["./node_modules/expo-status-bar"],
       "expo-system-ui": ["./node_modules/expo-system-ui"],
+      // tv-m1 页面层新增（非 m0 依赖闭包）：首页海报 + Quick Connect 二维码
+      "expo-image": ["./node_modules/expo-image"],
+      "react-native-qrcode-svg": ["./node_modules/react-native-qrcode-svg"],
       "phosphor-react-native": ["./node_modules/phosphor-react-native"],
       "react-native-mmkv": ["./node_modules/react-native-mmkv"],
       "react-native-reanimated": ["./node_modules/react-native-reanimated"],

@@ -35,6 +35,13 @@ export const zhBase = {
   'nav.sortTabsTitle': '排序项 · {type}',
   'nav.sortEditorTitle': '排序项 · {type} · {tab}',
 
+  // —— TV 专属（TV-m1；TV 侧侧栏/占位屏文案，zh 为源 + en 镜像）——
+  'tv.tabHome': '首页',
+  'tv.savedServers': '历史服务器',
+  'tv.usePasswordLogin': '改用账密登录',
+  'tv.searchPlaceholder': '搜索功能开发中，即将上线',
+  'tv.settingsPlaceholder': '设置功能开发中，即将上线',
+
   // —— 设置页 ——
   'settings.title': '设置',
   'settings.playback': '播放',
