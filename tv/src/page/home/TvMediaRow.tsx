@@ -32,6 +32,8 @@ interface TvMediaRowProps {
   autoFocusFirst?: boolean;
   /** 跳板 UP 的显式目标（侧栏镜像代理 tag；纵向 ScrollView 子树内可达） */
   escapeFocusUpTag?: number;
+  /** Enter 落地（TV-m2 收口 m1 no-op 切片：首页/搜索结果由调用方下发路由） */
+  onPressItem?: (item: MediaLibraryItem) => void;
 }
 
 export function TvMediaRow({
@@ -40,6 +42,7 @@ export function TvMediaRow({
   variant = 'poster',
   autoFocusFirst = false,
   escapeFocusUpTag,
+  onPressItem,
 }: TvMediaRowProps) {
   // 跳板 React tag：行首卡 nextFocusLeft 指向它（tag 相同跳过 setState 防循环）
   const [sentinelTag, setSentinelTag] = useState<number | null>(null);
@@ -75,6 +78,7 @@ export function TvMediaRow({
             hasTVPreferredFocus={autoFocusFirst && index === 0}
             // 仅行首卡 LEFT 覆盖到跳板（其余卡行内移动走几何搜索）
             nextFocusLeft={index === 0 && sentinelTag !== null ? sentinelTag : undefined}
+            onPress={onPressItem !== undefined ? () => onPressItem(item) : undefined}
           />
         )}
       />

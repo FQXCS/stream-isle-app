@@ -1,7 +1,6 @@
 /**
- * TV「我的媒体」库卡片（TV-m1 §4.4，库卡片行初版，m2 随 Library 入口复核）：
- * 16:9 库图 + 库名；无库图回退库类型图标（TV 侧映射表）。
- * onPress 为 no-op 切片：tv-m2 接 Library（TV-m1-S4 同海报卡口径）。
+ * TV「我的媒体」库卡片（TV-m1 §4.4）：16:9 库图 + 库名；无库图回退库类型图标（TV 侧映射表）。
+ * TV-m2 收口：onPress 由调用方下发（进库浏览 TvLibrary，TV-m1-S4 no-op 切片移除）。
  */
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
@@ -23,12 +22,15 @@ interface TvLibraryTileProps {
   hasTVPreferredFocus?: boolean;
   /** LEFT 显式焦点目标（行首卡指向跳板 tag，TV-m1 边缘逃逸机制） */
   nextFocusLeft?: number;
+  /** Enter 落地（TV-m2 收口：进库浏览 TvLibrary） */
+  onPress?: () => void;
 }
 
 export function TvLibraryTile({
   library,
   hasTVPreferredFocus = false,
   nextFocusLeft,
+  onPress,
 }: TvLibraryTileProps) {
   const t = useTvTheme();
   return (
@@ -37,8 +39,7 @@ export function TvLibraryTile({
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityRole="button"
       accessibilityLabel={library.name}
-      // tv-m2 接 Library（TV-m1-S4 no-op 切片）
-      onPress={() => {}}
+      onPress={onPress}
       style={[styles.card, { width: TILE_WIDTH }]}
       nextFocusLeft={nextFocusLeft}
     >
