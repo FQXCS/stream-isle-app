@@ -42,6 +42,8 @@ export const enBase: Record<keyof typeof zhBase, Message> = {
   'tv.usePasswordLogin': 'Use password sign-in',
   'tv.searchPlaceholder': 'Search is in development and coming soon',
   'tv.settingsPlaceholder': 'Settings are in development and coming soon',
+  'tv.unsupportedLibrary': 'This library type is not supported on TV yet',
+  'tv.resolveSmoke': 'Playback session resolved: {method} · {resolution} · {count} subtitle(s)',
 
   // —— Settings ——
   'settings.title': 'Settings',

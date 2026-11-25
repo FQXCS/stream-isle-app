@@ -41,6 +41,8 @@ export const zhBase = {
   'tv.usePasswordLogin': '改用账密登录',
   'tv.searchPlaceholder': '搜索功能开发中，即将上线',
   'tv.settingsPlaceholder': '设置功能开发中，即将上线',
+  'tv.unsupportedLibrary': '该库类型在 TV 端暂不支持',
+  'tv.resolveSmoke': '播放会话已建立：{method} · {resolution} · 字幕 {count} 条',
 
   // —— 设置页 ——
   'settings.title': '设置',

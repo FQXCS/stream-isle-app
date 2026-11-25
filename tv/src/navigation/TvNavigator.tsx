@@ -1,7 +1,8 @@
 /**
  * TV 导航器（TV-m1 §4.1 / TV-m1-S3）：单 Shell 路由——侧栏自绘 + 内容区按 selectedTab
- * 状态切换三屏（首页/搜索/设置），tab 切换不压栈（TV 惯例，侧栏常驻）；
- * 详情/播放等后续里程碑以 stack push 进入（TvStackParamList m2/m3 追加）。
+ * 状态切换两屏（首页/搜索），tab 切换不压栈（TV 惯例，侧栏常驻）；设置 tab 仍为占位屏
+ * （TV-m2 §2.2，正式化顺延 tv-m4）。详情/库浏览/下钻/人物等找片链路以 stack push 进入
+ * （TV-m2 §2.1，无侧栏，BACK 回退）；播放器 tv-m3 追加。
  * 转场禁用（TV 设计 §6.1 animation 'none'）；主题强制深色映射（TV-m1 §4.5，验收 #10）。
  */
 import { useCallback, useMemo, useState } from 'react';
@@ -13,13 +14,20 @@ import { StyleSheet, TVFocusGuideView, View } from 'react-native';
 import { useT } from '@/i18n';
 
 import { TV_ROUTES } from '@tv/constant/navigation';
+import { ROUTES } from '@/constant/navigation';
 import { TvScreenFrame } from '@tv/component/TvScreenFrame';
 import { TvSidebarNav, type TvSidebarItem } from '@tv/component/TvSidebarNav';
 import { useTvTheme } from '@tv/component/useTvTheme';
 import { navigationRef } from '@tv/navigation/navigationRef';
 import type { TvStackParamList } from '@tv/navigation/types';
 import { TvHomeScreen } from '@tv/page/home/TvHomeScreen';
+import { TvItemDetailScreen } from '@tv/page/detail/TvItemDetailScreen';
+import { TvItemListScreen } from '@tv/page/library/TvItemListScreen';
+import { TvLibraryFolderScreen } from '@tv/page/library/TvLibraryFolderScreen';
+import { TvLibraryScreen } from '@tv/page/library/TvLibraryScreen';
+import { TvPersonScreen } from '@tv/page/person/TvPersonScreen';
 import { TvPlaceholderScreen } from '@tv/page/placeholder/TvPlaceholderScreen';
+import { TvSearchScreen } from '@tv/page/search/TvSearchScreen';
 import { findNodeHandleTagOf } from '@tv/util/focusView';
 
 /** Shell 内容区 tab（单路由内状态切换，TV-m1-S3） */
@@ -95,10 +103,12 @@ function TvShellScreen() {
             />
           )}
           {selectedTab === 'search' && (
-            <TvPlaceholderScreen
-              message={tr('tv.searchPlaceholder')}
-              onGoHome={() => setSelectedTab('home')}
-              nextFocusLeftTag={sidebarItemTags.search}
+            <TvSearchScreen
+              proxyIcon={selectedItems[0].icon}
+              proxyLabel={selectedItems[0].label}
+              onProxyTag={setProxyTag}
+              onProxyPress={cycleTab}
+              escapeFocusUpTag={proxyTag ?? undefined}
             />
           )}
           {selectedTab === 'settings' && (
@@ -144,6 +154,12 @@ export function TvNavigator() {
         }}
       >
         <TvStack.Screen name={TV_ROUTES.SHELL} component={TvShellScreen} />
+        {/* TV-m2 找片链路：库浏览/详情/下钻/通用列表/人物 stack push（无侧栏，BACK 回退） */}
+        <TvStack.Screen name={ROUTES.LIBRARY} component={TvLibraryScreen} />
+        <TvStack.Screen name={ROUTES.ITEM} component={TvItemDetailScreen} />
+        <TvStack.Screen name={ROUTES.LIBRARY_FOLDER} component={TvLibraryFolderScreen} />
+        <TvStack.Screen name={ROUTES.ITEM_LIST} component={TvItemListScreen} />
+        <TvStack.Screen name={ROUTES.PERSON} component={TvPersonScreen} />
       </TvStack.Navigator>
     </NavigationContainer>
   );

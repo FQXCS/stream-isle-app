@@ -5,13 +5,15 @@
  * 游客态不在本屏处理（TV gate 保证 active 存在，登出由 gate 自动回登录屏，TV-m1-S1）。
  */
 import { useCallback, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { MediaLibrary, MediaLibraryItem } from '@/adapter/model';
 import { AppError } from '@/infra/error';
 import { AppIcon } from '@/component/AppIcon';
 import { useT } from '@/i18n';
+import { ROUTES } from '@/constant/navigation';
 import type { ThemeTokens } from '@/constant/theme';
 import { useTvTheme } from '@tv/component/useTvTheme';
 import { TvEmptyView, TvErrorView, TvLoadingSkeleton } from '@tv/component/TvStateViews';
@@ -29,6 +31,9 @@ import { TvLibraryTile } from '@tv/page/home/TvLibraryTile';
 import { TvMediaRow, TvRowEscapeSentinel } from '@tv/page/home/TvMediaRow';
 import { TvSidebarProxy } from '@tv/component/TvSidebarProxy';
 import { findNodeHandleTagOf } from '@tv/util/focusView';
+import type { TvStackParamList } from '@tv/navigation/types';
+
+type TvNavigation = NativeStackNavigationProp<TvStackParamList>;
 
 interface TvHomeScreenProps {
   /** 侧栏镜像代理的图标/文案（Shell 当前 tab 下发） */
@@ -46,6 +51,8 @@ export function TvHomeScreen({ proxyIcon, proxyLabel, onProxyTag, onProxyPress, 
   const t = useTvTheme();
   const tr = useT();
   const styles = createStyles(t);
+  // TV-m2 收口：海报卡 Enter → 详情（resume 行卡带续播语义，详情页按断点渲染「继续」）
+  const navigation = useNavigation<TvNavigation>();
   const active = useAccountStore((state) => state.active);
   const key = active !== null ? librariesKeyOf(active.serverId, active.userId) : null;
   const libraries = useBrowseStore((state) =>
@@ -214,6 +221,8 @@ export function TvHomeScreen({ proxyIcon, proxyLabel, onProxyTag, onProxyPress, 
               itemList={sections.resumeList}
               variant="wide"
               autoFocusFirst={autoFocusKey === 'resume'}
+              escapeFocusUpTag={escapeFocusUpTag}
+              onPressItem={(item) => navigation.navigate(ROUTES.ITEM, { itemId: item.id })}
             />
           )}
           {sections.nextUpList.length > 0 && (
@@ -221,6 +230,8 @@ export function TvHomeScreen({ proxyIcon, proxyLabel, onProxyTag, onProxyPress, 
               title={tr('server.sectionNextUp')}
               itemList={sections.nextUpList}
               autoFocusFirst={autoFocusKey === 'nextUp'}
+              escapeFocusUpTag={escapeFocusUpTag}
+              onPressItem={(item) => navigation.navigate(ROUTES.ITEM, { itemId: item.id })}
             />
           )}
           {sections.latestList.length > 0 && (
@@ -228,6 +239,8 @@ export function TvHomeScreen({ proxyIcon, proxyLabel, onProxyTag, onProxyPress, 
               title={tr('server.sectionLatest')}
               itemList={sections.latestList}
               autoFocusFirst={autoFocusKey === 'latest'}
+              escapeFocusUpTag={escapeFocusUpTag}
+              onPressItem={(item) => navigation.navigate(ROUTES.ITEM, { itemId: item.id })}
             />
           )}
           {libraryList.length > 0 && (
@@ -259,6 +272,7 @@ export function TvHomeScreen({ proxyIcon, proxyLabel, onProxyTag, onProxyPress, 
                     nextFocusLeft={
                       index === 0 && myMediaSentinelTag !== null ? myMediaSentinelTag : undefined
                     }
+                    onPress={() => navigation.navigate(ROUTES.LIBRARY, { library: item })}
                   />
                 )}
               />
@@ -274,7 +288,8 @@ export function TvHomeScreen({ proxyIcon, proxyLabel, onProxyTag, onProxyPress, 
                 key={library.id}
                 title={library.name}
                 itemList={itemList}
-               
+                escapeFocusUpTag={escapeFocusUpTag}
+                onPressItem={(item) => navigation.navigate(ROUTES.ITEM, { itemId: item.id })}
               />
             );
           })}

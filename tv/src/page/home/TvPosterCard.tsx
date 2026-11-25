@@ -3,7 +3,8 @@
  * 不手拼 URL）；wide=继续观看 16:9 断点卡（播放钮 + 进度条 + 时间文本），
  * poster=按条目类型图幅（2:3 海报 / 16:9 单集 / 1:1 专辑，cardAspectRatioOf 共享口径）。
  * 焦点视觉经 TvPressable card 态收口（scale 1.06 + accent 描边 + 辉光）。
- * onPress 为 no-op 切片：tv-m2 接 ItemDetail（TV-m1-S4 里程碑切片的刻意半成品）。
+ * TV-m2 收口：onPress 由调用方下发（首页海报进详情，TV-m1-S4 no-op 切片移除）；
+ * 新增 frame（网格统一帧，TV-m2 海报墙等宽单元）与 dimmed（收藏 Tab 取消收藏淡化）。
  */
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
@@ -22,6 +23,12 @@ export const TV_CARD_IMAGE_HEIGHT = 200;
 /** 卡片形态 */
 export type TvCardVariant = 'wide' | 'poster';
 
+/** 网格统一帧（TV-m2 §4.1 海报墙等宽单元：宽度随列数实测，高度沿用卡档） */
+export interface TvCardFrame {
+  width: number;
+  height: number;
+}
+
 interface TvPosterCardProps {
   item: MediaLibraryItem;
   variant?: TvCardVariant;
@@ -29,6 +36,12 @@ interface TvPosterCardProps {
   hasTVPreferredFocus?: boolean;
   /** LEFT 显式焦点目标（行首卡指向跳板 tag，TV-m1 边缘逃逸机制） */
   nextFocusLeft?: number;
+  /** 网格统一帧（传入时忽略 variant 图幅，等宽等高保证网格单元对齐） */
+  frame?: TvCardFrame;
+  /** 收藏筛选 Tab 下未收藏条目淡化置灰（WallGridCell 同口径） */
+  dimmed?: boolean;
+  /** Enter 动作（tv-m1 为 no-op 切片，TV-m2 由调用方下发路由） */
+  onPress?: () => void;
 }
 
 /** 进度百分比：优先服务端 playedPercentage，缺省按位置/时长计算（ResumeRow 同口径） */
@@ -59,10 +72,19 @@ export function TvPosterCard({
   variant = 'poster',
   hasTVPreferredFocus = false,
   nextFocusLeft,
+  frame,
+  dimmed = false,
+  onPress,
 }: TvPosterCardProps) {
   const t = useTvTheme();
-  const aspectRatio = variant === 'wide' ? 16 / 9 : cardAspectRatioOf(item.type);
-  const width = Math.round(TV_CARD_IMAGE_HEIGHT * aspectRatio);
+  const aspectRatio =
+    frame !== undefined
+      ? frame.width / frame.height
+      : variant === 'wide'
+        ? 16 / 9
+        : cardAspectRatioOf(item.type);
+  const width = frame !== undefined ? frame.width : Math.round(TV_CARD_IMAGE_HEIGHT * aspectRatio);
+  const imageHeight = frame !== undefined ? frame.height : TV_CARD_IMAGE_HEIGHT;
   const percent = variant === 'wide' ? progressPercentOf(item) : undefined;
   const timeText = variant === 'wide' ? timeTextOf(item) : undefined;
   return (
@@ -71,12 +93,11 @@ export function TvPosterCard({
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityRole="button"
       accessibilityLabel={item.name}
-      // tv-m2 接 ItemDetail（TV-m1-S4 no-op 切片：焦点视觉完整、Enter 有按压反馈但无跳转）
-      onPress={() => {}}
-      style={[styles.card, { width }]}
+      onPress={onPress}
+      style={[styles.card, { width }, dimmed && styles.dimmed]}
       nextFocusLeft={nextFocusLeft}
     >
-      <View style={[styles.thumb, { backgroundColor: t.surfaceSunken }]}>
+      <View style={[styles.thumb, { backgroundColor: t.surfaceSunken, height: imageHeight }]}>
         {item.posterImageUrl !== undefined ? (
           <Image
             source={{ uri: item.posterImageUrl }}
@@ -118,6 +139,8 @@ export function TvPosterCard({
 
 const styles = StyleSheet.create({
   card: { gap: 10 },
+  /** 收藏 Tab 取消收藏淡化（不透明度置灰，不立即移除——服务端分页索引防跳） */
+  dimmed: { opacity: 0.45 },
   thumb: {
     width: '100%',
     height: TV_CARD_IMAGE_HEIGHT,
