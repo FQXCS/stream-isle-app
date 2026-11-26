@@ -108,6 +108,12 @@ jobs:
         run: npm ci
         working-directory: .
 
+      # TV-m2：tv tsc 经 ../mobile/src 类型检查共享层，bare import（react/expo-sqlite 等）
+      # 需从 mobile/node_modules 解析——CI 不装 mobile 依赖则 TS2307/TS2875（本地有故绿）
+      - name: 安装共享层依赖（tv tsc 解析 ../mobile/src 的 bare import）
+        run: npm ci
+        working-directory: mobile
+
       - name: 质量门禁 1/2 lint（含 @tv/ 边界规则）
         run: npm run lint
 
