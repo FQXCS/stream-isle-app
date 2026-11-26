@@ -11,6 +11,7 @@ import type {
   LibraryTypeEnum,
   MediaLibrary,
   MediaItemTypeEnum,
+  PlaybackSession,
   ServerInfo,
   SortByEnum,
 } from '@/adapter/model';
@@ -50,4 +51,6 @@ export type TvStackParamList = {
   [ROUTES.ITEM_LIST]: TvItemListParams;
   /** 人物页：头像/简介/出演作品网格（TV-m2 §4.3 演员行落地） */
   [ROUTES.PERSON]: { personId: string };
+  /** 播放器：详情页 resolve 后会话传入（TV-m3 §4.1；会话携带 itemType/seriesId 供连播判定） */
+  [ROUTES.PLAYER]: { session: PlaybackSession };
 };

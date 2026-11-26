@@ -3,7 +3,7 @@
  * 缩略图（Primary@400 已在 posterImageUrl 内）+「第 N 集 名称」+ 单行简介 + 时长 +
  * 已看勾标识 + 底部细进度条 + 行尾扩展位。TV 行内不放二级可点件（已看 toggle 由详情页
  * 已看按钮承担，集级 toggle 随 m3 播放页/菜单再开）；整行焦点（row 态不缩放防抖动），
- * Enter → 播放按钮同款 resolve 冒烟（TV-m2-S2，m3 接真播放）。
+ * Enter → 播放按钮同款 resolve → navigate(Player)（TV-m3 收口）。
  */
 import type { ReactNode } from 'react';
 import { Image } from 'expo-image';
@@ -18,7 +18,7 @@ import { useTvTheme } from '@tv/component/useTvTheme';
 
 interface TvEpisodeRowProps {
   episodeList: EpisodeItem[];
-  /** 点集回调（页面统一走 resolve 冒烟流程） */
+  /** 点集回调（页面统一走 resolve → navigate(Player) 流程） */
   onSelectEpisode: (episode: EpisodeItem) => void;
   /** 行尾扩展位（M6 下载徽标位契约；TV 无下载引擎，m2 恒不传） */
   renderTrailing?: (episode: EpisodeItem) => ReactNode;

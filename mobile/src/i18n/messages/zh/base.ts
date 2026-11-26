@@ -42,7 +42,10 @@ export const zhBase = {
   'tv.searchPlaceholder': '搜索功能开发中，即将上线',
   'tv.settingsPlaceholder': '设置功能开发中，即将上线',
   'tv.unsupportedLibrary': '该库类型在 TV 端暂不支持',
-  'tv.resolveSmoke': '播放会话已建立：{method} · {resolution} · 字幕 {count} 条',
+  // —— TV 播放器（TV-m3；截图切片/延时步进文案，zh 为源 + en 镜像）——
+  'tv.snapshotSavedPath': '截图已保存：{path}',
+  'tv.snapshotFailed': '截图失败',
+  'tv.delayReset': '{label} {value} 秒，长按归零',
 
   // —— 设置页 ——
   'settings.title': '设置',
