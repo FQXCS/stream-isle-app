@@ -26,6 +26,7 @@ import { TvItemListScreen } from '@tv/page/library/TvItemListScreen';
 import { TvLibraryFolderScreen } from '@tv/page/library/TvLibraryFolderScreen';
 import { TvLibraryScreen } from '@tv/page/library/TvLibraryScreen';
 import { TvPersonScreen } from '@tv/page/person/TvPersonScreen';
+import { TvPlayerScreen } from '@tv/page/player/TvPlayerScreen';
 import { TvPlaceholderScreen } from '@tv/page/placeholder/TvPlaceholderScreen';
 import { TvSearchScreen } from '@tv/page/search/TvSearchScreen';
 import { findNodeHandleTagOf } from '@tv/util/focusView';
@@ -160,6 +161,8 @@ export function TvNavigator() {
         <TvStack.Screen name={ROUTES.LIBRARY_FOLDER} component={TvLibraryFolderScreen} />
         <TvStack.Screen name={ROUTES.ITEM_LIST} component={TvItemListScreen} />
         <TvStack.Screen name={ROUTES.PERSON} component={TvPersonScreen} />
+        {/* TV-m3 播放器：详情 resolve 后 push（无侧栏，BACK 层级收口于播放页） */}
+        <TvStack.Screen name={ROUTES.PLAYER} component={TvPlayerScreen} />
       </TvStack.Navigator>
     </NavigationContainer>
   );

@@ -4,8 +4,8 @@
  * 相似行。数据流与竞态守卫照搬手机 ItemDetailScreen：loadDetail → Series 追加
  * loadSeasons/loadEpisodes（selectedSeasonIdRef 守卫快速切季，风险 #3 不新发明）、
  * loadSimilar 失败静默、收藏/已看乐观更新失败回滚 + Toast。
- * 播放按钮为 resolve 冒烟切片（TV-m2-S2）：playbackService.resolve 成功 toast 会话摘要
- * （playMethod/分辨率档位/字幕数）验证决策链路；m3 第一任务换 navigate(Player)。
+ * 播放按钮：resolve → navigate(Player)（TV-m3 收口 TV-m2-S2 冒烟切片），会话携带
+ * name/itemType/seriesId 供控制层标题与自动连播判定。
  * TV 无下载引擎/图书阅读器（TV 设计 §1.2），对应手机分支不移植。
  */
 import { useCallback, useRef, useState } from 'react';
@@ -172,37 +172,36 @@ export function TvItemDetailScreen() {
     }, [loadDetail])
   );
 
-  // —— 播放按钮 resolve 冒烟（TV-m2-S2）：成功 toast 会话摘要；m3 第一任务换 navigate(Player) ——
-  const resolveSmoke = useCallback(
-    async (target: { itemId: string; startPositionMs: number }) => {
-      try {
-        const session = await playbackService.resolve(target.itemId, {
-          startPositionMs: target.startPositionMs,
-        });
-        // 冒烟摘要：决策链路（转码画像/DeviceProfileBuilder）在 m2 即获 TV 实测（刻意切片）
-        const method = session.playMethod;
-        const resolution = session.maxResolutionTier ?? 'Direct';
-        showToast(
-          tr('tv.resolveSmoke', {
-            method,
-            resolution,
-            count: session.subtitleList.length,
-          }),
-          'info'
-        );
-      } catch (err) {
-        toastError(err);
-      }
-    },
-    [tr]
-  );
-
+  // —— 播放按钮：resolve → navigate(Player)（TV-m3 收口 TV-m2-S2 冒烟切片）——
+  // 会话携带 name/itemType/seriesId（控制层标题 + 自动连播判定，手机 resolveAndPlay 同口径）
   const beginPlay = useCallback(
-    (target: { id: string; source: { playbackPositionMs: number; runtimeMs?: number } }) => {
+    (target: {
+      id: string;
+      name: string;
+      type: MediaItemTypeEnum;
+      seriesId?: string;
+      source: { playbackPositionMs: number; runtimeMs?: number };
+    }) => {
       const resumeMs = getResumePositionMs(target.source);
-      void resolveSmoke({ itemId: target.id, startPositionMs: resumeMs ?? 0 });
+      void (async () => {
+        try {
+          const session = await playbackService.resolve(target.id, {
+            startPositionMs: resumeMs ?? 0,
+          });
+          navigation.navigate(ROUTES.PLAYER, {
+            session: {
+              ...session,
+              name: target.name,
+              itemType: target.type,
+              seriesId: target.seriesId,
+            },
+          });
+        } catch (err) {
+          toastError(err);
+        }
+      })();
     },
-    [resolveSmoke]
+    [navigation]
   );
 
   // —— 已看标记：显式目标态，成功后刷新 UserData（图标态/集列表勾随之变化）——
@@ -265,6 +264,7 @@ export function TvItemDetailScreen() {
   const isSeries = detail.type === 'Series';
   const playable = isPlayableType(detail.type);
   const selectedSeason = seasons.find((season) => season.id === selectedSeasonId) ?? null;
+  const selectedSeasonNumber = selectedSeason?.indexNumber ?? 0;
   // 续播语义（TV-m2 §4.3）：>10s 且 <95% →「继续 xx:xx」；其余「播放」
   const resumeMs = getResumePositionMs(toResumeSource(detail));
   // Series 无媒体流（resolve 必 PLAYBACK_UNSUPPORTED），主按钮改「播放第一集」：
@@ -328,7 +328,13 @@ export function TvItemDetailScreen() {
               accessibilityRole="button"
               accessibilityLabel={playLabel}
               onPress={() =>
-                beginPlay({ id: detail.id, source: toResumeSource(detail) })
+                beginPlay({
+                  id: detail.id,
+                  name: detail.name,
+                  type: detail.type,
+                  seriesId: detail.seriesId,
+                  source: toResumeSource(detail),
+                })
               }
               style={[styles.playButton, { backgroundColor: t.accent }]}
             >
@@ -345,6 +351,9 @@ export function TvItemDetailScreen() {
               onPress={() =>
                 beginPlay({
                   id: firstPlayableEpisode.id,
+                  name: `${detail.name} · S${selectedSeasonNumber}E${firstPlayableEpisode.indexNumber} ${firstPlayableEpisode.name}`,
+                  type: firstPlayableEpisode.type,
+                  seriesId: firstPlayableEpisode.seriesId,
                   source: toResumeSource(firstPlayableEpisode),
                 })
               }
@@ -423,6 +432,9 @@ export function TvItemDetailScreen() {
                 onSelectEpisode={(episode) =>
                   beginPlay({
                     id: episode.id,
+                    name: `${detail.name} · S${selectedSeasonNumber}E${episode.indexNumber} ${episode.name}`,
+                    type: episode.type,
+                    seriesId: episode.seriesId,
                     source: toResumeSource(episode),
                   })
                 }

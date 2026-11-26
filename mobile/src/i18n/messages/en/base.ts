@@ -43,7 +43,10 @@ export const enBase: Record<keyof typeof zhBase, Message> = {
   'tv.searchPlaceholder': 'Search is in development and coming soon',
   'tv.settingsPlaceholder': 'Settings are in development and coming soon',
   'tv.unsupportedLibrary': 'This library type is not supported on TV yet',
-  'tv.resolveSmoke': 'Playback session resolved: {method} · {resolution} · {count} subtitle(s)',
+  // —— TV player (TV-m3; snapshot slice / delay stepper copy, mirrored from zh source) ——
+  'tv.snapshotSavedPath': 'Snapshot saved: {path}',
+  'tv.snapshotFailed': 'Snapshot failed',
+  'tv.delayReset': '{label} {value}s, long-press to reset',
 
   // —— Settings ——
   'settings.title': 'Settings',
