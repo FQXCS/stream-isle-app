@@ -1,8 +1,7 @@
 /**
  * Expo 应用配置——TV 工程（TV-m0 §4.4）：恒 TV 形态，无环境变量切换（TV 设计 §4.1）。
  * 复用仓库根共享插件（相对路径引用，与 mobile/app.config.ts 平移后口径一致）；
- * 不带 withPdfAssets（阅读器禁用）/ withFullSensorOrientation（TV 恒横屏）/ withReleaseSigning
- * （签名注入 m4 发版时再加）。
+ * 不带 withPdfAssets（阅读器禁用）/ withFullSensorOrientation（TV 恒横屏）。
  */
 import type { ConfigPlugin } from '@expo/config-plugins';
 import { withAndroidManifest } from '@expo/config-plugins';
@@ -11,6 +10,7 @@ import { withAndroidManifest } from '@expo/config-plugins';
 import withStreamIsleNetwork from '../plugins/withStreamIsleNetwork.js';
 import withAliyunMaven from '../plugins/withAliyunMaven.js';
 import withMedia3Version from '../plugins/withMedia3Version.js';
+import withReleaseSigning from '../plugins/withReleaseSigning.js';
 import withTvLauncher from '../plugins/withTvLauncher.js';
 
 /**
@@ -50,6 +50,8 @@ export default {
       withAliyunMaven,
       // media3 1.12.0-beta01 覆盖（与手机同版本，音画延时同源）
       withMedia3Version,
+      // Release 正式签名（TV-m4）：与手机同插件同 keystore secrets，构建期回退 debug
+      withReleaseSigning,
       // leanback/banner 装配（TV-m0 §4.5）
       withTvLauncher,
       // minSdk 显式落 26（与手机同口径，SDK 58 版本目录默认 24 需覆盖）

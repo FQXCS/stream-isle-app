@@ -1,15 +1,20 @@
-# Stream Isle Mobile Release（M6 文档 §4.9.2；设计文档 §12/§14）
-# 触发：推送 v* tag → 复跑 lint/test 门禁 → 解码 keystore（仓库 Secrets 四件套）
-# → assembleRelease 签名 APK → 重命名 StreamIsle-{versionName}({versionCode}).apk
-# → 上传 artifact + softprops/action-gh-release 附加 APK（release notes = tag message 引言 + 上一 tag 以来全部提交）。
+# Stream Isle Release（M6 文档 §4.9.2；TV 设计 §4.2 发版路由细则，TV-m4 落地）
+# 触发：v* tag → 仅手机 job；tv-v* tag → 仅 TV job（job if 前缀天然分离）。
+# 流程：复跑门禁 → 解码 keystore（仓库 Secrets 四件套，双端同证书）→ assembleRelease
+# → 重命名 StreamIsle[-TV]-{versionName}({versionCode}).apk → 上传 artifact +
+# softprops/action-gh-release 附加 APK。
+# notes：tag message 引言 + 上一同端 tag 以来提交（前缀基线 + 路径过滤，双端不串）；
+# title 带端名；TV release make_latest=false 不抢 Latest 徽标（手机用户按 Latest 下载不下错包）。
 name: mobile-release
 
 on:
   push:
-    tags: ['v*']
+    tags: ['v*', 'tv-v*']
 
 jobs:
-  release:
+  release-mobile:
+    # tv-v* 不以 refs/tags/v 开头，天然不匹配（TV-m4 tag 路由）
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     # TV-m0 工程平移：手机工程移至 mobile/，全部 run 步骤统一 working-directory
     defaults:
@@ -71,8 +76,8 @@ jobs:
         run: cd android && ./gradlew assembleRelease
 
       - name: 重命名 APK（StreamIsle-{versionName}({versionCode}).apk）
-        # APK 与 notes 文件均落在 mobile/（本步 working-directory）；APK_TARGET/NOTES_PATH
-        # 供 uses 步（upload-artifact / gh-release，无 working-directory 概念）以仓库根相对路径消费
+        # APK 与 notes 文件均落在 mobile/（本步 working-directory）；APK_TARGET/NOTES_PATH/
+        # VERSION_NAME 供 uses 步（upload-artifact / gh-release，无 working-directory 概念）以仓库根相对路径消费
         run: |
           VERSION_NAME=$(node -e "console.log(require('./app.config.json')?.expo?.version ?? '')" 2>/dev/null || node -e "const c=require('fs').readFileSync('app.config.ts','utf8');const m=c.match(/version:\s*\"([^\"]+)\"/);console.log(m?m[1]:'unknown')")
           VERSION_CODE=$(grep -o 'versionCode [0-9]*' android/app/build.gradle | grep -o '[0-9]*')
@@ -80,6 +85,7 @@ jobs:
           TARGET="StreamIsle-${VERSION_NAME}(${VERSION_CODE}).apk"
           cp "$APK" "$TARGET"
           echo "APK_TARGET=mobile/$TARGET" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
 
       - name: 上传 artifact（保留 30 天）
         uses: actions/upload-artifact@v4
@@ -88,7 +94,7 @@ jobs:
           path: ${{ env.APK_TARGET }}
           retention-days: 30
 
-      - name: 产出 Release notes（tag message 引言 + 上一版本以来全部提交，中文；返工勘误：不得传空 body_path）
+      - name: 产出 Release notes（tag message 引言 + 上一手机版本以来 mobile/ 路径提交，中文）
         run: |
           # tag message 作引言；轻量 tag 无自身 message，跳过引言只留提交清单
           if [ "$(git cat-file -t "${GITHUB_REF_NAME}")" = "tag" ]; then
@@ -96,9 +102,9 @@ jobs:
           else
             : > release-notes.md
           fi
-          # 按提交时间定位上一版本 tag；首个版本无上一 tag 时取全部历史
-          PREV_TAG=$(git for-each-ref --sort=-creatordate --format='%(refname:short)' refs/tags \
-            | grep -v -x -F "${GITHUB_REF_NAME}" | head -n 1 || true)
+          # TV-m4：基线按 v* 前缀序列取（tv-v* 不匹配 v* glob，天然分离），排除当前 tag 取最近一个；
+          # 首个版本无上一 tag 时取全部历史
+          PREV_TAG=$(git tag --list 'v*' --sort=creatordate | grep -v -x -F "${GITHUB_REF_NAME}" | tail -n 1 || true)
           if [ -n "$PREV_TAG" ]; then
             RANGE="${PREV_TAG}..${GITHUB_REF_NAME}"
             echo "## 更新内容（${PREV_TAG} → ${GITHUB_REF_NAME}）" >> release-notes.md
@@ -107,12 +113,140 @@ jobs:
             echo "## 更新内容" >> release-notes.md
           fi
           echo "" >> release-notes.md
-          # 排除 merge 提交，避免「Merge remote-tracking branch」等噪音进入简介
-          git log "$RANGE" --no-merges --format='- %s' >> release-notes.md
+          # 排除 merge 提交；TV-m4 路径过滤：手机 notes 仅 mobile/ 路径提交（不掺 TV/共享层独立变更）
+          git log "$RANGE" --no-merges --format='- %s' -- mobile/ >> release-notes.md
           echo "NOTES_PATH=mobile/release-notes.md" >> "$GITHUB_ENV"
 
-      - name: 附加 APK 到 GitHub Release（notes = tag message 引言 + 提交清单，中文）
+      - name: 附加 APK 到 GitHub Release（title 带端名；手机序列保持 Latest 默认）
         uses: softprops/action-gh-release@v2
         with:
+          name: Stream Isle v${{ env.VERSION_NAME }}
+          files: ${{ env.APK_TARGET }}
+          body_path: ${{ env.NOTES_PATH }}
+
+  release-tv:
+    # TV-m4：tv-v* 前缀仅 TV job（与手机 job if 互斥）
+    if: startsWith(github.ref, 'refs/tags/tv-v')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tv
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # 全量历史 + tags：notes 需定位上一 tv-v* tag（首个 tv tag 无基线走全量 fallback）
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tv/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # JDK 21：与 mobile job 同口径（compileSdk 37 需要）
+          java-version: 21
+
+      - name: 释放 Runner 磁盘空间
+        # release 构建全 ABI（发布包需覆盖真机），与 CI 同口径清理预装组件防写满磁盘
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost \
+            /opt/hostedtoolcache/CodeQL /usr/local/lib/android/sdk/system-images
+          df -h /
+        working-directory: .
+
+      # tv/.npmrc legacy-peer-deps=true（fork prerelease 版本号 peer 冲突，TV-m0 定案）
+      - name: 安装依赖
+        run: npm ci
+
+      # TV-m0：仓库根共享插件依赖（prebuild 经 plugins/ 装配需要）
+      - name: 安装仓库根共享插件依赖
+        run: npm ci
+        working-directory: .
+
+      # TV-m2：tv tsc 经 ../mobile/src 类型检查共享层，bare import 需 mobile/node_modules
+      - name: 安装共享层依赖（tv tsc 解析 ../mobile/src 的 bare import）
+        run: npm ci
+        working-directory: mobile
+
+      - name: 质量门禁 1/2 lint（含 @tv/ 边界规则）
+        run: npm run lint
+
+      - name: 质量门禁 2/2 tsc（fork 类型检查共享层）
+        run: npm run typecheck
+
+      - name: TV prebuild 漂移断言（android/ 已入库，防 app.config 与产物漂移）
+        run: |
+          npx expo prebuild -p android --no-install
+          cd .. && git diff --exit-code -- tv/android/ || {
+            echo "::error::tv prebuild 漂移——请本地跑 cd tv && npx expo prebuild -p android 后提交更新"
+            exit 1
+          }
+
+      - name: 还原 keystore（与手机同 Secrets 四件套，同开发者证书；包名不同可共存安装）
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > /tmp/release.keystore
+          echo "ANDROID_KEYSTORE_FILE=/tmp/release.keystore" >> "$GITHUB_ENV"
+
+      - name: Android TV 签名构建（assembleRelease，withReleaseSigning 构建期读 keystore）
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: cd android && ./gradlew assembleRelease
+
+      - name: 重命名 APK（StreamIsle-TV-{versionName}({versionCode}).apk）
+        run: |
+          VERSION_NAME=$(node -e "const c=require('fs').readFileSync('app.config.ts','utf8');const m=c.match(/version:\s*'([^']+)'/);console.log(m?m[1]:'unknown')")
+          VERSION_CODE=$(grep -o 'versionCode [0-9]*' android/app/build.gradle | grep -o '[0-9]*')
+          APK=$(ls android/app/build/outputs/apk/release/app-release.apk)
+          TARGET="StreamIsle-TV-${VERSION_NAME}(${VERSION_CODE}).apk"
+          cp "$APK" "$TARGET"
+          echo "APK_TARGET=tv/$TARGET" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+
+      - name: 上传 artifact（保留 30 天）
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-tv-apk
+          path: ${{ env.APK_TARGET }}
+          retention-days: 30
+
+      - name: 产出 Release notes（tag message 引言 + 上一 tv-v* 以来 mobile/src 与 tv/ 路径提交，中文）
+        run: |
+          # tag message 作引言；轻量 tag 无自身 message，跳过引言只留提交清单
+          if [ "$(git cat-file -t "${GITHUB_REF_NAME}")" = "tag" ]; then
+            git tag -l --format='%(contents)' "${GITHUB_REF_NAME}" > release-notes.md
+          else
+            : > release-notes.md
+          fi
+          # TV-m4：基线按 tv-v* 前缀序列取，排除当前 tag 取最近一个；
+          # 首个 tv tag 无基线 → 引言 + 全量 tv/ 与 mobile/src 提交（跳版不掺纯手机 UI）
+          PREV_TAG=$(git tag --list 'tv-v*' --sort=creatordate | grep -v -x -F "${GITHUB_REF_NAME}" | tail -n 1 || true)
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..${GITHUB_REF_NAME}"
+            echo "## 更新内容（${PREV_TAG} → ${GITHUB_REF_NAME}）" >> release-notes.md
+          else
+            RANGE="${GITHUB_REF_NAME}"
+            echo "## 更新内容（首个 TV 版本）" >> release-notes.md
+          fi
+          echo "" >> release-notes.md
+          # 排除 merge 提交；路径过滤：TV notes 仅共享层（mobile/src）与 TV（tv/）提交
+          git log "$RANGE" --no-merges --format='- %s' -- mobile/src tv/ >> release-notes.md
+          echo "NOTES_PATH=tv/release-notes.md" >> "$GITHUB_ENV"
+
+      - name: 附加 APK 到 GitHub Release（title 带端名；make_latest=false 不抢 Latest 徽标）
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Stream Isle TV v${{ env.VERSION_NAME }}
+          # 硬约束（2026-11-18 定案）：GitHub Latest 不分 tag 序列，tv-v* 后发即抢徽标
+          # 致手机用户按 Latest 下错包——TV release 显式不设 Latest
+          make_latest: false
           files: ${{ env.APK_TARGET }}
           body_path: ${{ env.NOTES_PATH }}
