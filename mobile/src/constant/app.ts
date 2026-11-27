@@ -23,5 +23,8 @@ const GITHUB_RELEASE_REPO = 'stream-isle-app';
 /** GitHub Releases 页面（设置页外链 + 更新页下载/兜底入口） */
 export const GITHUB_RELEASES_URL = `https://github.com/${GITHUB_RELEASE_OWNER}/${GITHUB_RELEASE_REPO}/releases`;
 
-/** 最新正式 Release API（更新页检查版本；不含草稿/预发布） */
-export const GITHUB_LATEST_RELEASE_API_URL = `https://api.github.com/repos/${GITHUB_RELEASE_OWNER}/${GITHUB_RELEASE_REPO}/releases/latest`;
+/**
+ * 正式 Release 列表 API（TV-m4 列表化：更新检查按端 tag 前缀过滤取首条，
+ * 不再单点依赖 releases/latest——Latest 徽标不分 tag 序列，TV release 会抢占）。
+ */
+export const GITHUB_RELEASES_API_URL = `https://api.github.com/repos/${GITHUB_RELEASE_OWNER}/${GITHUB_RELEASE_REPO}/releases`;

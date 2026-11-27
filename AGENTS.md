@@ -15,7 +15,7 @@ Stream Isle：**仅 Android** 的 Emby/Jellyfin 通用客户端（对标 VidHub�
 - 播放器双引擎：视频 react-native-video 6.x（ExoPlayer）、音频 react-native-track-player；两引擎共用 PlaybackService 播放决策与 ProgressService 进度上报，不重复造轮子。
 - 基建选型：zustand + MMKV（persist）、axios（拦截器统一认证头/错误归一化/证书开关）、expo-secure-store（Token）、expo-image + @shopify/flash-list、reanimated + gesture-handler。
 - **UI 不感知服务器类型**：所有 Emby/Jellyfin 差异压进 `src/adapter/` 的 ServerAdapter（JellyfinAdapter / EmbyAdapter，预留 StreamIsleAdapter 第三实现位）；服务层不直接发请求，Adapter 产出的 API 描述统一由 ApiClient 执行。
-- MVP 边界（明确不做）：DRM、iOS / tvOS 端、服务端管理功能、漫画/电子书。Android TV 适配进行中（设计定稿于 `docs/design/TV 适配设计.md`：`tv/` 独立工程 + 手机平移 `mobile/`，TV 仅 fork 依赖差异，交互为 D-pad 焦点范式）。
+- MVP 边界（明确不做）：DRM、iOS / tvOS 端、服务端管理功能、漫画/电子书。Android TV 首版已交付（m0~m4，设计定稿于 `docs/design/TV 适配设计.md`：`tv/` 独立工程 + 手机平移 `mobile/`，TV 仅 fork 依赖差异，交互为 D-pad 焦点范式；音乐/照片/下载域与二级设置页顺延后续里程碑）。
 - 分层目录：`mobile/src/` 按 `adapter / infra / service / store / page / component / constant / util` 组织；`tv/src/` 为 TV 层（page / component / navigation / util）。
 
 ## UI 图标规范（编码时按此执行）
@@ -50,6 +50,13 @@ npx expo run:android            # TV AVD 构建安装（D-pad 冒烟）
 - CI：mobile job 四关（lint + test + Android debug 构建）+ tv job 三关（lint + tsc + debug 构建）；全绿是每个里程碑验收第 1 条。Android 构建需 **JDK 21**（compileSdk 37 的 core-for-system-modules.jar 需 JDK 21 的 jlink，JDK 17 实测 JdkImageTransform 失败）。
 - 分支习惯：每个里程碑一个 `feature/m<N>-xxx` 分支（如 M1 用 `feature/m1-skeleton`）；TV 里程碑 `feature/tv-m<N>-xxx`。
 - **警告处理**：lint / tsc / jest 输出中的警告要一并处理，保持零警告；成本低（调整 import、消除多余 hook 依赖、补 eslint 注释等）的直接修掉，成本高（升级依赖版本、改库内部行为等）的可不处理，并在提交说明中注明原因。
+
+## 版本纪律与发版路由（TV-m4 收尾，TV 设计 §4.2）
+
+- **bump**：一次 commit 同改 `mobile/app.config.ts` 与 `tv/app.config.ts` 的 `version`；versionCode 各自递增（手机续现序列；TV 100 起独立序列，100→101…）。
+- **tag**：手机 `v{version}`、TV `tv-v{version}`（取当前 main 版本；TV 可跳版不补发历史版本号）。`v*` 仅触发 release-mobile、`tv-v*` 仅触发 release-tv（job if 前缀分离）；TV release `make_latest=false` 不抢 Latest 徽标（GitHub Latest 不分 tag 序列）。
+- **notes**：基线取同端前缀序列最近 tag（`git tag --list 'v*'` / `'tv-v*'` `--sort=creatordate`，排除当前）；手机仅 `mobile/` 路径提交、TV 仅 `mobile/src tv/` 路径提交（pathspec 按提交时路径，m0 平移前历史不入双端 notes；首个 tv tag 无基线走全量 fallback）。
+- **更新检查**：UpdateService 走 releases 列表 + 端前缀过滤（`fetchLatestRelease(form)`，缺省 mobile；TV form 接口就绪、首版无 UI），与 make_latest=false 互为双保险。
 
 ## 本地联调测试环境（Emby 模拟器实测）
 

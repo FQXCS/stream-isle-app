@@ -1,8 +1,8 @@
 /**
  * TV 导航器（TV-m1 §4.1 / TV-m1-S3）：单 Shell 路由——侧栏自绘 + 内容区按 selectedTab
- * 状态切换两屏（首页/搜索），tab 切换不压栈（TV 惯例，侧栏常驻）；设置 tab 仍为占位屏
- * （TV-m2 §2.2，正式化顺延 tv-m4）。详情/库浏览/下钻/人物等找片链路以 stack push 进入
- * （TV-m2 §2.1，无侧栏，BACK 回退）；播放器 tv-m3 追加。
+ * 状态切换三屏（首页/搜索/设置），tab 切换不压栈（TV 惯例，侧栏常驻）；设置 tab
+ * tv-m4 收口为最小设置页（服务器/账号切换/退出/关于）。详情/库浏览/下钻/人物等找片
+ * 链路以 stack push 进入（TV-m2 §2.1，无侧栏，BACK 回退）；播放器 tv-m3 追加。
  * 转场禁用（TV 设计 §6.1 animation 'none'）；主题强制深色映射（TV-m1 §4.5，验收 #10）。
  */
 import { useCallback, useMemo, useState } from 'react';
@@ -27,9 +27,8 @@ import { TvLibraryFolderScreen } from '@tv/page/library/TvLibraryFolderScreen';
 import { TvLibraryScreen } from '@tv/page/library/TvLibraryScreen';
 import { TvPersonScreen } from '@tv/page/person/TvPersonScreen';
 import { TvPlayerScreen } from '@tv/page/player/TvPlayerScreen';
-import { TvPlaceholderScreen } from '@tv/page/placeholder/TvPlaceholderScreen';
 import { TvSearchScreen } from '@tv/page/search/TvSearchScreen';
-import { findNodeHandleTagOf } from '@tv/util/focusView';
+import { TvSettingsScreen } from '@tv/page/settings/TvSettingsScreen';
 
 /** Shell 内容区 tab（单路由内状态切换，TV-m1-S3） */
 type TvTabKey = 'home' | 'search' | 'settings';
@@ -41,24 +40,9 @@ function TvShellScreen() {
   // guide 目的地实例（state 化：fork findNodeHandle 在 React 19 下不解引 RefObject）
   const [contentNode, setContentNode] = useState<ComponentRef<typeof View> | null>(null);
   const [sidebarNode, setSidebarNode] = useState<ComponentRef<typeof View> | null>(null);
-  // 侧栏项 tag 注册表：占位屏按钮 nextFocusLeft 寻址（非 ScrollView 路径，窗口级
-  // findUserSetNextFocus 全窗 findViewById 可达侧栏）；行首跳板路径见 TvMediaRow 注释
-  const [sidebarItemTags, setSidebarItemTags] = useState<Record<string, number>>({});
-  // 侧栏镜像代理 tag：跳板 nextFocusUp 的目标（代理挂 TvHomeScreen 的纵向 ScrollView 内可达）
+  // 侧栏镜像代理 tag：跳板/设置行 nextFocus 的目标（代理挂内容屏纵向 ScrollView 内可达）
   const [proxyTag, setProxyTag] = useState<number | null>(null);
 
-  const registerItemRef = useCallback(
-    (key: string, ref: ComponentRef<typeof View> | null) => {
-      if (ref === null) {
-        return;
-      }
-      const tag = findNodeHandleTagOf(ref);
-      if (tag !== null) {
-        setSidebarItemTags((prev) => (prev[key] === tag ? prev : { ...prev, [key]: tag }));
-      }
-    },
-    []
-  );
   // 侧栏项（label 随语言变化，故依赖 tr；useMemo 稳定引用供 cycleTab 依赖）
   const items: TvSidebarItem[] = useMemo(
     () => [
@@ -86,7 +70,6 @@ function TvShellScreen() {
           selectedKey={selectedTab}
           onSelect={(key) => setSelectedTab(key as TvTabKey)}
           contentDestination={contentNode}
-          registerItemRef={registerItemRef}
         />
       </View>
       <TVFocusGuideView
@@ -113,10 +96,12 @@ function TvShellScreen() {
             />
           )}
           {selectedTab === 'settings' && (
-            <TvPlaceholderScreen
-              message={tr('tv.settingsPlaceholder')}
-              onGoHome={() => setSelectedTab('home')}
-              nextFocusLeftTag={sidebarItemTags.settings}
+            <TvSettingsScreen
+              proxyIcon={selectedItems[0].icon}
+              proxyLabel={selectedItems[0].label}
+              onProxyTag={setProxyTag}
+              onProxyPress={cycleTab}
+              escapeFocusUpTag={proxyTag ?? undefined}
             />
           )}
         </View>

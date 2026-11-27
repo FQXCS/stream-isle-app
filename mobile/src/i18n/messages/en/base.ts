@@ -41,8 +41,16 @@ export const enBase: Record<keyof typeof zhBase, Message> = {
   'tv.savedServers': 'Saved servers',
   'tv.usePasswordLogin': 'Use password sign-in',
   'tv.searchPlaceholder': 'Search is in development and coming soon',
-  'tv.settingsPlaceholder': 'Settings are in development and coming soon',
   'tv.unsupportedLibrary': 'This library type is not supported on TV yet',
+  // —— TV minimal settings (TV-m4; server/account switch / sign-out / about, mirrored from zh source) ——
+  'tv.settingsAccountSection': 'Servers & accounts',
+  'tv.settingsLogout': 'Sign out',
+  'tv.settingsLogoutConfirmTitle': 'Sign out of the current account?',
+  'tv.settingsLogoutConfirmDesc': 'You will need to sign in again to browse your libraries',
+  'tv.settingsSwitchedServer': 'Switched to server {name}',
+  'tv.settingsSwitchedUser': 'Switched to account {name}',
+  'tv.settingsSwitchFailed': 'Switch failed, please retry',
+  'tv.settingsLogoutFailed': 'Sign-out failed, please retry',
   // —— TV player (TV-m3; snapshot slice / delay stepper copy, mirrored from zh source) ——
   'tv.snapshotSavedPath': 'Snapshot saved: {path}',
   'tv.snapshotFailed': 'Snapshot failed',

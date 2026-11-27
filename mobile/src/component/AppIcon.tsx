@@ -64,6 +64,7 @@ import { RadioButton } from 'phosphor-react-native/src/icons/RadioButton';
 import { Repeat } from 'phosphor-react-native/src/icons/Repeat';
 import { RepeatOnce } from 'phosphor-react-native/src/icons/RepeatOnce';
 import { Shuffle } from 'phosphor-react-native/src/icons/Shuffle';
+import { SignOut } from 'phosphor-react-native/src/icons/SignOut';
 import { SkipBack } from 'phosphor-react-native/src/icons/SkipBack';
 import { SkipForward } from 'phosphor-react-native/src/icons/SkipForward';
 import { SpeakerHigh } from 'phosphor-react-native/src/icons/SpeakerHigh';
@@ -150,6 +151,7 @@ export type AppIconName =
   | 'image'
   | 'trash'
   | 'broom'
+  | 'signOut'
   | 'equalizer'
   | 'video'
   | 'audio'
@@ -335,6 +337,7 @@ const GLYPH_MAP: Record<AppIconName, GlyphSpec> = {
   image: { Glyph: ImageSquare },
   trash: { Glyph: Trash },
   broom: { Glyph: Broom },
+  signOut: { Glyph: SignOut },
   equalizer: { Glyph: Equalizer },
   video: { Glyph: Video },
   audio: { Glyph: MusicNotes },

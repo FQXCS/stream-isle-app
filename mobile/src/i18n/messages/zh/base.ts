@@ -40,8 +40,16 @@ export const zhBase = {
   'tv.savedServers': '历史服务器',
   'tv.usePasswordLogin': '改用账密登录',
   'tv.searchPlaceholder': '搜索功能开发中，即将上线',
-  'tv.settingsPlaceholder': '设置功能开发中，即将上线',
   'tv.unsupportedLibrary': '该库类型在 TV 端暂不支持',
+  // —— TV 最小设置页（TV-m4；服务器/账号切换/退出/关于，zh 为源 + en 镜像）——
+  'tv.settingsAccountSection': '服务器与账号',
+  'tv.settingsLogout': '退出登录',
+  'tv.settingsLogoutConfirmTitle': '退出当前账号？',
+  'tv.settingsLogoutConfirmDesc': '退出后需重新登录才能浏览媒体库',
+  'tv.settingsSwitchedServer': '已切换到服务器 {name}',
+  'tv.settingsSwitchedUser': '已切换到账号 {name}',
+  'tv.settingsSwitchFailed': '切换失败，请重试',
+  'tv.settingsLogoutFailed': '退出失败，请重试',
   // —— TV 播放器（TV-m3；截图切片/延时步进文案，zh 为源 + en 镜像）——
   'tv.snapshotSavedPath': '截图已保存：{path}',
   'tv.snapshotFailed': '截图失败',
