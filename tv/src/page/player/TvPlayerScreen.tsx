@@ -3,8 +3,8 @@
  * 照搬手机 PlayerScreen 的 store 驱动模式——服务层零改动（PlaybackService/ProgressService/
  * playerStore 全共享）。TV 差异：① 挂载不锁横屏（TV 恒横，无 expo-screen-orientation）；
  * ② 不挂 GestureLayer（无触摸），控制层显隐触发源 = TvKeyLayer 遥控按键；③ 无锁屏/旋转/
- * 画中画/蜂窝降档/本地会话（TV 无意义或无下载引擎）；④ 截图仅 capture + 路径 toast
- * （不入系统相册，TV-m3-S2）；⑤ 退出收尾「即时 goBack + unmount 补报」照搬。
+ * 画中画/蜂窝降档/本地会话（TV 无意义或无下载引擎）；④ 无截图/AB 循环/音频延时
+ * （TV 场景无使用闭环，已移除）；⑤ 退出收尾「即时 goBack + unmount 补报」照搬。
  * 时间口径：react-native-video 事件为秒，服务层/store 全部毫秒（页面层换算）。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -32,7 +32,6 @@ import Video, {
 import type { AudioTrack, PlaybackSession, SubtitleTrack } from '@/adapter/model';
 import { showToast } from '@/component/Toast';
 import { useImmersiveAccent } from '@/component/useTheme';
-import PlayerSnapshot from '../../../../modules/expo-player-snapshot';
 import type { ResolutionTierKey } from '@/constant/resolution';
 import { AUTO_NEXT_RESTART_NOTICE, DEFAULT_SUBTITLE_LANGUAGE } from '@/constant/playback';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
@@ -41,9 +40,7 @@ import { ProgressService } from '@/service/ProgressService';
 import { playbackService } from '@/service/PlaybackService';
 import { usePlayerStore } from '@/store/playerStore';
 import { useSettingsStore } from '@/store/settingsStore';
-import { abLoopSeekTarget, advanceAbLoop, type AbLoop } from '@/util/abLoop';
 import { buildBufferSettings } from '@/util/buffer';
-import { formatClock } from '@/util/format';
 import type { PlaybackEndReason } from '@/util/resume';
 import { sanitizedForLog } from '@/util/sanitize';
 import { selectAutoSubtitleStreamIndex } from '@/util/subtitleSelect';
@@ -89,7 +86,6 @@ export function TvPlayerScreen() {
   const controlsVisible = usePlayerStore((state) => state.controlsVisible);
   const playbackSpeed = usePlayerStore((state) => state.playbackSpeed);
   const subtitleDelayMs = usePlayerStore((state) => state.subtitleDelayMs);
-  const audioDelayMs = usePlayerStore((state) => state.audioDelayMs);
   const videoAspect = usePlayerStore((state) => state.videoAspect);
   const activeSubtitleStreamIndex = usePlayerStore((state) => state.activeSubtitleStreamIndex);
   const activeAudioStreamIndex = usePlayerStore((state) => state.activeAudioStreamIndex);
@@ -116,14 +112,6 @@ export function TvPlayerScreen() {
   const [engineAudioTracks, setEngineAudioTracks] = useState<
     { index: number; title?: string; language?: string }[]
   >([]);
-  /** AB 循环区间（页面局部态不进 store，同手机）；按会话 ID 键控，ref 镜像供 handleProgress */
-  const [abLoopEntry, setAbLoopEntry] = useState<{ sessionId: string; loop: AbLoop } | null>(null);
-  const abLoopRef = useRef<{ sessionId: string; loop: AbLoop } | null>(null);
-  const abLoop =
-    abLoopEntry !== null && abLoopEntry.sessionId === session.playSessionId ? abLoopEntry.loop : null;
-  /** 截图防重入（原生抓帧异步链路） */
-  const snapshotBusyRef = useRef(false);
-
   // —— 进页初始化：store 会话 + 状态（首次起播选中态重置 + 默认字幕选轨）——
   useEffect(() => {
     const store = usePlayerStore.getState();
@@ -251,20 +239,6 @@ export function TvPlayerScreen() {
     if (store.session !== null) {
       progressRef.current.notifyProgress(store.session, position, store.status !== 'playing');
     }
-    // AB 循环：到达 B 点回跳 A（ref 镜像避免回调重建；会话 ID 不符视为已失效）
-    const loopEntry = abLoopRef.current;
-    const loop =
-      loopEntry !== null && loopEntry.sessionId === store.session?.playSessionId
-        ? loopEntry.loop
-        : null;
-    const loopTarget = abLoopSeekTarget(loop, position);
-    if (loopTarget !== null) {
-      videoRef.current?.seek(loopTarget / 1000);
-      store.updateProgress(loopTarget, buffered, duration);
-      if (store.session !== null) {
-        progressRef.current.notifySeek(store.session, loopTarget);
-      }
-    }
   }, []);
 
   const handleError = useCallback((error: OnVideoErrorData) => {
@@ -382,43 +356,6 @@ export function TvPlayerScreen() {
     },
     [seekTo, showHud, hideHudLater]
   );
-
-  // —— AB 循环三态按钮（设 A → 设 B → 清除）；越 B 回 A 判定在 handleProgress ——
-  const handleAbLoop = useCallback(() => {
-    const store = usePlayerStore.getState();
-    const sessionId = store.session?.playSessionId ?? initialSession.playSessionId;
-    const entry = abLoopRef.current;
-    const current = entry !== null && entry.sessionId === sessionId ? entry.loop : null;
-    const next = advanceAbLoop(current, store.positionMs);
-    const nextEntry = next === null ? null : { sessionId, loop: next };
-    abLoopRef.current = nextEntry;
-    setAbLoopEntry(nextEntry);
-    if (next === null) {
-      showToast(tr('player.abLoopCleared'), 'info');
-    } else if (next.bMs === null) {
-      showToast(tr('player.abLoopSetA', { time: formatClock(next.aMs) }), 'info');
-    } else {
-      showToast(tr('player.abLoopActive', { a: formatClock(next.aMs), b: formatClock(next.bMs) }), 'info');
-    }
-  }, [tr, initialSession.playSessionId]);
-
-  // —— 截图切片（TV-m3-S2）：原生抓帧 → 路径 toast；不入系统相册（TV 闭包不带 expo-media-library）——
-  const handleSnapshot = useCallback(() => {
-    if (snapshotBusyRef.current) {
-      return;
-    }
-    snapshotBusyRef.current = true;
-    void (async () => {
-      try {
-        const path = await PlayerSnapshot.capture();
-        showToast(tr('tv.snapshotSavedPath', { path }), 'info');
-      } catch {
-        showToast(tr('tv.snapshotFailed'), 'error');
-      } finally {
-        snapshotBusyRef.current = false;
-      }
-    })();
-  }, [tr]);
 
   // —— 会话切换统一编排：service 内完成 Stopped→DELETE→resolve→setSession→回填；
   // 非 null（重启路径）关菜单 + 隐控制层，重启完成 falling-edge 恢复焦点落播放键；
@@ -644,7 +581,6 @@ export function TvPlayerScreen() {
           resizeMode={videoResizeMode}
           paused={status !== 'playing'}
           rate={playbackSpeed}
-          audioDelayMs={audioDelayMs}
           subtitleDelayMs={subtitleDelayMs}
           progressUpdateInterval={500}
           selectedTextTrack={selectedTextTrack}
@@ -664,7 +600,6 @@ export function TvPlayerScreen() {
           positionMs={positionMs}
           bufferedMs={bufferedMs}
           durationMs={durationMs}
-          abLoop={abLoop}
           playbackSpeed={playbackSpeed}
           preferredFocus={overlayFocusTarget}
           menuOpen={visibleMenu !== 'none'}
@@ -672,8 +607,6 @@ export function TvPlayerScreen() {
           onTogglePlay={togglePlay}
           onOpenMoreMenu={openMoreMenu}
           onOpenSpeedMenu={openSpeedMenu}
-          onAbLoop={handleAbLoop}
-          onSnapshot={handleSnapshot}
           onSeekBarFocused={setSeekBarFocused}
           onTopBarFocused={setTopBarFocused}
         />
@@ -704,8 +637,6 @@ export function TvPlayerScreen() {
           subtitleTracks={session.subtitleList}
           activeSubtitleIndex={activeSubtitleStreamIndex}
           onSubtitleSelect={handleSubtitleSelect}
-          audioDelayMs={audioDelayMs}
-          onAudioDelay={(ms) => usePlayerStore.getState().setAudioDelay(ms)}
           subtitleDelayMs={subtitleDelayMs}
           onSubtitleDelay={(ms) => usePlayerStore.getState().setSubtitleDelay(ms)}
           subtitleDelayDisabled={subtitleDelayDisabled}

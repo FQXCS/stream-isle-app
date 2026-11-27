@@ -1,7 +1,8 @@
 /**
  * TV 控制层（TV-m3 §4.3，照抄手机 ControlOverlay 契约的 TV 改造）：
- * 顶栏左返回 + 标题、右横排截图/更多；底部半透面板进度行（圆形播放键 + 当前时长 +
- * TvSeekBar + 总时长）+ 工具横排（倍速 / AB 循环）。去手机锁屏/旋转/画中画（TV 无意义）。
+ * 顶栏左返回 + 标题、右横排更多；底部半透面板进度行（圆形播放键 + 当前时长 +
+ * TvSeekBar + 总时长）+ 工具横排（倍速）。去手机锁屏/旋转/画中画（TV 无意义）；
+ * 截图/AB 循环 TV 场景无使用闭环，已移除。
  * TV 改造：① 按钮全 TvPressable（焦点视觉收口）；② 自动隐藏改「焦点存在挂起」——
  * 焦点计数 >0 或菜单打开时不计时，焦点离开且无操作恢复 CONTROLS_AUTO_HIDE_MS 计时
  * （TV 自持逻辑，不改手机 ControlOverlay）；③ preferredFocus 驱动 hasTVPreferredFocus
@@ -17,7 +18,6 @@ import { CONTROLS_AUTO_HIDE_MS } from '@/constant/playback';
 import { COLORS, FONT_SIZE, SPACING } from '@/constant/theme';
 import { useT } from '@/i18n';
 import { usePlayerStore } from '@/store/playerStore';
-import type { AbLoop } from '@/util/abLoop';
 import { formatClock, formatPlaybackSpeed } from '@/util/format';
 
 import { TvPressable } from '@tv/component/TvPressable';
@@ -40,8 +40,6 @@ interface TvControlOverlayProps {
   positionMs: number;
   bufferedMs: number;
   durationMs: number;
-  /** AB 循环区间（null=未设；bMs=null=仅 A 点）：驱动图标三态与进度条 A/B 标记 */
-  abLoop: AbLoop | null;
   playbackSpeed: number;
   /** hasTVPreferredFocus 落点按钮 */
   preferredFocus: TvOverlayFocusTarget;
@@ -51,8 +49,6 @@ interface TvControlOverlayProps {
   onTogglePlay: () => void;
   onOpenMoreMenu: () => void;
   onOpenSpeedMenu: () => void;
-  onAbLoop: () => void;
-  onSnapshot: () => void;
   /** SeekBar 焦点态上抛（TvKeyLayer 步进上下文判定） */
   onSeekBarFocused: (focused: boolean) => void;
   /** 顶栏焦点态上抛（TvKeyLayer DOWN 隐藏判定） */
@@ -65,7 +61,6 @@ export function TvControlOverlay({
   positionMs,
   bufferedMs,
   durationMs,
-  abLoop,
   playbackSpeed,
   preferredFocus,
   menuOpen,
@@ -73,8 +68,6 @@ export function TvControlOverlay({
   onTogglePlay,
   onOpenMoreMenu,
   onOpenSpeedMenu,
-  onAbLoop,
-  onSnapshot,
   onSeekBarFocused,
   onTopBarFocused,
 }: TvControlOverlayProps) {
@@ -116,19 +109,6 @@ export function TvControlOverlay({
   }, [menuOpen, clearTimer, scheduleHide]);
   useEffect(() => clearTimer, [clearTimer]);
 
-  const abActive = abLoop !== null;
-  // 图标三态：未设=白 AB；仅 A=主题色单 A；循环中=主题色 AB（手机参考图口径）
-  const abIcon = abLoop !== null && abLoop.bMs === null ? 'abLoopA' : 'abLoop';
-  const abMarkers =
-    abLoop === null
-      ? []
-      : abLoop.bMs === null
-        ? [{ label: 'A', positionMs: abLoop.aMs }]
-        : [
-            { label: 'A', positionMs: abLoop.aMs },
-            { label: 'B', positionMs: abLoop.bMs },
-          ];
-
   return (
     <View style={styles.container} pointerEvents="box-none">
       {/* 顶栏：左返回 + 标题；右横排 截图/更多（顶栏焦点态上抛供 DOWN 隐藏判定） */}
@@ -155,24 +135,6 @@ export function TvControlOverlay({
           {title}
         </Text>
         <View style={styles.topActions} pointerEvents="box-none">
-          <TvPressable
-            focusKind="row"
-            focusable
-            accessibilityRole="button"
-            accessibilityLabel={tr('player.snapshot')}
-            onPress={onSnapshot}
-            onFocus={() => {
-              handleFocusIn();
-              onTopBarFocused(true);
-            }}
-            onBlur={() => {
-              handleFocusOut();
-              onTopBarFocused(false);
-            }}
-            style={styles.iconButton}
-          >
-            <AppIcon name="snapshot" size={TOOL_ICON_SIZE} color={COLORS.textPrimary} />
-          </TvPressable>
           <TvPressable
             focusKind="row"
             focusable
@@ -221,7 +183,6 @@ export function TvControlOverlay({
             positionMs={positionMs}
             bufferedMs={bufferedMs}
             durationMs={durationMs}
-            markers={abMarkers}
             onFocus={() => {
               handleFocusIn();
               onSeekBarFocused(true);
@@ -246,22 +207,6 @@ export function TvControlOverlay({
             style={styles.textButton}
           >
             <Text style={styles.speedText}>{formatPlaybackSpeed(playbackSpeed)}</Text>
-          </TvPressable>
-          <TvPressable
-            focusKind="row"
-            focusable
-            accessibilityRole="button"
-            accessibilityLabel={tr('player.abLoop')}
-            onPress={onAbLoop}
-            onFocus={handleFocusIn}
-            onBlur={handleFocusOut}
-            style={styles.iconButton}
-          >
-            <AppIcon
-              name={abIcon}
-              size={TOOL_ICON_SIZE}
-              color={abActive ? accent : COLORS.textPrimary}
-            />
           </TvPressable>
         </View>
       </View>

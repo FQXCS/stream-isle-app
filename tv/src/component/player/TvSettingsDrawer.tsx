@@ -1,7 +1,7 @@
 /**
  * TV 播放设置抽屉（TV-m3 §4.3，照抄手机 PlayerSettingsDrawer 契约的 TV 改造）：
  * 右侧半透面板，顶三页签 视频/音频/字幕。视频页宽高比五档 + 转码分辨率（仅转码会话）；
- * 音频页音轨芯片单选 + 音频延迟；字幕页主字幕芯片（含禁用置灰不可聚焦）+ 字幕延时。
+ * 音频页音轨芯片单选；字幕页主字幕芯片（含禁用置灰不可聚焦）+ 字幕延时。
  * TV 改造：① 页签/选项/芯片全 TvPressable 焦点化，选中态 accent 描边/文字（TvTabBar
  * 「焦点 row 背景 + 选中 accent」两维度语言，避 m1-S4 accent 底对比坑）；② 页签与内容
  * 同挂一个 ScrollView（页签为 header，m2-S3 子树结论：UP/DOWN 跨页签↔内容可达）；
@@ -39,9 +39,6 @@ interface TvSettingsDrawerProps {
   subtitleTracks: SubtitleTrack[];
   activeSubtitleIndex: number | null;
   onSubtitleSelect: (track: SubtitleTrack | null) => void;
-  /** 音频延迟毫秒数（M8 音画同步延时） */
-  audioDelayMs: number;
-  onAudioDelay: (ms: number) => void;
   /** 字幕延时毫秒数（M8 音画同步延时） */
   subtitleDelayMs: number;
   onSubtitleDelay: (ms: number) => void;
@@ -62,8 +59,6 @@ export function TvSettingsDrawer({
   subtitleTracks,
   activeSubtitleIndex,
   onSubtitleSelect,
-  audioDelayMs,
-  onAudioDelay,
   subtitleDelayMs,
   onSubtitleDelay,
   subtitleDelayDisabled,
@@ -207,13 +202,6 @@ export function TvSettingsDrawer({
                   );
                 })}
               </View>
-              <View style={styles.divider} />
-              <Text style={styles.label}>{tr('player.audioDelay')}</Text>
-              <TvDelayStepper
-                valueMs={audioDelayMs}
-                onChange={onAudioDelay}
-                label={tr('player.audioDelay')}
-              />
             </>
           )}
           {tab === 'subtitle' && (
