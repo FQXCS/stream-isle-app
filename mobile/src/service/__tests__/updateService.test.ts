@@ -1,6 +1,7 @@
 /**
- * UpdateService 单测：Release 列表端前缀过滤映射、非 200 / 脏响应抛错、版本号比较。
- * TV-m4 列表化：mobile 筛 v*（tv-v* 存在不误报）/ tv 筛 tv-v* / 预发布草稿跳过。
+ * UpdateService 单测：Release 列表首条映射、非 200 / 脏响应抛错、版本号比较。
+ * 发版形态「同 tag 双 APK」单 Release 流（TV 设计 §4.2，2026-11-28 修订）：
+ * 无端前缀过滤，预发布/草稿跳过防御保留。
  */
 import { GITHUB_RELEASES_API_URL } from '@/constant/app';
 import {
@@ -43,11 +44,9 @@ afterAll(() => {
 });
 
 describe('normalizeReleaseVersion / isNewerVersion', () => {
-  it('标签去 v / tv-v 前缀并去除空白', () => {
+  it('标签去 v 前缀并去除空白', () => {
     expect(normalizeReleaseVersion(' v1.2.3 ')).toBe('1.2.3');
     expect(normalizeReleaseVersion('V2.0')).toBe('2.0');
-    expect(normalizeReleaseVersion('tv-v1.1.3')).toBe('1.1.3');
-    expect(normalizeReleaseVersion('TV-V2.0')).toBe('2.0');
   });
 
   it('按数值段比较且段数不齐补 0', () => {
@@ -71,8 +70,8 @@ describe('formatReleaseNotes', () => {
 });
 
 describe('UpdateService.fetchLatestRelease', () => {
-  it('请求列表端点并映射手机首条（tv-v* 存在不误报）', async () => {
-    mockResponse([releaseEntry('tv-v9.9.9'), releaseEntry('v1.3.0'), releaseEntry('v1.2.0')]);
+  it('请求列表端点并映射首条正式 Release', async () => {
+    mockResponse([releaseEntry('v1.3.0'), releaseEntry('v1.2.0')]);
     const release = await new UpdateService().fetchLatestRelease();
     expect(release).toEqual({
       version: '1.3.0',
@@ -85,15 +84,6 @@ describe('UpdateService.fetchLatestRelease', () => {
       expect.objectContaining({
         headers: expect.objectContaining({ Accept: 'application/vnd.github+json' }),
       })
-    );
-  });
-
-  it("form='tv' 筛 tv-v* 首条并去前缀", async () => {
-    mockResponse([releaseEntry('v1.4.0'), releaseEntry('tv-v1.1.3'), releaseEntry('tv-v1.1.2')]);
-    const release = await new UpdateService().fetchLatestRelease('tv');
-    expect(release.version).toBe('1.1.3');
-    expect(release.htmlUrl).toBe(
-      'https://github.com/FQXCS/stream-isle-app/releases/tag/tv-v1.1.3'
     );
   });
 
@@ -134,8 +124,16 @@ describe('UpdateService.fetchLatestRelease', () => {
     await expect(new UpdateService().fetchLatestRelease()).rejects.toThrow('缺少必要字段');
   });
 
-  it('无本端 Release 抛错（仅 tv-v* 时手机检查失败）', async () => {
-    mockResponse([releaseEntry('tv-v1.1.3')]);
-    await expect(new UpdateService().fetchLatestRelease()).rejects.toThrow('未找到本端正式 Release');
+  it('无正式 Release 抛错（空列表）', async () => {
+    mockResponse([]);
+    await expect(new UpdateService().fetchLatestRelease()).rejects.toThrow('未找到正式 Release');
+  });
+
+  it('全为预发布/草稿时抛错', async () => {
+    mockResponse([
+      releaseEntry('v2.0.0', { prerelease: true }),
+      releaseEntry('v1.9.0', { draft: true }),
+    ]);
+    await expect(new UpdateService().fetchLatestRelease()).rejects.toThrow('未找到正式 Release');
   });
 });

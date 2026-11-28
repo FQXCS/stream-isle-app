@@ -51,12 +51,12 @@ npx expo run:android            # TV AVD 构建安装（D-pad 冒烟）
 - 分支习惯：每个里程碑一个 `feature/m<N>-xxx` 分支（如 M1 用 `feature/m1-skeleton`）；TV 里程碑 `feature/tv-m<N>-xxx`。
 - **警告处理**：lint / tsc / jest 输出中的警告要一并处理，保持零警告；成本低（调整 import、消除多余 hook 依赖、补 eslint 注释等）的直接修掉，成本高（升级依赖版本、改库内部行为等）的可不处理，并在提交说明中注明原因。
 
-## 版本纪律与发版路由（TV-m4 收尾，TV 设计 §4.2）
+## 版本纪律与发版路由（2026-11-28 修订：同 tag 双 APK，TV 设计 §4.2 / decision TV-m4-S6）
 
-- **bump**：一次 commit 同改 `mobile/app.config.ts` 与 `tv/app.config.ts` 的 `version`；versionCode 各自递增（手机续现序列；TV 100 起独立序列，100→101…）。
-- **tag**：手机 `v{version}`、TV `tv-v{version}`（取当前 main 版本；TV 可跳版不补发历史版本号）。`v*` 仅触发 release-mobile、`tv-v*` 仅触发 release-tv（job if 前缀分离）；TV release `make_latest=false` 不抢 Latest 徽标（GitHub Latest 不分 tag 序列）。
-- **notes**：基线取同端前缀序列最近 tag（`git tag --list 'v*'` / `'tv-v*'` `--sort=creatordate`，排除当前）；手机仅 `mobile/` 路径提交、TV 仅 `mobile/src tv/` 路径提交（pathspec 按提交时路径，m0 平移前历史不入双端 notes；首个 tv tag 无基线走全量 fallback）。
-- **更新检查**：UpdateService 走 releases 列表 + 端前缀过滤（`fetchLatestRelease(form)`，缺省 mobile；TV form 接口就绪、首版无 UI），与 make_latest=false 互为双保险。
+- **bump**：一次 commit 同改 `mobile/app.config.ts` 与 `tv/app.config.ts` 的 `version`（两端版本名恒同步）；versionCode 各自递增（手机续现序列；TV 100 起独立序列，100→101…）。
+- **tag**：单一 `v{version}` tag → **同一 GitHub Release 附加双 APK**（`StreamIsle-{version}({code}).apk` + `StreamIsle-TV-{version}({code}).apk`）；build-mobile / build-tv 并行构建后 publish-release 汇总发布，title `Stream Isle v{version}`，单序列默认 Latest（无端徽标抢占问题）。
+- **notes**：基线取上一 `v*` tag（`git tag --list 'v*' --sort=creatordate` 排除当前；首个 tag 无基线走全量 fallback）；内容含 `mobile/` 与 `tv/` 路径提交（pathspec 按提交时路径，m0 平移前历史不入 notes）。
+- **更新检查**：UpdateService 读 releases 列表取首条正式 Release（跳过 prerelease/draft 防御保留），无端前缀过滤；TV 更新 UI（后续里程碑）读同一 Release。
 
 ## 本地联调测试环境（Emby 模拟器实测）
 

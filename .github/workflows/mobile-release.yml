@@ -1,33 +1,25 @@
-# Stream Isle Release（M6 文档 §4.9.2；TV 设计 §4.2 发版路由细则，TV-m4 落地）
-# 触发：v* tag → 仅手机 job；tv-v* tag → 仅 TV job（job if 前缀天然分离）。
-# 流程：复跑门禁 → 解码 keystore（仓库 Secrets 四件套，双端同证书）→ assembleRelease
-# → 重命名 StreamIsle[-TV]-{versionName}({versionCode}).apk → 上传 artifact +
-# softprops/action-gh-release 附加 APK。
-# notes：tag message 引言 + 上一同端 tag 以来提交（前缀基线 + 路径过滤，双端不串）；
-# title 带端名；TV release make_latest=false 不抢 Latest 徽标（手机用户按 Latest 下载不下错包）。
+# Stream Isle Release（M6 文档 §4.9.2；TV 设计 §4.2 同 tag 双 APK，2026-11-28 修订）
+# 触发：v* tag → 同一 GitHub Release 附加双 APK：
+#   StreamIsle-{version}({code}).apk（手机）+ StreamIsle-TV-{version}({code}).apk（TV）。
+# 流程：build-mobile / build-tv 并行（复跑门禁 → keystore 解码（仓库 Secrets 四件套，双端同证书）
+#   → assembleRelease → 重命名 → artifact）→ publish-release 汇总产出 notes
+#   （tag message 引言 + 上一 v* tag 以来 mobile/ 与 tv/ 路径提交）→ 单 Release 附双 APK。
+# 版本名两端同步（bump 一次 commit 同改两端）；单 Release 序列默认 Latest，无端徽标抢占问题。
 name: mobile-release
 
 on:
   push:
-    tags: ['v*', 'tv-v*']
+    tags: ['v*']
 
 jobs:
-  release-mobile:
-    # tv-v* 不以 refs/tags/v 开头，天然不匹配（TV-m4 tag 路由）
-    if: startsWith(github.ref, 'refs/tags/v')
+  build-mobile:
     runs-on: ubuntu-latest
     # TV-m0 工程平移：手机工程移至 mobile/，全部 run 步骤统一 working-directory
     defaults:
       run:
         working-directory: mobile
-    # GITHUB_TOKEN 默认只读，创建 Release 需显式授予 contents 写权限（否则 403）
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          # 全量历史 + tags：release notes 需定位上一版本 tag 并生成提交清单
-          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -76,8 +68,8 @@ jobs:
         run: cd android && ./gradlew assembleRelease
 
       - name: 重命名 APK（StreamIsle-{versionName}({versionCode}).apk）
-        # APK 与 notes 文件均落在 mobile/（本步 working-directory）；APK_TARGET/NOTES_PATH/
-        # VERSION_NAME 供 uses 步（upload-artifact / gh-release，无 working-directory 概念）以仓库根相对路径消费
+        # APK 落在 mobile/（本步 working-directory）；APK_TARGET 供 uses 步（upload-artifact，
+        # 无 working-directory 概念）以仓库根相对路径消费
         run: |
           VERSION_NAME=$(node -e "console.log(require('./app.config.json')?.expo?.version ?? '')" 2>/dev/null || node -e "const c=require('fs').readFileSync('app.config.ts','utf8');const m=c.match(/version:\s*\"([^\"]+)\"/);console.log(m?m[1]:'unknown')")
           VERSION_CODE=$(grep -o 'versionCode [0-9]*' android/app/build.gradle | grep -o '[0-9]*')
@@ -85,59 +77,21 @@ jobs:
           TARGET="StreamIsle-${VERSION_NAME}(${VERSION_CODE}).apk"
           cp "$APK" "$TARGET"
           echo "APK_TARGET=mobile/$TARGET" >> "$GITHUB_ENV"
-          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
 
       - name: 上传 artifact（保留 30 天）
         uses: actions/upload-artifact@v4
         with:
-          name: release-apk
+          name: release-apk-mobile
           path: ${{ env.APK_TARGET }}
           retention-days: 30
 
-      - name: 产出 Release notes（tag message 引言 + 上一手机版本以来 mobile/ 路径提交，中文）
-        run: |
-          # tag message 作引言；轻量 tag 无自身 message，跳过引言只留提交清单
-          if [ "$(git cat-file -t "${GITHUB_REF_NAME}")" = "tag" ]; then
-            git tag -l --format='%(contents)' "${GITHUB_REF_NAME}" > release-notes.md
-          else
-            : > release-notes.md
-          fi
-          # TV-m4：基线按 v* 前缀序列取（tv-v* 不匹配 v* glob，天然分离），排除当前 tag 取最近一个；
-          # 首个版本无上一 tag 时取全部历史
-          PREV_TAG=$(git tag --list 'v*' --sort=creatordate | grep -v -x -F "${GITHUB_REF_NAME}" | tail -n 1 || true)
-          if [ -n "$PREV_TAG" ]; then
-            RANGE="${PREV_TAG}..${GITHUB_REF_NAME}"
-            echo "## 更新内容（${PREV_TAG} → ${GITHUB_REF_NAME}）" >> release-notes.md
-          else
-            RANGE="${GITHUB_REF_NAME}"
-            echo "## 更新内容" >> release-notes.md
-          fi
-          echo "" >> release-notes.md
-          # 排除 merge 提交；TV-m4 路径过滤：手机 notes 仅 mobile/ 路径提交（不掺 TV/共享层独立变更）
-          git log "$RANGE" --no-merges --format='- %s' -- mobile/ >> release-notes.md
-          echo "NOTES_PATH=mobile/release-notes.md" >> "$GITHUB_ENV"
-
-      - name: 附加 APK 到 GitHub Release（title 带端名；手机序列保持 Latest 默认）
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Stream Isle v${{ env.VERSION_NAME }}
-          files: ${{ env.APK_TARGET }}
-          body_path: ${{ env.NOTES_PATH }}
-
-  release-tv:
-    # TV-m4：tv-v* 前缀仅 TV job（与手机 job if 互斥）
-    if: startsWith(github.ref, 'refs/tags/tv-v')
+  build-tv:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: tv
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          # 全量历史 + tags：notes 需定位上一 tv-v* tag（首个 tv tag 无基线走全量 fallback）
-          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -209,16 +163,43 @@ jobs:
           TARGET="StreamIsle-TV-${VERSION_NAME}(${VERSION_CODE}).apk"
           cp "$APK" "$TARGET"
           echo "APK_TARGET=tv/$TARGET" >> "$GITHUB_ENV"
-          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
 
       - name: 上传 artifact（保留 30 天）
         uses: actions/upload-artifact@v4
         with:
-          name: release-tv-apk
+          name: release-apk-tv
           path: ${{ env.APK_TARGET }}
           retention-days: 30
 
-      - name: 产出 Release notes（tag message 引言 + 上一 tv-v* 以来 mobile/src 与 tv/ 路径提交，中文）
+  publish-release:
+    # 汇总双端 artifact → 单 Release 附双 APK（同 tag 双 APK，2026-11-28 修订）
+    needs: [build-mobile, build-tv]
+    runs-on: ubuntu-latest
+    # GITHUB_TOKEN 默认只读，创建 Release 需显式授予 contents 写权限（否则 403）
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # 全量历史 + tags：release notes 需定位上一版本 tag 并生成提交清单
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-apk-mobile
+          path: apks/mobile
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-apk-tv
+          path: apks/tv
+
+      - name: 读取版本号（两端 version 同步，取手机端即可）
+        run: |
+          VERSION_NAME=$(node -e "const c=require('fs').readFileSync('mobile/app.config.ts','utf8');const m=c.match(/version:\s*\"([^\"]+)\"/);console.log(m?m[1]:'unknown')")
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+
+      - name: 产出 Release notes（tag message 引言 + 上一 v* 以来 mobile/ 与 tv/ 路径提交，中文）
         run: |
           # tag message 作引言；轻量 tag 无自身 message，跳过引言只留提交清单
           if [ "$(git cat-file -t "${GITHUB_REF_NAME}")" = "tag" ]; then
@@ -226,27 +207,26 @@ jobs:
           else
             : > release-notes.md
           fi
-          # TV-m4：基线按 tv-v* 前缀序列取，排除当前 tag 取最近一个；
-          # 首个 tv tag 无基线 → 引言 + 全量 tv/ 与 mobile/src 提交（跳版不掺纯手机 UI）
-          PREV_TAG=$(git tag --list 'tv-v*' --sort=creatordate | grep -v -x -F "${GITHUB_REF_NAME}" | tail -n 1 || true)
+          # 基线取 v* 序列上一 tag（排除当前）；首个版本无上一 tag 时取全部历史
+          PREV_TAG=$(git tag --list 'v*' --sort=creatordate | grep -v -x -F "${GITHUB_REF_NAME}" | tail -n 1 || true)
           if [ -n "$PREV_TAG" ]; then
             RANGE="${PREV_TAG}..${GITHUB_REF_NAME}"
             echo "## 更新内容（${PREV_TAG} → ${GITHUB_REF_NAME}）" >> release-notes.md
           else
             RANGE="${GITHUB_REF_NAME}"
-            echo "## 更新内容（首个 TV 版本）" >> release-notes.md
+            echo "## 更新内容" >> release-notes.md
           fi
           echo "" >> release-notes.md
-          # 排除 merge 提交；路径过滤：TV notes 仅共享层（mobile/src）与 TV（tv/）提交
-          git log "$RANGE" --no-merges --format='- %s' -- mobile/src tv/ >> release-notes.md
-          echo "NOTES_PATH=tv/release-notes.md" >> "$GITHUB_ENV"
+          # 排除 merge 提交；单 Release 覆盖双端，notes 含 mobile/ 与 tv/ 路径提交
+          # （pathspec 按提交时路径，m0 平移前历史 root src/ 不入 notes）
+          git log "$RANGE" --no-merges --format='- %s' -- mobile/ tv/ >> release-notes.md
+          echo "NOTES_PATH=release-notes.md" >> "$GITHUB_ENV"
 
-      - name: 附加 APK 到 GitHub Release（title 带端名；make_latest=false 不抢 Latest 徽标）
+      - name: 附加双 APK 到 GitHub Release（title 不带端名；单序列默认 Latest）
         uses: softprops/action-gh-release@v2
         with:
-          name: Stream Isle TV v${{ env.VERSION_NAME }}
-          # 硬约束（2026-11-18 定案）：GitHub Latest 不分 tag 序列，tv-v* 后发即抢徽标
-          # 致手机用户按 Latest 下错包——TV release 显式不设 Latest
-          make_latest: false
-          files: ${{ env.APK_TARGET }}
+          name: Stream Isle v${{ env.VERSION_NAME }}
+          files: |
+            apks/mobile/*.apk
+            apks/tv/*.apk
           body_path: ${{ env.NOTES_PATH }}
